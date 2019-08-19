@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style type="text/css">
+        .publicServer
+        {
+            width:5px;
+            height:5px;
+            border:1px solid white;
+            position:absolute;
+        }
+
+        #mapBody
+        {
+            position:relative;
+        }
+    </style>
+</head>
+<body>
+    <div id="UI" class="container-fluid">
+        <div class="row">
+            <div id="companies" class="col">
+
+            </div>
+            <div id="mapContainer" class="col">
+                <div id="mapBody">
+                    <canvas id="worldmap"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="js/vendor/modernizr-3.5.0.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous"/>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js" integrity="sha384-xrRywqdh3PHs8keKZN+8zzc5TX0GRTLCcmivcbNJWm2rs5C8PRhcEn3czEjhAO9o" crossorigin="anonymous"></script>
+
+    <script src="js/plugins.js"></script>
+    <script src="js/Task.js"></script>
+    <script src="js/Encryption.js"></script>
+    <script src="js/CPU.js"></script>
+    <script src="js/Alphabet.js"></script>
+    <script src="js/Password.js"></script>
+    <script src="js/Computer.js"></script>
+    <script src="js/MissionComputer.js"></script>
+    <script src="js/Companies.js"></script>
+
+    <script type="text/javascript">
+        $(()=>{
+            let img = new Image();
+            let canvas = document.getElementById('worldmap');
+            let $mapBody = $('#mapBody');
+            let ctx = canvas.getContext('2d');
+
+            img.onload = function()
+            {
+                let width = canvas.width = img.width;
+                let height = canvas.height = img.height;
+                ctx.drawImage(img, 0, 0, width, height);
+
+                let $companiesDiv = $('#companies');
+                for(let company of Downlink.companies)
+                {
+                    let searchingForPointOnMap = true;
+                    while(searchingForPointOnMap)
+                    {
+                        let randomPoint = {x:Math.floor(Math.random() * width), y:Math.floor(Math.random() * (height - 80) + 40)};
+                        let pixelData = ctx.getImageData(randomPoint.x, randomPoint.y, 1, 1).data;
+
+                        if(pixelData[2] <= 150 || pixelData[2] >= 160)
+                        {
+                            company.publicServer.setLocation(randomPoint);
+                            $mapBody.append(
+                                $('<div/>').addClass("publicServer").css({"top":randomPoint.y+3, "left":randomPoint.x+3})
+                            );
+                            searchingForPointOnMap = false;
+                            console.log(randomPoint);
+                        }
+                    }
+                }
+
+                for(let company of Downlink.companies)
+                {
+                    $companiesDiv.append(
+                        $('<div class="row"/>')
+                            .append(
+                                $(`<div class="col">${company.name}</div><div class="col">${company.publicServer.ipAddress}</div>`)
+                            )
+                    );
+                }
+
+            }
+            img.src = 'img/worldmap.png';
+        });
+    </script>
+
+</body>
+</html>
