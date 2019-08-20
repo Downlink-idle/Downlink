@@ -10,7 +10,7 @@ var Downlink = Downlink?Downlink:{};
 
             for(let company of companies)
             {
-                connection.push(company.publicServer);
+                connection.addComputer(company.publicServer);
             }
 
             return connection;
@@ -21,7 +21,7 @@ var Downlink = Downlink?Downlink:{};
             let connection = new Downlink.Connection();
             for(let computer of computers)
             {
-                connection.push(computer);
+                connection.addComputer(computer);
             }
             return connection;
         }

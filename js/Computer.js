@@ -1,8 +1,6 @@
 var Downlink = Downlink?Downlink:{};
 
 (($)=>{
-
-
     function randomIPAddress()
     {
         let ipAddress = "";
@@ -29,9 +27,20 @@ var Downlink = Downlink?Downlink:{};
         setLocation(location)
         {
             this.location = location;
+            return this;
         }
 
-        fromJSON(json)
+        connect()
+        {
+            return this;
+        }
+
+        disconnect()
+        {
+            return this;
+        }
+
+        static fromJSON(json)
         {
             let computer = new Computer(json.name, json.ipAddress);
             computer.setLocation(json.location);

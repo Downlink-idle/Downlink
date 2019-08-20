@@ -20,17 +20,24 @@ var Downlink = Downlink?Downlink:{};
          */
         connect(connection)
         {
+            connection.open();
+            super.connect();
             this.currentPlayerConnection = connection;
+
             if(this.currentPlayerConnection.equals(this.previousPlayerConnection) && this.alerted === true)
             {
                 this.resumeTraceBack();
             }
+
+            return this;
         }
 
         disconnect()
         {
-            this.playerConnection = null;
+            super.disconnect();
+            this.currentPlayerConnection.close();
             this.stopTraceBack();
+            return this;
         }
 
         setEncryption(encryption)

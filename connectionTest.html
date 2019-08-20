@@ -31,6 +31,7 @@
             let connection = Downlink.ConnectionGenerator.buildConnectionFromCompanyArray(Downlink.companies),
                 mc = Downlink.MissionComputer.newForTesting();
             mc.connect(connection);
+            mc.disconnect();
         });})(window.jQuery);
     </script>
 </body>

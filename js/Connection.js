@@ -21,6 +21,25 @@ var Downlink = Downlink?Downlink:{};
             this.computersTraced = 0;
         }
 
+        open()
+        {
+            for(let computer of this.computers)
+            {
+                computer.connect();
+            }
+            return this;
+        }
+
+        close()
+        {
+            let reverseComputers = this.computers.reverse();
+            for(let computer of reverseComputers)
+            {
+                computer.disconnect();
+            }
+            return this;
+        }
+
         addComputer(computer)
         {
             if(!typeof computer === Downlink.Computer)
@@ -47,6 +66,11 @@ var Downlink = Downlink?Downlink:{};
 
         equals(otherConnection)
         {
+            if(!otherConnection || typeof otherComputer !== Connection)
+            {
+                return false;
+            }
+
             return JSON.stringify(this.computers) === JSON.stringify(otherConnection.computers);
         }
     }
