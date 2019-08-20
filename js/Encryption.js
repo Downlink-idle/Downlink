@@ -24,7 +24,7 @@ var Downlink = Downlink?Downlink:{};
             this.letter = Downlink.Alphabet.getRandomLetter();
         }
     }
-
+    //TODO: Refactor this so that it's handed off to an Encryption Cracker like password is and stop extending Task
     class Encryption extends Downlink.Task
     {
         constructor(rows, cols, encryptionDifficulty, cyclesPerTick)

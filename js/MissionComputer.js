@@ -12,13 +12,16 @@ var Downlink = Downlink?Downlink:{};
             this.files = [];
             this.currentPlayerConnection = null;
             this.previousPlayerConnection = null;
-            this.securityFeatures = [];
+            this.alerted = false;
         }
 
+        /**
+         * @param {Downlink.Connection} connection
+         */
         connect(connection)
         {
             this.currentPlayerConnection = connection;
-            if(this.currentPlayerConnection.equals(this.previousPlayerConnection))
+            if(this.currentPlayerConnection.equals(this.previousPlayerConnection) && this.alerted === true)
             {
                 this.resumeTraceBack();
             }
@@ -33,23 +36,26 @@ var Downlink = Downlink?Downlink:{};
         setEncryption(encryption)
         {
             this.encryption = encryption;
-            this.securityFeatures.push(encryption);
+
             $(encryption)
                 .on('complete', ()=>{
                     this.updateAccessStatus();
                     $(encryption).off();
                 })
-                .on('start', ()=>{this.beginTraceBack();});
+                .on('start', ()=>{this.startTraceBack();});
             return this;
         }
 
         setPassword(password)
         {
             this.password = password;
+            // password is not handled the same as encryption
+            // because password is not a Task
+            // the PasswordCracker Task isn't
             $(password).on('solved', ()=>{
                 $(password).off();
                 this.updateAccessStatus();
-            }).on('start', ()=>{this.beginTraceBack()});
+            }).on('start', ()=>{this.startTraceBack();});
             return this;
         }
 
@@ -59,7 +65,7 @@ var Downlink = Downlink?Downlink:{};
             return this.accessible;
         }
 
-        beginTraceBack()
+        startTraceBack()
         {
 
         }
