@@ -30,8 +30,8 @@ var Downlink = Downlink?Downlink:{};
         constructor(rows, cols, encryptionDifficulty, cyclesPerTick)
         {
             super('Encryption', encryptionDifficulty?encryptionDifficulty:50 / 2);
-            this.rows = rows?rows:25;
-            this.cols = cols?cols:17;
+            this.rows = rows?rows:5;
+            this.cols = cols?cols:5;
             /**
              * This is just an arbitrary number representing how many clock cycles per tick are needed to solve each cell
              */
@@ -70,6 +70,7 @@ var Downlink = Downlink?Downlink:{};
 
         solveNCells(cellsToSolve)
         {
+            $(this).trigger('start');
             for(let i = 0; i < cellsToSolve; i++)
             {
                 let cell = this.unsolvedCells.randomElement();
@@ -100,13 +101,18 @@ var Downlink = Downlink?Downlink:{};
         {
             super.tick();
 
+            // Cycle through all of the cells and tick them.
             for (let cell of this.unsolvedCells)
             {
                 cell.tick();
             }
 
+            // figure out how many cells to solve
+            // by determining how many cycles per tick we have divided by the difficulty of this task
+            // this may lead to a number less than zero and so, this tick, nothing will happen
             this.currentTickPercentage += this.cyclesPerTick / this.encryptionDifficulty;
 
+            // if the currentTickPercentage is bigger than one, we solve that many cells
             if(this.currentTickPercentage >= 1)
             {
                 let fullCells = parseInt(this.currentTickPercentage);

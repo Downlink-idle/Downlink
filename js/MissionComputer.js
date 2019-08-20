@@ -49,7 +49,7 @@ var Downlink = Downlink?Downlink:{};
             $(password).on('solved', ()=>{
                 $(password).off();
                 this.updateAccessStatus();
-            });
+            }).on('start', ()=>{this.beginTraceBack()});
             return this;
         }
 
@@ -76,13 +76,12 @@ var Downlink = Downlink?Downlink:{};
 
         static newForTesting()
         {
-            let mc = new MissionComputer('Test Computer');
-
-            mc.setPassword(
-                Downlink.Password.randomDictionaryPassword()
-            ).setEncryption(
-                new Downlink.Encryption()
-            );
+            return new MissionComputer('Test Computer')
+                .setPassword(
+                    Downlink.Password.randomDictionaryPassword()
+                ).setEncryption(
+                    new Downlink.Encryption()
+                );
         }
 
         static fromJSON(json)

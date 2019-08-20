@@ -8911,8 +8911,9 @@ var Downlink = Downlink?Downlink:{};
             this.solved = solved?solved:false;
         }
 
-        check(testPassword)
+        attack(testPassword)
         {
+            $(this).trigger('start');
             if(this.text === testPassword)
             {
                 $(this).trigger('solved');

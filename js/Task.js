@@ -11,6 +11,8 @@ var Downlink = Downlink?Downlink:{};
             this.weight = 1;
             this.difficultyRatio = 0;
             this.ticksTaken = 0;
+            this.working = false;
+            this.taskCompleted = false;
         }
 
         setCyclesPerTick(cyclesPerTick)
@@ -45,6 +47,8 @@ var Downlink = Downlink?Downlink:{};
         signalComplete()
         {
             $(this).trigger('complete');
+            this.working = false;
+            this.taskCompleted = true;
         }
 
         getRewardRatio()

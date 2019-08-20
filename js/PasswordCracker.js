@@ -1,14 +1,23 @@
-let Downlink = Downlink?Downlink:{};
+var Downlink = Downlink?Downlink:{};
 
 (($)=>{
-
+    const   DICTIONARY_CRACKER_MINIMUM_CYCLES = 5,
+            SEQUENTIAL_CRACKER_MINIMUM_CYCLES = 20;
 
     class PasswordCracker extends Downlink.Task
     {
-        constructor(password)
+        constructor(password, name, minimumRequiredCycles)
         {
-            super();
+            super(name, minimumRequiredCycles);
             this.password = password;
+            $(password).on('solved', ()=>{this.signalComplete()});
+            this.isSolved = false;
+        }
+
+        signalComplete()
+        {
+            this.isSolved = true;
+            super.signalComplete();
         }
     }
 
@@ -17,23 +26,34 @@ let Downlink = Downlink?Downlink:{};
     {
         constructor(password)
         {
-            super(password);
-            this.dictionary = Downlink.Password.dictionary;
+            super(password, 'Dictionary Cracker', DICTIONARY_CRACKER_MINIMUM_CYCLES);
+            this.dictionary = [...Downlink.Password.dictionary];
+            this.currentGuess = null;
+            this.totalGuesses = 0;
         }
 
         tick()
         {
             super.tick();
-            let guessCount = 0;
 
-            while(guessCount < this.cyclesPerTick)
+            let attacking = true,
+                guessesThisTick = 0;
+
+            while(attacking)
             {
-                this.currentGuess = this.dictionary.next();
-                if (this.currentGuess === this.password.text)
+                this.currentGuess = this.dictionary.shift();
+                let guessSuccessful = this.password.attack(this.currentGuess);
+                guessesThisTick ++;
+                this.totalGuesses++;
+                if(guessSuccessful || guessesThisTick < this.cyclesPerTick)
                 {
-                    this.signalComplete();
+                    attacking = false;
                 }
-                guessCount ++;
+            }
+
+            if(!this.dictionary.length)
+            {
+                throw new Error(`${password.text} not found in dictionary some how`);
             }
         }
     }
@@ -42,7 +62,7 @@ let Downlink = Downlink?Downlink:{};
     {
         constructor(password)
         {
-            super(password);
+            super(password, 'Sequential Cracker', SEQUENTIAL_CRACKER_MINIMUM_CYCLES);
         }
 
         tick()
