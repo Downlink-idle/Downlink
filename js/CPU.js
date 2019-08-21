@@ -1,5 +1,4 @@
-module.exports = ($)=> {
-    const Task = require('./Tasks/Task')($);
+    const Task = require('./Tasks/Task');
 
     class CPU
     {
@@ -96,5 +95,4 @@ module.exports = ($)=> {
 
     }
 
-    return CPU;
-};
+module.exports = CPU;

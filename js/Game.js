@@ -1,7 +1,7 @@
 // namespace for the entire game;
 
 (($)=>{
-    const   Downlink = require('./Downlink')($),
+    const   Downlink = require('./Downlink'),
             TICK_INTERVAL_LENGTH=100;
     Downlink.initialise();
 
@@ -26,6 +26,5 @@
         },
     };
 
-    return;
-
+    game.start();
 })(window.jQuery);

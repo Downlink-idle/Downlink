@@ -30,91 +30,111 @@ const DIFFICULTIES = {
     HARD:new MissionDifficulty(10, "Farm"),
 };
 
-module.exports = ($)=>{
-    const   Company = require('../Company')($),
-            MissionComputer = require('./MissionComputer')($),
-            Password = require('../Challenges/Password')($),
-            Encryption = require('../Challenges/Encryption')($);
+const   Company = require('../Company'),
+        MissionComputer = require('./MissionComputer'),
+        Password = require('../Challenges/Password'),
+        Encryption = require('../Challenges/Encryption');
 
-    class Mission
+class Mission
+{
+    /**
+     * Any mission is going to involve connecting to another computer belonging to a company and doing something to it
+     * @param {Downlink.Company}    target      The object representing the company you are, in some way, attacking
+     * @param {Downlink.Company}    sponsor     The company sponsoring this hack
+     */
+    constructor(target, sponsor)
     {
         /**
-         * Any mission is going to involve connecting to another computer belonging to a company and doing something to it
-         * @param {Downlink.Company}    target      The object representing the company you are, in some way, attacking
-         * @param {Downlink.Company}    sponsor     The company sponsoring this hack
+         * @type {Downlink.Company} the target company being attacked
          */
-        constructor(target, sponsor)
-        {
-            /**
-             * @type {Downlink.Company} the target company being attacked
-             */
-            this.target = target;
-            /**
-             * @type {Downlink.Company} the company sponsoring this mission
-             */
-            this.sponsor = sponsor;
-
-            // these values are all instantiated later.
-            /**
-             * @type {MissionDifficulty}
-             */
-            this.difficulty = null;
-            this.computer = null;
-        }
-
-        setDifficulty(difficulty)
-        {
-            if(!difficulty instanceof MissionDifficulty)
-            {
-                throw new Error("Mission Difficulty unrecognised");
-            }
-            this.difficulty = difficulty;
-            return this;
-        }
-
+        this.target = target;
         /**
-         * A method to set the computer for this mission.
-         * This is kept as a separate method because we only really want the mission to be populated when we take it,
-         * not when we're just listing it.
-         *
-         *
+         * @type {Downlink.Company} the company sponsoring this mission
          */
-        build()
-        {
-            if(this.computer)
-            {
-                return this;
-            }
+        this.sponsor = sponsor;
 
-            this.computer = new MissionComputer(this, this.difficulty.serverType);
-            if(this.difficulty === DIFFICULTIES.EASY)
-            {
-                this.computer
-                    .setPassword(Password.randomDictionaryPassword())
-                    .setEncryption(Encryption.getNewLinearEncryption());
-            }
-            this.target.addComputer(this.computer);
+        // these values are all instantiated later.
+        /**
+         * @type {MissionDifficulty}
+         */
+        this.difficulty = null;
+        /**
+         *
+         * @type {MissionComputer}
+         */
+        this.computer = null;
+    }
+
+    setDifficulty(difficulty)
+    {
+        if(!difficulty instanceof MissionDifficulty)
+        {
+            throw new Error("Mission Difficulty unrecognised");
+        }
+        this.difficulty = difficulty;
+        return this;
+    }
+
+    get hackTargets()
+    {
+        let targets = [];
+        if(this.computer.password)
+        {
+            targets.push(this.computer.password);
+        }
+        if(this.computer.encryption)
+        {
+            targets.push(this.computer.encryption);
+        }
+        return targets;
+    }
+
+    /**
+     * A method to set the computer for this mission.
+     * This is kept as a separate method because we only really want the mission to be populated when we take it,
+     * not when we're just listing it.
+     *
+     *
+     */
+    build()
+    {
+        if(this.computer)
+        {
             return this;
         }
 
-        tick()
+        this.computer = new MissionComputer(this.target, this.difficulty.serverType);
+        let password = null, encryption = null;
+
+        if(this.difficulty === DIFFICULTIES.EASY)
         {
-            this.build();
-            this.computer.tick();
+            password = Password.randomDictionaryPassword();
+            encryption = Encryption.getNewLinearEncryption();
         }
 
-        static getNewSimpleMission()
-        {
-            let companies = [...Company.allCompanies];
-            let mission = new Mission(
-                companies.shift(),
-                companies.shift()
-            ).setDifficulty(
-                DIFFICULTIES.EASY
-            );
+        this.computer.setPassword(password).setEncryption(encryption);
 
-            return mission;
-        }
+        this.target.addComputer(this.computer);
+        return this;
     }
-    return Mission;
-};
+
+    tick()
+    {
+        this.build();
+        this.computer.tick();
+    }
+
+    static getNewSimpleMission()
+    {
+        let companies = [...Company.allCompanies];
+        let mission = new Mission(
+            companies.shift(),
+            companies.shift()
+        ).setDifficulty(
+            DIFFICULTIES.EASY
+        );
+
+        return mission;
+    }
+}
+module.exports = Mission;

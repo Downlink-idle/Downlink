@@ -12,53 +12,51 @@ function randomIPAddress()
     return ipAddress;
 }
 
-module.exports = ($)=>{
-    class Computer
+class Computer
+{
+    constructor(name, company, ipAddress)
     {
-        constructor(name, company, ipAddress)
-        {
-            this.name= name;
-            this.ipAddress = ipAddress?ipAddress:randomIPAddress();
-            this.location = null;
-            this.company = company;
-        }
-
-        setLocation(location)
-        {
-            this.location = location;
-            return this;
-        }
-
-        connect()
-        {
-            return this;
-        }
-
-        disconnect()
-        {
-            return this;
-        }
-
-        tick()
-        {
-
-        }
-
-        static fromJSON(json)
-        {
-            let computer = new Computer(json.name, json.ipAddress);
-            computer.setLocation(json.location);
-        }
-
-        toJSON()
-        {
-            let json = {
-                name:this.name,
-                ipAddress:this.ipAddress,
-                location:this.location
-            };
-        }
+        this.name= name;
+        this.ipAddress = ipAddress?ipAddress:randomIPAddress();
+        this.location = null;
+        this.company = company;
     }
 
-    return Computer;
-};
+    setLocation(location)
+    {
+        this.location = location;
+        return this;
+    }
+
+    connect()
+    {
+        return this;
+    }
+
+    disconnect()
+    {
+        return this;
+    }
+
+    tick()
+    {
+
+    }
+
+    static fromJSON(json)
+    {
+        let computer = new Computer(json.name, json.ipAddress);
+        computer.setLocation(json.location);
+    }
+
+    toJSON()
+    {
+        let json = {
+            name:this.name,
+            ipAddress:this.ipAddress,
+            location:this.location
+        };
+    }
+}
+
+module.exports = Computer;

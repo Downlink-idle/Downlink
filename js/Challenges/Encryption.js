@@ -11,34 +11,31 @@ function getRandomIntBetween(min, max)
 {
     return Math.floor(Math.random() * (+max - +min)) + +min
 }
-
-module.exports = ($)=> {
-    const Challenge = require('./Challenge')($);
-
-    class Encryption extends Challenge
+const Challenge = require('./Challenge');
+class Encryption extends Challenge
+{
+    constructor(difficulty)
     {
-        constructor(difficulty)
-        {
-            let diff = DIFFICULTIES[difficulty], rows = getRandomIntBetween(diff.min, diff.max),
-                cols = getRandomIntBetween(diff.min, diff.max), diffRatio = Math.floor(Math.sqrt(rows * cols));
-            super(diff.name + ' Encryption', diffRatio);
-        }
-
-        static get DIFFICULTIES()
-        {
-            return DIFFICULTIES;
-        }
-
-        static getNewLinearEncryption()
-        {
-            return new Encryption('EASY');
-        }
-
-        static getNewQuadraticEncryption()
-        {
-            return new Encryption('MEDIUM');
-        }
-
+        let diff = DIFFICULTIES[difficulty], rows = getRandomIntBetween(diff.min, diff.max),
+            cols = getRandomIntBetween(diff.min, diff.max), diffRatio = Math.floor(Math.sqrt(rows * cols));
+        super(diff.name + ' Encryption', diffRatio);
     }
-    return Encryption;
-};
+
+    static get DIFFICULTIES()
+    {
+        return DIFFICULTIES;
+    }
+
+    static getNewLinearEncryption()
+    {
+        return new Encryption('EASY');
+    }
+
+    static getNewQuadraticEncryption()
+    {
+        return new Encryption('MEDIUM');
+    }
+
+}
+
+module.exports = Encryption;

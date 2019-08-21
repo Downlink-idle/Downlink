@@ -1,42 +1,46 @@
-module.exports= ($)=> {
-    const   MissionGenerator = require('./Missions/MissionGenerator')($),
-            PlayerComputer = require('./PlayerComputer')($);
+const   MissionGenerator = require('./Missions/MissionGenerator'),
+        PlayerComputer = require('./PlayerComputer');
 
-    require('./plugins.js');
-
-
-    class Downlink
+class Downlink
+{
+    static initialise()
     {
-        static initialise()
+        if(Downlink.initialised)
         {
-            if(Downlink.initialised)
-            {
-                return Downlink;
-            }
-
-            Downlink.playerComputer = PlayerComputer.getMyFirstComputer();
-            Downlink.initialised = true;
             return Downlink;
         }
 
-        static tick()
-        {
-            Downlink.playerComputer.tick();
-            if(!Downlink.activeMission)
-            {
-                Downlink.activeMission = MissionGenerator.availableMissions.shift().build();
-            }
-            Downlink.activeMission.tick();
-        }
-
-        static setActiveMission(activeMission)
-        {
-            Downlink.activeMission = activeMission;
-        }
-
-
-
+        Downlink.playerComputer = PlayerComputer.getMyFirstComputer();
+        Downlink.initialised = true;
+        return Downlink;
     }
 
-    return Downlink;
-};
+    static tick()
+    {
+        Downlink.playerComputer.tick();
+        if(!Downlink.activeMission)
+        {
+            Downlink.setCurrentMission(MissionGenerator.availableMissions.shift());
+        }
+        Downlink.activeMission.tick();
+    }
+
+    static setCurrentMission(mission)
+    {
+        Downlink.activeMission = mission.build();
+        for(let target of Downlink.activeMission.hackTargets)
+        {
+            Downlink.playerComputer.addTaskForChallenge(target);
+        }
+    }
+
+    static setActiveMission(activeMission)
+    {
+        Downlink.activeMission = activeMission;
+    }
+
+
+
+}
+
+module.exports = Downlink;

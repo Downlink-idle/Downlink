@@ -1,26 +1,24 @@
-module.exports = ($)=> {
-    const   Mission = require('./Mission')($),
-            MINIMUM_MISSIONS = 10;
-    let availableMissions = [];
+const   Mission = require('./Mission'),
+        MINIMUM_MISSIONS = 10;
+let availableMissions = [];
 
-    class MissionGenerator
+class MissionGenerator
+{
+    static updateAvailableMissions()
     {
-        static updateAvailableMissions()
+        while(availableMissions.length < MINIMUM_MISSIONS)
         {
-            while(availableMissions.length < MINIMUM_MISSIONS)
-            {
-                availableMissions.push(
-                    Mission.getNewSimpleMission()
-                );
-            }
-        }
-
-        static get availableMissions()
-        {
-            this.updateAvailableMissions();
-            return availableMissions;
+            availableMissions.push(
+                Mission.getNewSimpleMission()
+            );
         }
     }
 
-    return MissionGenerator;
-};
+    static get availableMissions()
+    {
+        this.updateAvailableMissions();
+        return availableMissions;
+    }
+}
+
+module.exports = MissionGenerator;
