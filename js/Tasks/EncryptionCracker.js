@@ -24,12 +24,12 @@ var Downlink = Downlink?Downlink:{};
             this.letter = Downlink.Alphabet.getRandomLetter();
         }
     }
-    //TODO: Refactor this so that it's handed off to an Encryption Cracker like password is and stop extending Task
-    class Encryption extends Downlink.Task
+
+    class EncryptionCracker extends Downlink.Task
     {
         constructor(rows, cols, encryptionDifficulty, cyclesPerTick)
         {
-            super('Encryption', encryptionDifficulty?encryptionDifficulty:50 / 2);
+            super('EncryptionCracker', encryptionDifficulty?encryptionDifficulty:50 / 2);
             this.rows = rows?rows:5;
             this.cols = cols?cols:5;
             /**
@@ -124,7 +124,7 @@ var Downlink = Downlink?Downlink:{};
         static fromJSON(json)
         {
             json = json?json:{rows:10,cols:10,difficulty:50};
-            return new Encryption(json.rows, json.cols, json.difficulty);
+            return new EncryptionCracker(json.rows, json.cols, json.difficulty);
         }
 
         getRewardRatio()
@@ -133,5 +133,5 @@ var Downlink = Downlink?Downlink:{};
         }
     }
 
-    Downlink.Encryption = Encryption;
+    Downlink.EncryptionCracker = EncryptionCracker;
 })(window.jQuery);

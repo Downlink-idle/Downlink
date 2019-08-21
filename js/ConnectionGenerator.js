@@ -1,14 +1,13 @@
 var Downlink = Downlink?Downlink:{};
 
-(($)=>{$(()=>{
-
+(($)=> {
     class ConnectionGenerator
     {
         static buildConnectionFromCompanyArray(companies)
         {
             let connection = new Downlink.Connection();
 
-            for(let company of companies)
+            for (let company of companies)
             {
                 connection.addComputer(company.publicServer);
             }
@@ -19,7 +18,7 @@ var Downlink = Downlink?Downlink:{};
         static buildConnectionFromComputerArray(computers)
         {
             let connection = new Downlink.Connection();
-            for(let computer of computers)
+            for (let computer of computers)
             {
                 connection.addComputer(computer);
             }
@@ -28,4 +27,4 @@ var Downlink = Downlink?Downlink:{};
     }
 
     Downlink.ConnectionGenerator = ConnectionGenerator;
-})})(window.jQuery);
+})(window.jQuery);

@@ -3,9 +3,9 @@ var Downlink = Downlink?Downlink:{};
 (($)=>{
     class MissionComputer extends Downlink.Computer
     {
-        constructor(name)
+        constructor(name, company)
         {
-            super(name);
+            super(name, company);
             this.encryption = null;
             this.password = null;
             this.accessible = false;
@@ -57,8 +57,8 @@ var Downlink = Downlink?Downlink:{};
         {
             this.password = password;
             // password is not handled the same as encryption
-            // because password is not a Task
-            // the PasswordCracker Task isn't
+            // because password is not a Tasks
+            // the PasswordCracker Tasks isn't
             $(password).on('solved', ()=>{
                 $(password).off();
                 this.updateAccessStatus();
@@ -89,25 +89,12 @@ var Downlink = Downlink?Downlink:{};
 
         static newForTesting()
         {
-            return new MissionComputer('Test Computer')
+            return new MissionComputer('Test Computer', Downlink.Company.getRandomCompany())
                 .setPassword(
-                    Downlink.Password.randomDictionaryPassword()
+                    Downlink.Challenges.Password.randomDictionaryPassword()
                 ).setEncryption(
-                    new Downlink.Encryption()
+
                 );
-        }
-
-        static fromJSON(json)
-        {
-            let computer = new Computer();
-            json = json?json:{};
-
-            computer.setPassword(json.password, json.passwordType);
-            if(json.encryption)
-            {
-                let encryption = Downlink.Encryption.fromJSON(json.encryption);
-                computer.setEncryption(encryption);
-            }
         }
     }
 

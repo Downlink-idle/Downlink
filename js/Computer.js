@@ -17,11 +17,12 @@ var Downlink = Downlink?Downlink:{};
 
     class Computer
     {
-        constructor(name, ipAddress)
+        constructor(name, company, ipAddress)
         {
             this.name= name;
             this.ipAddress = ipAddress?ipAddress:randomIPAddress();
             this.location = null;
+            this.company = company;
         }
 
         setLocation(location)

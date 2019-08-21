@@ -1,4 +1,5 @@
 var Downlink = Downlink?Downlink:{};
+Downlink.Challenges = Downlink.Challenges?Downlink.Challenges:{};
 
 (($)=>{
     // stolen from Bart Busschot's xkpasswd JS github repo
@@ -8898,17 +8899,17 @@ var Downlink = Downlink?Downlink:{};
     ];
 
     const PASSWORD_TYPES = {
-        'DICTIONARY':'dictionary',
-        'ALPHANUMERIC':'alphanumeric'
+        'DICTIONARY':'Dictionary',
+        'ALPHANUMERIC':'Alphanumeric'
     };
 
-    class Password
+    class Password extends Downlink.Challenges.Challenge
     {
-        constructor(text, type, solved)
+        constructor(text, type, solved, difficulty)
         {
+            super(PASSWORD_TYPES[type]+' Password', difficulty);
             this.text = text;
             this.type = type;
-            this.solved = solved?solved:false;
         }
 
         attack(testPassword)
@@ -8916,8 +8917,7 @@ var Downlink = Downlink?Downlink:{};
             $(this).trigger('start');
             if(this.text === testPassword)
             {
-                $(this).trigger('solved');
-                this.solved = true;
+                this.signalComplete();
                 return true;
             }
             return false;
@@ -8925,7 +8925,7 @@ var Downlink = Downlink?Downlink:{};
 
         static randomDictionaryPassword()
         {
-            return new Password(dictionary.randomElement(), PASSWORD_TYPES.DICTIONARY, false);
+            return new Password(dictionary.randomElement(), PASSWORD_TYPES.DICTIONARY, false, 1);
         }
         static randomAlphanumericPassword()
         {
@@ -8935,7 +8935,7 @@ var Downlink = Downlink?Downlink:{};
             {
                 password += Downlink.Alphabet.getRandomLetter();
             }
-            return new Password(password, PASSWORD_TYPES.ALPHANUMERIC, false);
+            return new Password(password, PASSWORD_TYPES.ALPHANUMERIC, false, stringLength );
         }
 
 
@@ -8950,5 +8950,6 @@ var Downlink = Downlink?Downlink:{};
         }
     }
 
-    Downlink.Password = Password;
+    Downlink.Challenges.Password = Password;
+    Downlink.passwordDictionary = dictionary;
 })(window.jQuery);

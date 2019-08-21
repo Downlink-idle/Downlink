@@ -21,6 +21,16 @@ var Downlink = Downlink?Downlink:{};
             this.name = name;
             this.publicServer = new Computer(`${this.name} Public Server`)
         }
+
+        static getRandomCompany()
+        {
+            return companies.randomElement();
+        }
+
+        static get allCompanies()
+        {
+            return companies;
+        }
     }
 
     for(let companyName of companyNames)
@@ -28,5 +38,5 @@ var Downlink = Downlink?Downlink:{};
         companies.push(new Company(companyName));
     }
 
-    Downlink.companies = companies;
+    Downlink.Company = Company;
 })(window.jQuery);

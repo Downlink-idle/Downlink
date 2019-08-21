@@ -27,7 +27,7 @@ var Downlink = Downlink?Downlink:{};
         constructor(password)
         {
             super(password, 'Dictionary Cracker', DICTIONARY_CRACKER_MINIMUM_CYCLES);
-            this.dictionary = [...Downlink.Password.dictionary];
+            this.dictionary = [...Downlink.passwordDictionary];
             this.currentGuess = null;
             this.totalGuesses = 0;
         }
