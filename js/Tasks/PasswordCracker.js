@@ -26,9 +26,14 @@ class DictionaryCracker extends PasswordCracker
     constructor(password)
     {
         super(password, 'Dictionary Cracker', DICTIONARY_CRACKER_MINIMUM_CYCLES);
-        this.dictionary = [Password.dictionary];
+        this.dictionary = [...Password.dictionary];
         this.currentGuess = null;
         this.totalGuesses = 0;
+    }
+
+    get dictionaryEntriesLeft()
+    {
+        return this.dictionary.length;
     }
 
     tick()
@@ -42,9 +47,11 @@ class DictionaryCracker extends PasswordCracker
         {
             this.currentGuess = this.dictionary.shift();
             let guessSuccessful = this.password.attack(this.currentGuess);
+
             guessesThisTick ++;
             this.totalGuesses++;
-            if(guessSuccessful || guessesThisTick < this.cyclesPerTick)
+
+            if(guessSuccessful || guessesThisTick >= this.cyclesPerTick)
             {
                 attacking = false;
             }
@@ -52,7 +59,7 @@ class DictionaryCracker extends PasswordCracker
 
         if(!this.dictionary.length)
         {
-            throw new Error(`${password.text} not found in dictionary some how`);
+            throw new Error(`${this.password.text} not found in dictionary some how`);
         }
     }
 }

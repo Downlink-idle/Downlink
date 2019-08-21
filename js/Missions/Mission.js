@@ -104,6 +104,9 @@ class Mission
         }
 
         this.computer = new MissionComputer(this.target, this.difficulty.serverType);
+        $(this.computer).on('accessed', ()=>{
+            this.signalComplete();
+        })
         let password = null, encryption = null;
 
         if(this.difficulty === DIFFICULTIES.EASY)
@@ -114,8 +117,14 @@ class Mission
 
         this.computer.setPassword(password).setEncryption(encryption);
 
+
         this.target.addComputer(this.computer);
         return this;
+    }
+
+    signalComplete()
+    {
+        $(this).trigger('complete');
     }
 
     tick()

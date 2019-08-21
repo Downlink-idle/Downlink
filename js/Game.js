@@ -27,4 +27,5 @@
     };
 
     game.start();
+    window.game = game;
 })(window.jQuery);

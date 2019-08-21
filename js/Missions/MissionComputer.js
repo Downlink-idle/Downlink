@@ -70,6 +70,10 @@ class MissionComputer extends Computer
     updateAccessStatus()
     {
         this.accessible = this.accessible || (this.encryption && this.encryption.solved && this.password && this.password.solved);
+        if(this.accessible)
+        {
+            $(this).trigger('accessed');
+        }
         return this.accessible;
     }
 

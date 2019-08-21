@@ -32,10 +32,11 @@ class Alphabet
         {
             this.shuffle();
         }
+
         return this.randomizedAlphabet.pop();
     }
 };
 
 Alphabet.build();
 
-module.epxorts = Alphabet;
+module.exports = Alphabet;

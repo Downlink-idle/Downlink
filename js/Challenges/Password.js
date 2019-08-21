@@ -5,6 +5,7 @@ const PASSWORD_TYPES = {
 };
 const Challenge = require('./Challenge');
 
+
 class Password extends Challenge
 {
     constructor(text, type, solved, difficulty)
@@ -12,6 +13,11 @@ class Password extends Challenge
         super(type + ' Password', difficulty);
         this.text = text;
         this.type = type;
+    }
+
+    finish()
+    {
+        this.signalCompete();
     }
 
     attack(testPassword)

@@ -2,9 +2,9 @@
  * @type {{}}
  */
 const DIFFICULTIES = {
-    'EASY':{name:'Linear', size:{min:4, max:7}},
-    'MEDIUM':{name:'Quadratic', size:{min:6,max:11}},
-    'HARD':{name:'Cubic', size:{min:10,max:15}}
+    'EASY':{name:'Linear', size:{min:7, max:11}},
+    'MEDIUM':{name:'Quadratic', size:{min:10,max:15}},
+    'HARD':{name:'Cubic', size:{min:15,max:20}}
 };
 
 function getRandomIntBetween(min, max)
@@ -16,9 +16,17 @@ class Encryption extends Challenge
 {
     constructor(difficulty)
     {
-        let diff = DIFFICULTIES[difficulty], rows = getRandomIntBetween(diff.min, diff.max),
-            cols = getRandomIntBetween(diff.min, diff.max), diffRatio = Math.floor(Math.sqrt(rows * cols));
-        super(diff.name + ' Encryption', diffRatio);
+        let rows = getRandomIntBetween(difficulty.size.min, difficulty.size.max),
+            cols = getRandomIntBetween(difficulty.size.min, difficulty.size.max),
+            difficultyRatio = Math.floor(Math.sqrt(rows * cols));
+        super(difficulty.name + ' Encryption', difficultyRatio);
+        this.rows = rows;
+        this.cols = cols;
+    }
+
+    complete()
+    {
+        this.signalComplete();
     }
 
     static get DIFFICULTIES()
@@ -28,12 +36,12 @@ class Encryption extends Challenge
 
     static getNewLinearEncryption()
     {
-        return new Encryption('EASY');
+        return new Encryption(DIFFICULTIES.EASY);
     }
 
     static getNewQuadraticEncryption()
     {
-        return new Encryption('MEDIUM');
+        return new Encryption(DIFFICULTIES.MEDIUM);
     }
 
 }

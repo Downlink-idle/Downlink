@@ -21,8 +21,8 @@ class Challenge
      */
     signalComplete()
     {
-        $(this).trigger('solved');
         this.solved = true;
+        $(this).trigger('solved');
     }
 }
 

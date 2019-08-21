@@ -14,6 +14,10 @@ class Task
 
     setCyclesPerTick(cyclesPerTick)
     {
+        if(cyclesPerTick < this.minimumRequiredCycles)
+        {
+            throw new Error("Trying to run a task with fewer cycles than it requires");
+        }
         this.cyclesPerTick = cyclesPerTick;
         return this;
     }
@@ -23,9 +27,13 @@ class Task
         this.cyclesPerTick += tickIncrease;
     }
 
+    /**
+     * Try to release a number of ticks from the task and return the number actually released
+     * @param tickReduction
+     * @returns {number|*}
+     */
     freeCycles(tickReduction)
     {
-
         if(this.cyclesPerTick <= (tickReduction + this.minimumRequiredCycles))
         {
 

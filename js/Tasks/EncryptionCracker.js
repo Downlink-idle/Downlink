@@ -27,21 +27,23 @@ class EncryptionCell
 
 class EncryptionCracker extends Task
 {
-    constructor(rows, cols, encryptionDifficulty, cyclesPerTick)
+    constructor(encryption)
     {
-        super('EncryptionCracker', encryptionDifficulty?encryptionDifficulty:50 / 2);
-        this.rows = rows?rows:5;
-        this.cols = cols?cols:5;
+        super('EncryptionCracker', encryption.difficulty);
+        this.rows = encryption.rows;
+        this.cols = encryption.cols;
+        this.encryption = encryption;
+
         /**
          * This is just an arbitrary number representing how many clock cycles per tick are needed to solve each cell
          */
-        this.encryptionDifficulty = encryptionDifficulty?encryptionDifficulty:50;
+        this.encryptionDifficulty = encryption.difficulty;
 
         /**
          *
          * @type {number}
          */
-        this.cyclesPerTick = cyclesPerTick?cyclesPerTick:0;
+        this.cyclesPerTick = 0;
         /**
          * The amount of progress you have made on the current tick
          */
@@ -63,14 +65,13 @@ class EncryptionCracker extends Task
                 this.unsolvedCells.push(cell);
             }
         }
-
-        this.difficultyRatio = this.rows * this.cols * this.encryptionDifficulty;
     }
 
 
     solveNCells(cellsToSolve)
     {
         $(this).trigger('start');
+
         for(let i = 0; i < cellsToSolve; i++)
         {
             let cell = this.unsolvedCells.randomElement();
@@ -86,6 +87,11 @@ class EncryptionCracker extends Task
         }
     }
 
+    signalComplete()
+    {
+        this.encryption.complete();
+        super.signalComplete();
+    }
 
     get percentage()
     {
@@ -110,6 +116,7 @@ class EncryptionCracker extends Task
         // figure out how many cells to solve
         // by determining how many cycles per tick we have divided by the difficulty of this task
         // this may lead to a number less than zero and so, this tick, nothing will happen
+
         this.currentTickPercentage += this.cyclesPerTick / this.encryptionDifficulty;
 
         // if the currentTickPercentage is bigger than one, we solve that many cells

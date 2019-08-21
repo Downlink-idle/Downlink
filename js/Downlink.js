@@ -11,27 +11,33 @@ class Downlink
         }
 
         Downlink.playerComputer = PlayerComputer.getMyFirstComputer();
+        Downlink.getNextMission();
+
         Downlink.initialised = true;
+
         return Downlink;
     }
 
     static tick()
     {
         Downlink.playerComputer.tick();
-        if(!Downlink.activeMission)
-        {
-            Downlink.setCurrentMission(MissionGenerator.availableMissions.shift());
-        }
         Downlink.activeMission.tick();
     }
 
-    static setCurrentMission(mission)
+    static getNextMission()
     {
+        let mission = MissionGenerator.availableMissions.shift();
+
+        $(mission).on('complete', ()=>{
+            console.log('Getting new mission');
+            this.getNextMission();
+        });
         Downlink.activeMission = mission.build();
         for(let target of Downlink.activeMission.hackTargets)
         {
             Downlink.playerComputer.addTaskForChallenge(target);
         }
+        return mission;
     }
 
     static setActiveMission(activeMission)
