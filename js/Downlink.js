@@ -1,10 +1,8 @@
-/**
- * This file serves to act as the Node.js central repositry for the game classes
- */
-
-let Downlink = {
-
+module.exports= ($)=> {
+    let Downlink = {
+        Challenges: {
+            Password: require('./Challenges/Password'),
+            Encryption:require('./Challenges/Encryption')
+        }
+    };
 };
-
-
-module.exports = Downlink;

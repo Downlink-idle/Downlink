@@ -1,7 +1,5 @@
-var Downlink = Downlink?Downlink:{};
-Downlink.Challenges = Downlink.Challenges?Downlink.Challenges:{};
-
-(($)=>{
+module.exports = ($)=>
+{
     class Challenge
     {
         /**
@@ -30,5 +28,5 @@ Downlink.Challenges = Downlink.Challenges?Downlink.Challenges:{};
         }
     }
 
-    Downlink.Challenges.Challenge = Challenge;
-})(window.jQuery);
+    return Challenge;
+};
