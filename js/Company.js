@@ -1,25 +1,32 @@
-var Downlink = Downlink?Downlink:{};
+let companyNames = [
+    "Mike Rowe soft",
+    "Pear",
+    "Outel",
+    "Ice",
+    "Tomsung",
+    "Popsy",
+    "Ohm Djezis"
+];
+let companies = [];
 
-(($)=>{
-    let companyNames = [
-        "Mike Rowe soft",
-        "Pear",
-        "Outel",
-        "Ice",
-        "Tomsung",
-        "Popsy",
-        "Ohm Djezis"
-    ];
-    let Computer = Downlink.Computer;
 
-    let companies = [];
+module.exports = ($)=>{
+    let Computer = require('./Computer')($);
+
 
     class Company
     {
         constructor(name)
         {
             this.name = name;
-            this.publicServer = new Computer(`${this.name} Public Server`)
+            this.publicServer = new Computer(`${this.name} Public Server`);
+            this.computers = [];
+            this.addComputer(this.publicServer);
+        }
+
+        addComputer(computer)
+        {
+            this.computers.push(computer);
         }
 
         static getRandomCompany()
@@ -38,5 +45,5 @@ var Downlink = Downlink?Downlink:{};
         companies.push(new Company(companyName));
     }
 
-    Downlink.Company = Company;
-})(window.jQuery);
+    return Company;
+};

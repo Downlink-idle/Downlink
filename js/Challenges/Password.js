@@ -1,4 +1,4 @@
-const dictionary = require('/dictionary');
+const dictionary = require('./dictionary');
 const PASSWORD_TYPES = {
     'DICTIONARY':'Dictionary',
     'ALPHANUMERIC':'Alphanumeric'

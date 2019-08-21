@@ -1,7 +1,7 @@
-var Downlink = Downlink?Downlink:{};
+module.exports = ($)=>{
+    const Computer = require('../Computer')($);
 
-(($)=>{
-    class MissionComputer extends Downlink.Computer
+    class MissionComputer extends Computer
     {
         constructor(name, company)
         {
@@ -97,6 +97,4 @@ var Downlink = Downlink?Downlink:{};
                 );
         }
     }
-
-    Downlink.MissionComputer = MissionComputer;
-})(window.jQuery);
+};

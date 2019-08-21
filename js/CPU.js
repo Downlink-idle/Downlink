@@ -1,7 +1,5 @@
-var Downlink = Downlink?Downlink:{};
-
-(($)=> {
-    let Task = Downlink.Task;
+module.exports = ($)=> {
+    const Task = require('./Tasks/Task')($);
 
     class CPU
     {
@@ -98,5 +96,5 @@ var Downlink = Downlink?Downlink:{};
 
     }
 
-    Downlink.CPU = CPU;
-})(window.jQuery);
+    return CPU;
+};

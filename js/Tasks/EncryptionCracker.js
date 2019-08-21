@@ -1,12 +1,13 @@
-var Downlink = Downlink?Downlink:{};
+module.exports = ($)=>{
+    const   Alphabet = require('../Alphabet'),
+            Task = require('./Task')($);
 
-(($)=>{
     class EncryptionCell
     {
         constructor()
         {
             this.solved = false;
-            this.letter = Downlink.Alphabet.getRandomLetter();
+            this.letter = Alphabet.getRandomLetter();
         }
 
         solve()
@@ -21,11 +22,11 @@ var Downlink = Downlink?Downlink:{};
             {
                 return;
             }
-            this.letter = Downlink.Alphabet.getRandomLetter();
+            this.letter = Alphabet.getRandomLetter();
         }
     }
 
-    class EncryptionCracker extends Downlink.Task
+    class EncryptionCracker extends Task
     {
         constructor(rows, cols, encryptionDifficulty, cyclesPerTick)
         {
@@ -133,5 +134,5 @@ var Downlink = Downlink?Downlink:{};
         }
     }
 
-    Downlink.EncryptionCracker = EncryptionCracker;
-})(window.jQuery);
+
+};

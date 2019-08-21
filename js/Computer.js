@@ -1,20 +1,18 @@
-var Downlink = Downlink?Downlink:{};
-
-(($)=>{
-    function randomIPAddress()
+function randomIPAddress()
+{
+    let ipAddress = "";
+    for(let i = 0; i < 3; i++)
     {
-        let ipAddress = "";
-        for(let i = 0; i < 3; i++)
+        if(i)
         {
-            if(i)
-            {
-                ipAddress += '.';
-            }
-            ipAddress += Math.floor(Math.random() * 256);
+            ipAddress += '.';
         }
-        return ipAddress;
+        ipAddress += Math.floor(Math.random() * 256);
     }
+    return ipAddress;
+}
 
+module.exports = ($)=>{
     class Computer
     {
         constructor(name, company, ipAddress)
@@ -57,5 +55,5 @@ var Downlink = Downlink?Downlink:{};
         }
     }
 
-    Downlink.Computer = Computer;
-})(window.jQuery);
+    return Computer;
+};

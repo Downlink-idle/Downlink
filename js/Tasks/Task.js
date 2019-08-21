@@ -1,6 +1,4 @@
-var Downlink = Downlink?Downlink:{};
-
-(($)=>{
+module.exports = ($)=>{
     class Task
     {
         constructor(name, minimumRequiredCycles)
@@ -63,7 +61,5 @@ var Downlink = Downlink?Downlink:{};
         }
     }
 
-    Downlink.Task = Task;
-
-
-})(window.jQuery);
+    return Task;
+};

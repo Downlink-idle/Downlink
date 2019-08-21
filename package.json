@@ -1,0 +1,30 @@
+{
+  "name": "downlink",
+  "version": "1.0.0",
+  "description": "initial build of Downlink idle game",
+  "main": "index.html",
+  "dependencies": {
+    "browserify": "^16.5.0",
+    "cheerio": "^1.0.0-rc.3",
+    "save": "^2.4.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "bundle": "browserify ./js/Game.js > ./js/bundle.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CuAnnan/Downlink.git"
+  },
+  "keywords": [
+    "idle",
+    "hacking"
+  ],
+  "author": "CuAnnan",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/CuAnnan/Downlink/issues"
+  },
+  "homepage": "https://github.com/CuAnnan/Downlink#readme"
+}

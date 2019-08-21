@@ -1,10 +1,10 @@
-var Downlink = Downlink?Downlink:{};
-
-(($)=>{
+module.exports = ($)=>{
     const   DICTIONARY_CRACKER_MINIMUM_CYCLES = 5,
-            SEQUENTIAL_CRACKER_MINIMUM_CYCLES = 20;
+            SEQUENTIAL_CRACKER_MINIMUM_CYCLES = 20,
+            Task = require('./Task')($),
+            Password = require('../Challenges/Password')($);
 
-    class PasswordCracker extends Downlink.Task
+    class PasswordCracker extends Task
     {
         constructor(password, name, minimumRequiredCycles)
         {
@@ -27,7 +27,7 @@ var Downlink = Downlink?Downlink:{};
         constructor(password)
         {
             super(password, 'Dictionary Cracker', DICTIONARY_CRACKER_MINIMUM_CYCLES);
-            this.dictionary = [...Downlink.passwordDictionary];
+            this.dictionary = [Password.dictionary];
             this.currentGuess = null;
             this.totalGuesses = 0;
         }
@@ -71,7 +71,9 @@ var Downlink = Downlink?Downlink:{};
         }
     }
 
-    Downlink.PasswordCracker = PasswordCracker;
-    Downlink.DictionaryCracker = DictionaryCracker;
-    Downlink.SequentialAttacker = SequentialAttacker;
-})(window.jQuery);
+    return {
+        PasswordCracker:PasswordCracker,
+        DictionaryCracker:DictionaryCracker,
+        SequentialAttacker:SequentialAttacker
+    };
+};
