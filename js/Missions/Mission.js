@@ -32,7 +32,9 @@ const DIFFICULTIES = {
 
 module.exports = ($)=>{
     const   Company = require('../Company')($),
-            MissionComputer = require('./MissionComputer');
+            MissionComputer = require('./MissionComputer')($),
+            Password = require('../Challenges/Password')($),
+            Encryption = require('../Challenges/Encryption')($);
 
     class Mission
     {
@@ -77,17 +79,28 @@ module.exports = ($)=>{
          *
          *
          */
-        buildComputer()
+        build()
         {
+            if(this.computer)
+            {
+                return this;
+            }
+
             this.computer = new MissionComputer(this, this.difficulty.serverType);
             if(this.difficulty === DIFFICULTIES.EASY)
             {
                 this.computer
-                    .setPassword(Downlink.Challenges.Password.randomDictionaryPassword())
-                    .setEncryption(Downlink.Challenges.Encryption.getNewLinearEncryption());
+                    .setPassword(Password.randomDictionaryPassword())
+                    .setEncryption(Encryption.getNewLinearEncryption());
             }
             this.target.addComputer(this.computer);
             return this;
+        }
+
+        tick()
+        {
+            this.build();
+            this.computer.tick();
         }
 
         static getNewSimpleMission()

@@ -18,6 +18,7 @@ module.exports = ($)=>{
             let potato = new PlayerComputer([
                 new CPU()
             ]);
+            return potato;
         }
     }
 

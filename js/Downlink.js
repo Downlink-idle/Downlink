@@ -11,27 +11,29 @@ module.exports= ($)=> {
         {
             if(Downlink.initialised)
             {
-               return;
+                return Downlink;
             }
 
             Downlink.playerComputer = PlayerComputer.getMyFirstComputer();
             Downlink.initialised = true;
+            return Downlink;
         }
 
-        static start()
+        static tick()
         {
-
+            Downlink.playerComputer.tick();
+            if(!Downlink.activeMission)
+            {
+                Downlink.activeMission = MissionGenerator.availableMissions.shift().build();
+            }
+            Downlink.activeMission.tick();
         }
 
-        static get availableMissions()
+        static setActiveMission(activeMission)
         {
-            return MissionGenerator.availableMissions;
+            Downlink.activeMission = activeMission;
         }
 
-        static stop()
-        {
-
-        }
 
 
     }

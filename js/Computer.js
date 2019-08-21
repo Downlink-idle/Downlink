@@ -39,6 +39,11 @@ module.exports = ($)=>{
             return this;
         }
 
+        tick()
+        {
+
+        }
+
         static fromJSON(json)
         {
             let computer = new Computer(json.name, json.ipAddress);

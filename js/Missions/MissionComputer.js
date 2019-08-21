@@ -1,4 +1,5 @@
 module.exports = ($)=>{
+
     const Computer = require('../Computer')($);
 
     class MissionComputer extends Computer
@@ -97,4 +98,6 @@ module.exports = ($)=>{
                 );
         }
     }
+
+    return MissionComputer;
 };
