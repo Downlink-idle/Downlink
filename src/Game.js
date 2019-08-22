@@ -109,7 +109,7 @@
         },
         updateAvailableMissionList:function(mission){
             $('.'+MISSION_LIST_CLASS).remove();
-            this.$activeMissionName.html(Downlink.activeMission.name);
+            this.$activeMissionName.html(mission.name);
             let html = '';
             for(let mission of Downlink.availableMissions)
             {
