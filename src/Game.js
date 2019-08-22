@@ -10,7 +10,8 @@
         ticking:true,
         initialised:false,
         $missionContainer:null,
-        $activeMission:null,
+        $activeMissionName:null,
+        $activeMissionPassword:null,
         initialise:function()
         {
             if(this.initialised)
@@ -18,7 +19,7 @@
                 return;
             }
             this.$missionContainer = $('#mission-list');
-            this.$activeMission = $('#active-mission');
+            this.$activeMissionName = $('#active-mission');
             this.getNewMission();
             this.initialised = true;
         },
@@ -40,14 +41,21 @@
         },
         getNewMission:function(){
             let mission = Downlink.getNextMission();
-            this.updateMissionList();
+            this.updateMissionInterface();
             mission.on('complete', ()=>{
                 this.getNewMission();
             });
         },
-        updateMissionList:function(){
+        updateMissionInterface:function(){
+            this.updateAvailableMissionList();
+            this.updateCurrentMissionView();
+        },
+        updateCurrentMissionView:function(){
+
+        },
+        updateAvailableMissionList:function(){
             $('.'+MISSION_LIST_CLASS).remove();
-            this.$activeMission.html(Downlink.activeMission.name);
+            this.$activeMissionName.html(Downlink.activeMission.name);
             let html = '';
             for(let mission of Downlink.availableMissions)
             {

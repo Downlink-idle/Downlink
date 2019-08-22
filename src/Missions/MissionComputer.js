@@ -8,7 +8,6 @@ class MissionComputer extends Computer
         this.encryption = null;
         this.password = null;
         this.accessible = false;
-        this.files = [];
         this.currentPlayerConnection = null;
         this.previousPlayerConnection = null;
         this.alerted = false;
@@ -16,7 +15,7 @@ class MissionComputer extends Computer
     }
 
     /**
-     * @param {Downlink.Connection} connection
+     * @param {Connection} connection
      */
     connect(connection)
     {
@@ -90,16 +89,6 @@ class MissionComputer extends Computer
     stopTraceBack()
     {
 
-    }
-
-    static newForTesting()
-    {
-        return new MissionComputer('Test Computer', Downlink.Company.getRandomCompany())
-            .setPassword(
-                Downlink.Challenges.Password.randomDictionaryPassword()
-            ).setEncryption(
-
-            );
     }
 }
 

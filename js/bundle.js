@@ -1,5 +1,4 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-require('./plugins.js');
 let alphabetGrid = [];
 
 class Alphabet
@@ -42,7 +41,7 @@ Alphabet.build();
 
 module.exports = Alphabet;
 
-},{"./plugins.js":20}],2:[function(require,module,exports){
+},{}],2:[function(require,module,exports){
     const Task = require('./Tasks/Task');
 
     class CPUFullError extends Error{};
@@ -2859,12 +2858,12 @@ module.exports = EventListener;
         },
         getNewMission:function(){
             let mission = Downlink.getNextMission();
-            this.updateMissionList();
+            this.updateMissionInterface();
             mission.on('complete', ()=>{
                 this.getNewMission();
             });
         },
-        updateMissionList:function(){
+        updateMissionInterface:function(){
             $('.'+MISSION_LIST_CLASS).remove();
             this.$activeMission.html(Downlink.activeMission.name);
             let html = '';
@@ -3023,7 +3022,6 @@ class MissionComputer extends Computer
         this.encryption = null;
         this.password = null;
         this.accessible = false;
-        this.files = [];
         this.currentPlayerConnection = null;
         this.previousPlayerConnection = null;
         this.alerted = false;
@@ -3031,7 +3029,7 @@ class MissionComputer extends Computer
     }
 
     /**
-     * @param {Downlink.Connection} connection
+     * @param {Connection} connection
      */
     connect(connection)
     {
@@ -3106,16 +3104,6 @@ class MissionComputer extends Computer
     {
 
     }
-
-    static newForTesting()
-    {
-        return new MissionComputer('Test Computer', Downlink.Company.getRandomCompany())
-            .setPassword(
-                Downlink.Challenges.Password.randomDictionaryPassword()
-            ).setEncryption(
-
-            );
-    }
 }
 
 module.exports = MissionComputer;
@@ -3181,7 +3169,7 @@ module.exports = MissionGenerator;
 
 },{"./Mission":12}],16:[function(require,module,exports){
 const   Password = require('./Challenges/Password'),
-        {PasswordCracker, DictionaryCracker, SequentialAttacker} = require('./Tasks/PasswordCracker'),
+        {DictionaryCracker} = require('./Tasks/PasswordCracker'),
         Encryption = require('./Challenges/Encryption'),
         EncryptionCracker = require('./Tasks/EncryptionCracker'),
         Computer = require('./Computer'),
@@ -3571,36 +3559,4 @@ class Task extends EventListener
 
 module.exports = Task;
 
-},{"../EventListener":10}],20:[function(require,module,exports){
-Array.prototype.randomElement = function()
-{
-    let index = Math.floor(Math.random() * this.length);
-    return this[index];
-};
-
-Array.prototype.removeElement = function(element)
-{
-    let i = this.indexOf(element);
-    this.splice(i, 1);
-    return this;
-};
-
-Array.prototype.shuffle = function()
-{
-    let i = this.length, temp, r;
-
-    while(0 !== i)
-    {
-        r = Math.floor(Math.random() * i);
-        i --;
-
-        temp = this[i];
-        this[i] = this[r];
-        this[r] = temp;
-    }
-    return this;
-};
-
-// Place any jQuery/helper plugins in here.
-
-},{}]},{},[11]);
+},{"../EventListener":10}]},{},[11]);
