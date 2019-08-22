@@ -1,5 +1,5 @@
 const   Password = require('./Challenges/Password'),
-        {PasswordCracker, DictionaryCracker, SequentialAttacker} = require('./Tasks/PasswordCracker'),
+        {DictionaryCracker} = require('./Tasks/PasswordCracker'),
         Encryption = require('./Challenges/Encryption'),
         EncryptionCracker = require('./Tasks/EncryptionCracker'),
         Computer = require('./Computer'),
