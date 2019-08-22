@@ -39,17 +39,18 @@ class Mission
 {
     /**
      * Any mission is going to involve connecting to another computer belonging to a company and doing something to it
-     * @param {Downlink.Company}    target      The object representing the company you are, in some way, attacking
-     * @param {Downlink.Company}    sponsor     The company sponsoring this hack
+     * @param {Company}    target      The object representing the company you are, in some way, attacking
+     * @param {Company}    sponsor     The company sponsoring this hack
      */
     constructor(target, sponsor)
     {
+        this.name = `Hack ${target.name} for ${sponsor.name}`;
         /**
-         * @type {Downlink.Company} the target company being attacked
+         * @type {Company} the target company being attacked
          */
         this.target = target;
         /**
-         * @type {Downlink.Company} the company sponsoring this mission
+         * @type {Company} the company sponsoring this mission
          */
         this.sponsor = sponsor;
 
@@ -106,7 +107,7 @@ class Mission
         this.computer = new MissionComputer(this.target, this.difficulty.serverType);
         $(this.computer).on('accessed', ()=>{
             this.signalComplete();
-        })
+        });
         let password = null, encryption = null;
 
         if(this.difficulty === DIFFICULTIES.EASY)
@@ -136,14 +137,12 @@ class Mission
     static getNewSimpleMission()
     {
         let companies = [...Company.allCompanies];
-        let mission = new Mission(
+        return new Mission(
             companies.shift(),
             companies.shift()
         ).setDifficulty(
             DIFFICULTIES.EASY
         );
-
-        return mission;
     }
 }
 module.exports = Mission;

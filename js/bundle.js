@@ -9334,8 +9334,9 @@ class Downlink
     static getNextMission()
     {
         let mission = MissionGenerator.availableMissions.shift();
+
         $(mission).on('complete', ()=>{
-            console.log('Getting new mission');
+
             this.getNextMission();
         });
         Downlink.activeMission = mission.build();
@@ -9343,6 +9344,7 @@ class Downlink
         {
             Downlink.playerComputer.addTaskForChallenge(target);
         }
+
         return mission;
     }
 
@@ -9351,7 +9353,13 @@ class Downlink
         Downlink.activeMission = activeMission;
     }
 
-
+    /**
+     * Just exposing the currently available missions
+     */
+    static get availableMissions()
+    {
+        return MissionGenerator.availableMissions;
+    }
 
 }
 
@@ -9362,18 +9370,31 @@ module.exports = Downlink;
 
 (($)=>{
     const   Downlink = require('./Downlink'),
-            TICK_INTERVAL_LENGTH=100;
+            TICK_INTERVAL_LENGTH=100,
+            MISSION_LIST_CLASS = '.mission-list-row';
     Downlink.initialise();
 
     let game = {
         interval:null,
         ticking:true,
+        initialised:false,
+        $missionContainer:null,
+        $activeMissionListRow:null,
+        initialise:function()
+        {
+            if(this.initialised)
+            {
+                return;
+            }
+            //this.$missionContainer = $('#mission-list');
+            //this.$activeMission = $('#active-mission');
+        },
         start:function(){
+            this.initialise();
             this.ticking = true;
             this.tick();
         },
         stop:function(){
-            console.log('Stopping tick interval');
             this.ticking = false;
             window.clearTimeout(this.interval);
         },
@@ -9384,7 +9405,18 @@ module.exports = Downlink;
                 this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
             }
         },
+        updateMissionList:function(){
+            console.log("This is being invoked");
+            this.$missionContainer.remove(MISSION_LIST_CLASS);
+            this.$activeMission.text(Downlink.activeMission.name);
+            let $html = '';
+            for(let mission of Downlink.availableMissions)
+            {
+                $html += `<div class="row ${MISSION_LIST_CLASS}">${mission.name}</div>`;
+            }
+        }
     };
+
 
     game.start();
     window.game = game;
@@ -9432,17 +9464,18 @@ class Mission
 {
     /**
      * Any mission is going to involve connecting to another computer belonging to a company and doing something to it
-     * @param {Downlink.Company}    target      The object representing the company you are, in some way, attacking
-     * @param {Downlink.Company}    sponsor     The company sponsoring this hack
+     * @param {Company}    target      The object representing the company you are, in some way, attacking
+     * @param {Company}    sponsor     The company sponsoring this hack
      */
     constructor(target, sponsor)
     {
+        this.name = `Hack ${target.name} for ${sponsor.name}`;
         /**
-         * @type {Downlink.Company} the target company being attacked
+         * @type {Company} the target company being attacked
          */
         this.target = target;
         /**
-         * @type {Downlink.Company} the company sponsoring this mission
+         * @type {Company} the company sponsoring this mission
          */
         this.sponsor = sponsor;
 
@@ -9499,7 +9532,7 @@ class Mission
         this.computer = new MissionComputer(this.target, this.difficulty.serverType);
         $(this.computer).on('accessed', ()=>{
             this.signalComplete();
-        })
+        });
         let password = null, encryption = null;
 
         if(this.difficulty === DIFFICULTIES.EASY)
@@ -9529,14 +9562,12 @@ class Mission
     static getNewSimpleMission()
     {
         let companies = [...Company.allCompanies];
-        let mission = new Mission(
+        return new Mission(
             companies.shift(),
             companies.shift()
         ).setDifficulty(
             DIFFICULTIES.EASY
         );
-
-        return mission;
     }
 }
 module.exports = Mission;

@@ -29,7 +29,6 @@ class Downlink
         let mission = MissionGenerator.availableMissions.shift();
 
         $(mission).on('complete', ()=>{
-            console.log('Getting new mission');
             this.getNextMission();
         });
         Downlink.activeMission = mission.build();
@@ -37,6 +36,7 @@ class Downlink
         {
             Downlink.playerComputer.addTaskForChallenge(target);
         }
+
         return mission;
     }
 
@@ -45,7 +45,13 @@ class Downlink
         Downlink.activeMission = activeMission;
     }
 
-
+    /**
+     * Just exposing the currently available missions
+     */
+    static get availableMissions()
+    {
+        return MissionGenerator.availableMissions;
+    }
 
 }
 
