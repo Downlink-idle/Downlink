@@ -12,6 +12,9 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js" integrity="sha384-xrRywqdh3PHs8keKZN+8zzc5TX0GRTLCcmivcbNJWm2rs5C8PRhcEn3czEjhAO9o" crossorigin="anonymous"></script>
 
+    <!-- main css -->
+    <link href="./css/main.css" rel="stylesheet"/>
+
     <!-- built game file.
         For the raw classes see the github repository -->
     <script src="js/plugins.js"></script>
@@ -36,9 +39,10 @@
                 <div class="row" id="active-mission-password-task">
                     <strong>Password:</strong> <input type="text" autocomplete="off" value="" id="active-mission-password-input" disabled/>
                 </div>
+
+                <h1 class="row" id="active-mission-encryption-type"></h1>
                 <div class="row" id="active-mission-encryption-task">
-                    <h1 id="active-mission-encryption-type"></h1>
-                    <div class="container-fluid" id="active-mission-encryption-grid"></div>
+                    <div class="col" id="active-mission-encryption-grid"></div>
                 </div>
             </div>
         </div>
