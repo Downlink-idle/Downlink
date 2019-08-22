@@ -70,7 +70,7 @@ class EncryptionCracker extends Task
 
     solveNCells(cellsToSolve)
     {
-        $(this).trigger('start');
+        this.trigger('start');
 
         for(let i = 0; i < cellsToSolve; i++)
         {

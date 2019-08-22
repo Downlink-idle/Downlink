@@ -15,11 +15,6 @@ class Password extends Challenge
         this.type = type;
     }
 
-    finish()
-    {
-        this.signalCompete();
-    }
-
     attack(testPassword)
     {
         $(this).trigger('start');

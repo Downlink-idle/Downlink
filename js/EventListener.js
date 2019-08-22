@@ -21,47 +21,74 @@ class Event
         }
         return this;
     }
+
+    trigger(args)
+    {
+        this.callbacks.forEach(function(callback){
+            callback(args);
+        });
+    }
 }
 
 class EventListener
 {
     constructor()
     {
+        /**
+         * @type {{Event}}
+         */
         this.events = {};
     }
 
     on(eventName, callback)
     {
-        eventName = eventName.toLowerCase();
-        if(!this.events[eventName])
+        let e = eventName.toLowerCase();
+        if(!this.events[e])
         {
-            this.events[eventName].push(new Event(eventName));
+            this.events[e] = new Event(e);
         }
-        this.events[eventName].addListener(callback);
+        this.events[e].addListener(callback);
         return this;
     }
 
     off(eventName)
     {
-        this.events[eventName] = null;
+        if(eventName)
+        {
+            let e = eventName.toLowerCase();
+            this.events[e] = null;
+        }
+        else
+        {
+            this.events = {};
+        }
         return this;
     }
 
     addListener(eventName, callback)
     {
-        return this.on(eventName, callback);
+        let e = eventName.toLowerCase();
+        return this.on(e, callback);
     }
 
-    removeListener(eventName, callback)
+    trigger(eventName, args)
     {
-        if(this.events[eventName])
+        let e = eventName.toLowerCase();
+        if(this.events[e])
         {
-            this.events[eventName].removeListener(callback);
+            this.events[e].trigger(args);
         }
     }
 
-    get events()
+
+    removeListener(eventName, callback)
     {
-        return Object.keys(this.events);
+        let e = eventName.toLowerCase();
+        if(this.events[e])
+        {
+            this.events[e].removeListener(callback);
+        }
     }
 }
+
+module.exports = EventListener;

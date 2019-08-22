@@ -1,3 +1,5 @@
+const EventListener = require('./EventListener');
+
 function randomIPAddress()
 {
     let ipAddress = "";
@@ -12,10 +14,11 @@ function randomIPAddress()
     return ipAddress;
 }
 
-class Computer
+class Computer extends EventListener
 {
     constructor(name, company, ipAddress)
     {
+        super();
         this.name= name;
         this.ipAddress = ipAddress?ipAddress:randomIPAddress();
         this.location = null;

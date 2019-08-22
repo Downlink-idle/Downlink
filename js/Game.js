@@ -1,9 +1,9 @@
 // namespace for the entire game;
 
-(($)=>{
+(($)=>{$(()=>{
     const   Downlink = require('./Downlink'),
             TICK_INTERVAL_LENGTH=100,
-            MISSION_LIST_CLASS = '.mission-list-row';
+            MISSION_LIST_CLASS = 'mission-list-row';
 
     let game = {
         interval:null,
@@ -19,6 +19,8 @@
             }
             this.$missionContainer = $('#mission-list');
             this.$activeMission = $('#active-mission');
+            this.getNewMission();
+            this.initialised = true;
         },
         start:function(){
             this.initialise();
@@ -36,19 +38,25 @@
                 this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
             }
         },
+        getNewMission:function(){
+            let mission = Downlink.getNextMission();
+            this.updateMissionList();
+            mission.on('complete', ()=>{
+                this.getNewMission();
+            });
+        },
         updateMissionList:function(){
-            this.$missionContainer.remove(MISSION_LIST_CLASS);
-            this.$activeMission.text(Downlink.activeMission.name);
-            let $html = '';
+            $('.'+MISSION_LIST_CLASS).remove();
+            this.$activeMission.html(Downlink.activeMission.name);
+            let html = '';
             for(let mission of Downlink.availableMissions)
             {
-                $html += `<div class="row ${MISSION_LIST_CLASS}">${mission.name}</div>`;
+                html += `<div class="row ${MISSION_LIST_CLASS}">${mission.name}</div>`;
             }
+            let $html = $(html);
+            this.$missionContainer.append($html);
         }
     };
-
-    Downlink.initialise();
-
     game.start();
     window.game = game;
-})(window.jQuery);
+})})(window.jQuery);

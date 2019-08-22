@@ -8,8 +8,7 @@ class PasswordCracker extends Task
     constructor(password, name, minimumRequiredCycles)
     {
         super(name, minimumRequiredCycles);
-        this.password = password;
-        $(password).on('solved', ()=>{this.signalComplete()});
+        this.password = password.on('solved', ()=>{this.signalComplete()});
         this.isSolved = false;
     }
 
@@ -41,15 +40,17 @@ class DictionaryCracker extends PasswordCracker
         super.tick();
 
         let attacking = true,
+            found = false,
             guessesThisTick = 0;
 
         while(attacking)
         {
-            this.currentGuess = this.dictionary.shift();
+            this.currentGuess = this.dictionary[this.totalGuesses];
             let guessSuccessful = this.password.attack(this.currentGuess);
 
             guessesThisTick ++;
             this.totalGuesses++;
+            found = found || guessSuccessful;
 
             if(guessSuccessful || guessesThisTick >= this.cyclesPerTick)
             {
@@ -57,7 +58,7 @@ class DictionaryCracker extends PasswordCracker
             }
         }
 
-        if(!this.dictionary.length)
+        if(!this.dictionary.length && !found)
         {
             throw new Error(`${this.password.text} not found in dictionary some how`);
         }

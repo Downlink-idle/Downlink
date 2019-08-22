@@ -44,7 +44,7 @@ class MissionComputer extends Computer
     {
         this.encryption = encryption;
 
-        $(encryption)
+        encryption
             .on('complete', ()=>{
                 this.updateAccessStatus();
                 $(encryption).off();
@@ -60,8 +60,8 @@ class MissionComputer extends Computer
         // password is not handled the same as encryption
         // because password is not a Tasks
         // the PasswordCracker Tasks isn't
-        $(password).on('solved', ()=>{
-            $(password).off();
+        password.on('solved', ()=>{
+            password.off();
             this.updateAccessStatus();
         }).on('start', ()=>{this.startTraceBack();});
         return this;
@@ -72,7 +72,7 @@ class MissionComputer extends Computer
         this.accessible = this.accessible || (this.encryption && this.encryption.solved && this.password && this.password.solved);
         if(this.accessible)
         {
-            $(this).trigger('accessed');
+            this.trigger('accessed');
         }
         return this.accessible;
     }

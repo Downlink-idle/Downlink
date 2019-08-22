@@ -1,4 +1,6 @@
-class Challenge
+const EventListener = require('../EventListener');
+
+class Challenge extends EventListener
 {
     /**
      * An abstract class to represent all challenges a MissionComputer might have
@@ -11,6 +13,7 @@ class Challenge
      */
     constructor(name, difficulty)
     {
+        super();
         this.name = name;
         this.difficulty = difficulty;
         this.solved = false;
@@ -22,7 +25,7 @@ class Challenge
     signalComplete()
     {
         this.solved = true;
-        $(this).trigger('solved');
+        this.trigger('solved');
     }
 }
 

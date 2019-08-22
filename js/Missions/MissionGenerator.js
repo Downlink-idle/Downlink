@@ -19,6 +19,14 @@ class MissionGenerator
         this.updateAvailableMissions();
         return availableMissions;
     }
+
+    static getFirstAvailableMission()
+    {
+        this.updateAvailableMissions();
+        let mission = availableMissions.shift();
+        this.updateAvailableMissions();
+        return mission;
+    }
 }
 
 module.exports = MissionGenerator;

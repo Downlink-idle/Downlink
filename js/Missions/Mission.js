@@ -1,25 +1,10 @@
-/**
- * This class exists only to make commenting cleaner
- */
+const   Company = require('../Company'),
+    MissionComputer = require('./MissionComputer'),
+    Password = require('../Challenges/Password'),
+    Encryption = require('../Challenges/Encryption'),
+    EventListener = require('../EventListener'),
+    MissionDifficulty = require('./MissionDifficulty');
 
-class MissionDifficulty
-{
-    /**
-     * @param {number} modifier
-     * @param {string} serverType
-     */
-    constructor(modifier, serverType)
-    {
-        /**
-         * @type {number}   A modifier to the reward given for the mission as a number
-         */
-        this.modifier = modifier;
-        /**
-         * @type {string}   A name for the type of server you are attacking
-         */
-        this.serverType = serverType;
-    }
-}
 
 /**
  * @type {{EASY: MissionDifficulty, MEDIUM: MissionDifficulty, HARD: MissionDifficulty}}
@@ -30,12 +15,7 @@ const DIFFICULTIES = {
     HARD:new MissionDifficulty(10, "Farm"),
 };
 
-const   Company = require('../Company'),
-        MissionComputer = require('./MissionComputer'),
-        Password = require('../Challenges/Password'),
-        Encryption = require('../Challenges/Encryption');
-
-class Mission
+class Mission extends EventListener
 {
     /**
      * Any mission is going to involve connecting to another computer belonging to a company and doing something to it
@@ -44,6 +24,7 @@ class Mission
      */
     constructor(target, sponsor)
     {
+        super();
         this.name = `Hack ${target.name} for ${sponsor.name}`;
         /**
          * @type {Company} the target company being attacked
@@ -105,9 +86,10 @@ class Mission
         }
 
         this.computer = new MissionComputer(this.target, this.difficulty.serverType);
-        $(this.computer).on('accessed', ()=>{
+        this.computer.on('accessed', ()=>{
             this.signalComplete();
         });
+
         let password = null, encryption = null;
 
         if(this.difficulty === DIFFICULTIES.EASY)
@@ -125,7 +107,7 @@ class Mission
 
     signalComplete()
     {
-        $(this).trigger('complete');
+        this.trigger('complete');
     }
 
     tick()
@@ -136,7 +118,7 @@ class Mission
 
     static getNewSimpleMission()
     {
-        let companies = [...Company.allCompanies];
+        let companies = [...Company.allCompanies].shuffle();
         return new Mission(
             companies.shift(),
             companies.shift()

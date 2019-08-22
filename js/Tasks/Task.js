@@ -1,7 +1,10 @@
-class Task
+const EventListener = require('../EventListener');
+
+class Task extends EventListener
 {
     constructor(name, minimumRequiredCycles)
     {
+        super();
         this.name= name;
         this.minimumRequiredCycles = minimumRequiredCycles?minimumRequiredCycles:10;
         this.cyclesPerTick = 0;
@@ -51,9 +54,9 @@ class Task
 
     signalComplete()
     {
-        $(this).trigger('complete');
         this.working = false;
         this.taskCompleted = true;
+        this.trigger('complete');
     }
 
     getRewardRatio()
