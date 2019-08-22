@@ -2913,7 +2913,19 @@ module.exports = EventListener;
          */
         animateEncryptionGrid(encryptionCracker)
         {
+            let html = '';
 
+            let grid = encryptionCracker.grid;
+            for(let row of grid)
+            {
+                html += '<div class="row">';
+                for(let cell of row)
+                {
+                    html += `<div class="col ${cell.solved?" solvedEncryptionCell":"unsolvedEncryptionCell"}">${cell.letter}</div>`;
+                }
+                html += '</div>';
+            }
+            this.$activeMissionEncryptionGrid.html(html);
         },
         getNewMission:function(){
             let mission = Downlink.getNextMission();
@@ -3416,7 +3428,13 @@ class EncryptionCracker extends Task
          */
         this.currentTickPercentage = 0;
 
+        /**
+         * @type {Array.<Array.<EncryptionCell>>}
+         */
         this.grid = [];
+        /**
+         * @type {Array.<EncryptionCell>}
+         */
         this.cells = [];
         this.unsolvedCells = [];
         for(let i = 0; i < this.rows; i++)

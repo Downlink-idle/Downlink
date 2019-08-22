@@ -49,7 +49,13 @@ class EncryptionCracker extends Task
          */
         this.currentTickPercentage = 0;
 
+        /**
+         * @type {Array.<Array.<EncryptionCell>>}
+         */
         this.grid = [];
+        /**
+         * @type {Array.<EncryptionCell>}
+         */
         this.cells = [];
         this.unsolvedCells = [];
         for(let i = 0; i < this.rows; i++)

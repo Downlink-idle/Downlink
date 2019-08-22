@@ -81,7 +81,19 @@
          */
         animateEncryptionGrid(encryptionCracker)
         {
+            let html = '';
 
+            let grid = encryptionCracker.grid;
+            for(let row of grid)
+            {
+                html += '<div class="row">';
+                for(let cell of row)
+                {
+                    html += `<div class="col ${cell.solved?" solvedEncryptionCell":"unsolvedEncryptionCell"}">${cell.letter}</div>`;
+                }
+                html += '</div>';
+            }
+            this.$activeMissionEncryptionGrid.html(html);
         },
         getNewMission:function(){
             let mission = Downlink.getNextMission();
