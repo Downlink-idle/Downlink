@@ -1,80 +1,55 @@
-<!doctype html>
-<html class="no-js" lang="">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="x-ua-compatible" content="ie=edge">
-        <title></title>
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Downlink</title>
+</head>
+<body>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+    <!-- Bootstrap -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js" integrity="sha384-xrRywqdh3PHs8keKZN+8zzc5TX0GRTLCcmivcbNJWm2rs5C8PRhcEn3czEjhAO9o" crossorigin="anonymous"></script>
 
-        <link rel="manifest" href="site.webmanifest">
+    <!-- built game file.
+        For the raw classes see the github repository -->
+    <script src="js/plugins.js"></script>
+    <script src="js/bundle.js"></script>
 
-        <link rel="stylesheet" href="css/normalize.css">
-        <link rel="stylesheet" href="css/main.css">
+    <div class="container-fluid min-vh-100">
+        <div class="row" id="missionInterface">
+            <div class="col" id="mission-list">
+                <div class="row"><h1>Missions</h1></div>
+                <div class="row"><b>Active Mission: </b><span id="active-mission"></span></div>
+            </div>
+            <div class="col" id="active-mission-machine" style="border:1px solid black">
+                <h2 class="row">Server details:</h2>
+                <div class="row">
+                    <strong>Name: </strong><span id="active-mission-server-name"></span>
+                </div>
+                <div class="row">
+                    <strong>ip address: </strong><span id="active-mission-server-ip-address"></span>
+                </div>
+                <h2 class="row">Server security:</h2>
 
-    </head>
-    <body>
-        <div id="main" class="container-fluid">
-            <div class="desktop" class="container-fluid">
-                <div class="row" id="desktop-menu"></div>
-                <div class="row" id="destktop-body">
-                    <div class="col">
-                        <div class="row">
-                            <h2>Stats</h2>
-                        </div>
-                        <div class="row">
-                            <ul>
-                                <li><strong>Missions Complete: </strong><span id="missionsComplete"></span></li>
-                                <li><strong>Balance:</strong> <span id="currency">&euro;</span><span id="balance">00.00</span></li>
-                            </ul>
-                        </div>
-                        <div class="row">
-                            <h2>CPUs</h2>
-                        </div>
-                        <div class="row cpu-row">
-                            <div class="col"><b>CPU 1</b></div>
-                            <div class="col processes"></div>
-                        </div>
-                        <div class="row" id="known_addresses">
-                            <h2>Known Addressses</h2>
-                        </div>
-                        <div class="row" id="adress-book">
-                            <ul>
-                                <li>Internic</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="row">
-                            <h2>Quadratic Encryption</h2>
-                        </div>
-                        <div class="row">
-                            <div class="container" id="quadratic-equation-grid"></div>
-                        </div>
-                    </div>
+                <div class="row" id="active-mission-password-task">
+                    <strong>Password:</strong> <input type="text" autocomplete="off" value="" id="active-mission-password-input" disabled/>
+                </div>
+                <div class="row" id="active-mission-encryption-task">
+                    <h1 id="active-mission-encryption-type"></h1>
+                    <div class="container-fluid" id="active-mission-encryption-grid"></div>
                 </div>
             </div>
         </div>
 
+        <div class="fixed-bottom text-right">
+            <nav>
+                <a href="https://discord.gg/mmmuCNq" target="_blank">Discord</a> |
+                <a href="https://github.com/CuAnnan/Downlink" target="_blank">Github</a>
+            </nav>
+        </div>
+    </div>
 
-        <script src="js/vendor/modernizr-3.5.0.min.js"></script>
-        <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
-
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
-        <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous"/>
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js" integrity="sha384-xrRywqdh3PHs8keKZN+8zzc5TX0GRTLCcmivcbNJWm2rs5C8PRhcEn3czEjhAO9o" crossorigin="anonymous"></script>
-
-        <script src="js/plugins.js"></script>
-        <script src="js/Task.js"></script>
-        <script src="js/Encryption.js"></script>
-        <script src="js/CPU.js"></script>
-        <script src="js/Alphabet.js"></script>
-        <script src="js/Password.js"></script>
-        <script src="js/Computer.js"></script>
-        <script src="js/MissionComputer.js"></script>
-        <script src="js/Companies.js"></script>
-
-        <script src="js/Game.js"></script>
-        <script src="js/main.js"></script>
-    </body>
+</body>
 </html>
