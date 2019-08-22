@@ -1,6 +1,3 @@
-var Downlink = Downlink?Downlink:{};
-
-(($)=>{
     class InvalidTypeError extends Error{}
     class InvalidComputerError extends Error{}
     class DuplicateComputerError extends Error{}
@@ -66,7 +63,7 @@ var Downlink = Downlink?Downlink:{};
 
         equals(otherConnection)
         {
-            if(!otherConnection || typeof otherComputer !== Connection)
+            if(!otherConnection || !(otherConnection instanceof this))
             {
                 return false;
             }
@@ -75,5 +72,4 @@ var Downlink = Downlink?Downlink:{};
         }
     }
 
-    Downlink.Connection = Connection;
-})(window.jQuery);
+module.exports = Connection;

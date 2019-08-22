@@ -1,60 +1,65 @@
-var Downlink = Downlink?Downlink:{};
+const EventListener = require('./EventListener');
 
-(($)=>{
-    function randomIPAddress()
+function randomIPAddress()
+{
+    let ipAddress = "";
+    for(let i = 0; i < 3; i++)
     {
-        let ipAddress = "";
-        for(let i = 0; i < 3; i++)
+        if(i)
         {
-            if(i)
-            {
-                ipAddress += '.';
-            }
-            ipAddress += Math.floor(Math.random() * 256);
+            ipAddress += '.';
         }
-        return ipAddress;
+        ipAddress += Math.floor(Math.random() * 256);
+    }
+    return ipAddress;
+}
+
+class Computer extends EventListener
+{
+    constructor(name, company, ipAddress)
+    {
+        super();
+        this.name= name;
+        this.ipAddress = ipAddress?ipAddress:randomIPAddress();
+        this.location = null;
+        this.company = company;
     }
 
-    class Computer
+    setLocation(location)
     {
-        constructor(name, ipAddress)
-        {
-            this.name= name;
-            this.ipAddress = ipAddress?ipAddress:randomIPAddress();
-            this.location = null;
-        }
-
-        setLocation(location)
-        {
-            this.location = location;
-            return this;
-        }
-
-        connect()
-        {
-            return this;
-        }
-
-        disconnect()
-        {
-            return this;
-        }
-
-        static fromJSON(json)
-        {
-            let computer = new Computer(json.name, json.ipAddress);
-            computer.setLocation(json.location);
-        }
-
-        toJSON()
-        {
-            let json = {
-                name:this.name,
-                ipAddress:this.ipAddress,
-                location:this.location
-            };
-        }
+        this.location = location;
+        return this;
     }
 
-    Downlink.Computer = Computer;
-})(window.jQuery);
+    connect()
+    {
+        return this;
+    }
+
+    disconnect()
+    {
+        return this;
+    }
+
+    tick()
+    {
+
+    }
+
+    static fromJSON(json)
+    {
+        let computer = new Computer(json.name, json.ipAddress);
+        computer.setLocation(json.location);
+    }
+
+    toJSON()
+    {
+        let json = {
+            name:this.name,
+            ipAddress:this.ipAddress,
+            location:this.location
+        };
+    }
+}
+
+module.exports = Computer;

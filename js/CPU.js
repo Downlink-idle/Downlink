@@ -1,7 +1,8 @@
-var Downlink = Downlink?Downlink:{};
+    const Task = require('./Tasks/Task');
 
-(($)=> {
-    let Task = Downlink.Task;
+    class CPUFullError extends Error{};
+    class CPUDuplicateTaskError extends Error{};
+    class InvalidTaskError extends Error{};
 
     class CPU
     {
@@ -13,23 +14,32 @@ var Downlink = Downlink?Downlink:{};
             this.load = 0;
         }
 
-        addTask(task)
+        getCyclesForTask(task)
         {
-            if (!(task instanceof Task))
-            {
-                throw new Error('Tried to add a non task object to a processor');
-            }
-            if(this.tasks.indexOf(task)>=0)
-            {
-                throw new Error('This task is already on the CPU');
-            }
-
             // the amount of cycles the cpu is going to devote to each task is 1/nth of the total cycles
             // where n is the total of tasks that will be run including this task
             // I'm going to fudge with that a bit to make sure no rogue amounts start appearing and dissappearing
 
-            let idealCyclesToAssign = Math.max(task.minimumRequiredCycles, Math.floor(this.speed / (this.tasks.length + 1))),
-                cyclesToAssign = idealCyclesToAssign;
+            return Math.max(task.minimumRequiredCycles, Math.floor(this.speed / (this.tasks.length + 1)));
+        }
+
+        addTask(task)
+        {
+            if (!(task instanceof Task))
+            {
+                throw new InvalidTaskError('Tried to add a non task object to a processor');
+            }
+            if(this.tasks.indexOf(task)>=0)
+            {
+                throw new CPUDuplicateTaskError('This task is already on the CPU');
+            }
+
+            let cyclesToAssign = this.getCyclesForTask(task),
+                idealCyclesToAssign = cyclesToAssign;
+            if(cyclesToAssign > this.freeableCycles)
+            {
+                throw new CPUFullError('Tried to add more cycles to the CPU than there are free cycles for');
+            }
 
             if(this.tasks.length > 0)
             {
@@ -55,7 +65,7 @@ var Downlink = Downlink?Downlink:{};
         {
             let freedCycles = task.cyclesPerTick;
             this.tasks.removeElement(task);
-            console.log(`Freeing ${freedCycles} cycles`);
+
             if(this.tasks.length >= 1)
             {
                 let freedCyclesPerTick = Math.floor(freedCycles/this.tasks.length);
@@ -77,26 +87,17 @@ var Downlink = Downlink?Downlink:{};
             {
                 task.tick();
             }
+        }
 
-            if(this.ticking)
+        get freeableCycles()
+        {
+            let minimum = 0;
+            for(let task of this.tasks)
             {
-                this.timer = window.setTimeout(()=>{this.tick();}, 50);
+                minimum += task.minimumRequiredCycles;
             }
+            return this.speed - minimum;
         }
-
-        start()
-        {
-            this.ticking = true;
-            this.tick();
-        }
-
-        stop()
-        {
-            this.ticking = false;
-            window.clearTimeout(this.timer);
-        }
-
     }
 
-    Downlink.CPU = CPU;
-})(window.jQuery);
+module.exports = CPU;

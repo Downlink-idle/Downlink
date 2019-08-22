@@ -1,112 +1,62 @@
 // namespace for the entire game;
-var Downlink = Downlink?Downlink:{};
 
-(function($){
-    let cpu = new Downlink.CPU(),
-        $currencyElement = $('#balance')
-        $cpuContainer = $('.processes').first(),
-        $quadraticGrid = $('#quadratic-equation-grid');
+(($)=>{$(()=>{
+    const   Downlink = require('./Downlink'),
+            TICK_INTERVAL_LENGTH=100,
+            MISSION_LIST_CLASS = 'mission-list-row';
 
-    let Game = {
-        built:false,
-        encryption:null,
-        balance:0,
-        balanceChange:false,
-        playing:false,
-        start:function()
+    let game = {
+        interval:null,
+        ticking:true,
+        initialised:false,
+        $missionContainer:null,
+        $activeMission:null,
+        initialise:function()
         {
-            if(!this.built)
-            {
-                Downlink.Alphabet.build();
-                cpu.addTask(
-                    new Downlink.Task('Tracer')
-                ).addTask(
-                    new Downlink.Task('Firewall')
-                );
-
-                this.built = true;
-            }
-            this.startNewEncryption();
-            this.tickId = requestAnimationFrame(()=>{this.tick()});
-            cpu.start();
-            $(cpu).on('taskComplete', (event, task)=>{this.handleTaskCompletion(task);});
-            cpu.$tasksRemainingElement = $cpuContainer;
-            this.cpus = [cpu];
-            this.playing = true;
-        },
-        stop:function() {
-            cpu.stop();
-            this.playing = false;
-            cancelAnimationFrame(this.tickId);
-        },
-        handleTaskCompletion:function(task)
-        {
-            this.balance += task.getRewardRatio();
-            this.balanceChange = true;
-        },
-        tick:function()
-        {
-            this.animateEncryptionGrid();
-            this.animateCPUElement();
-            if(this.balanceChange)
-            {
-                $currencyElement.html(this.balance.toFixed(2));
-                this.balanceChange = false;
-            }
-            if(this.playing)
-            {
-                this.tickId = requestAnimationFrame(()=>{this.tick()});
-            }
-        },
-        startNewEncryption:function()
-        {
-            this.encrypting = true;
-            if(this.encryption)
-            {
-                return this.encryption;
-            }
-
-            this.encryption = new Downlink.Encryption(10, 10);
-            cpu.addTask(this.encryption);
-            $(this.encryption).on('complete', ()=>{this.finishEncryption();});
-            return this.encryption;
-        },
-        finishEncryption:function()
-        {
-            this.encryption = null;
-            if(this.encrypting)
-            {
-                this.startNewEncryption();
-            }
-        },
-        stopEncrypting:function()
-        {
-            this.encrypting = false;
-        },
-        animateCPUElement:function()
-        {
-
-        },
-        animateEncryptionGrid:function()
-        {
-            if(!this.encryption)
+            if(this.initialised)
             {
                 return;
             }
-            let grid = this.encryption.grid,
-                html = '';
-            for(let row of grid)
+            this.$missionContainer = $('#mission-list');
+            this.$activeMission = $('#active-mission');
+            this.getNewMission();
+            this.initialised = true;
+        },
+        start:function(){
+            this.initialise();
+            this.ticking = true;
+            this.tick();
+        },
+        stop:function(){
+            this.ticking = false;
+            window.clearTimeout(this.interval);
+        },
+        tick:function(){
+            if(this.ticking)
             {
-                html += '<div class="row">';
-                for(let cell of row)
-                {
-                    html += `<div class="col ${cell.solved?"solved":"unsolved"}-quadratic-cell">${cell.letter}</div>`
-                }
-                html += '</div>';
+                Downlink.tick();
+                this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
             }
-            $quadraticGrid.html(html);
+        },
+        getNewMission:function(){
+            let mission = Downlink.getNextMission();
+            this.updateMissionList();
+            mission.on('complete', ()=>{
+                this.getNewMission();
+            });
+        },
+        updateMissionList:function(){
+            $('.'+MISSION_LIST_CLASS).remove();
+            this.$activeMission.html(Downlink.activeMission.name);
+            let html = '';
+            for(let mission of Downlink.availableMissions)
+            {
+                html += `<div class="row ${MISSION_LIST_CLASS}">${mission.name}</div>`;
+            }
+            let $html = $(html);
+            this.$missionContainer.append($html);
         }
     };
-
-    Downlink.Game = Game;
-})(window.jQuery);
+    game.start();
+    window.game = game;
+})})(window.jQuery);

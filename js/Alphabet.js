@@ -1,44 +1,42 @@
-var Downlink = Downlink?Downlink:{};
+require('./plugins.js');
+let alphabetGrid = [];
 
-(()=>{
-    let alphabetGrid = [],
-        randomizedAlphabet = [];
-
-    class Alphabet
+class Alphabet
+{
+    static build()
     {
-        static build()
+        let searchSpace = '';
+        for(let i = 0; i < 10; i++)
         {
-            let searchSpace = '';
-            for(let i = 0; i < 10; i++)
-            {
-                searchSpace += ''+i;
-            }
+            searchSpace += ''+i;
+        }
 
-            for(let i = 0; i < 26; i++)
-            {
-                // add the letters a through z in upper and lower case by their character code
-                searchSpace += String.fromCharCode(i + 65);
-                searchSpace += String.fromCharCode(i + 97);
-            }
-            alphabetGrid = searchSpace.split('');
+        for(let i = 0; i < 26; i++)
+        {
+            // add the letters a through z in upper and lower case by their character code
+            searchSpace += String.fromCharCode(i + 65);
+            searchSpace += String.fromCharCode(i + 97);
+        }
+        alphabetGrid = searchSpace.split('');
+        this.shuffle();
+    }
+
+    static shuffle()
+    {
+        this.randomizedAlphabet = [...alphabetGrid].shuffle();
+    }
+
+    static getRandomLetter()
+    {
+        if(!(this.randomizedAlphabet && this.randomizedAlphabet.length))
+        {
             this.shuffle();
         }
 
-        static shuffle()
-        {
-            randomizedAlphabet = alphabetGrid.slice().shuffle();
-        }
+        return this.randomizedAlphabet.pop();
+    }
+};
 
-        static getRandomLetter()
-        {
-            if(!randomizedAlphabet.length)
-            {
-                this.shuffle();
-            }
-            return randomizedAlphabet.pop();
-        }
-    };
+Alphabet.build();
 
-    Alphabet.build();
-    Downlink.Alphabet = Alphabet;
-})();
+module.exports = Alphabet;
