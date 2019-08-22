@@ -291,12 +291,12 @@ textarea {
 }
 
 
-.unsolved-quadratic-cell
+.unsolved-encryption-cell
 {
     background-color:green;
     font-weight:bold;
 }
-.solved-quadratic-cell
+.solved-encryption-cell
 {
     background-color:black;
     color:green;

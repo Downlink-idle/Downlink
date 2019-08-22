@@ -89,7 +89,7 @@
                 html += '<div class="row">';
                 for(let cell of row)
                 {
-                    html += `<div class="col ${cell.solved?" solvedEncryptionCell":"unsolvedEncryptionCell"}">${cell.letter}</div>`;
+                    html += `<div class="col ${cell.solved?"unsolved-encryption-cell":"unsolved-encryption-cell"}">${cell.letter}</div>`;
                 }
                 html += '</div>';
             }
