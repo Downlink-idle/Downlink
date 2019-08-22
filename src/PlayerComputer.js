@@ -1,5 +1,5 @@
 const   Password = require('./Challenges/Password'),
-        {DictionaryCracker} = require('./Tasks/PasswordCracker'),
+        {DictionaryCracker, PasswordCracker} = require('./Tasks/PasswordCracker'),
         Encryption = require('./Challenges/Encryption'),
         EncryptionCracker = require('./Tasks/EncryptionCracker'),
         Computer = require('./Computer'),
@@ -76,6 +76,38 @@ class PlayerComputer extends Computer
             new CPU()
         ]);
         return potato;
+    }
+
+    get tasks()
+    {
+        let tasks = {};
+        for(let cpu of this.cpus)
+        {
+            for(let task of cpu.tasks)
+            {
+                tasks[task.name] = task;
+            }
+        }
+        return tasks;
+    }
+
+    get missionTasks()
+    {
+        let allTasks = Object.values(this.tasks),
+            missionTasks = {crackers:{}};
+        for(let task of allTasks)
+        {
+            if(task instanceof PasswordCracker)
+            {
+                missionTasks.crackers.password = task;
+            }
+            if(task instanceof EncryptionCracker)
+            {
+                missionTasks.crackers.encryption = task;
+            }
+        }
+        return missionTasks;
+
     }
 }
 

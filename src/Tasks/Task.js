@@ -2,7 +2,7 @@ const EventListener = require('../EventListener');
 
 class Task extends EventListener
 {
-    constructor(name, minimumRequiredCycles)
+    constructor(name, challenge, minimumRequiredCycles)
     {
         super();
         this.name= name;
@@ -13,6 +13,7 @@ class Task extends EventListener
         this.ticksTaken = 0;
         this.working = false;
         this.taskCompleted = false;
+        this.challenge = challenge;
     }
 
     setCyclesPerTick(cyclesPerTick)
@@ -56,6 +57,7 @@ class Task extends EventListener
     {
         this.working = false;
         this.taskCompleted = true;
+        this.challenge.solve();
         this.trigger('complete');
     }
 

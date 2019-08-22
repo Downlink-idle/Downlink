@@ -52,10 +52,18 @@ module.exports = Alphabet;
     {
         constructor(name, speed)
         {
+            /**
+             * @type {string}
+             */
             this.name = name?name:"Processor";
+            /**
+             * @type {number}
+             */
             this.speed = speed?speed:150;
+            /**
+             * @type {Array.<TASK>}
+             */
             this.tasks = [];
-            this.load = 0;
         }
 
         getCyclesForTask(task)
@@ -133,7 +141,7 @@ module.exports = Alphabet;
             }
         }
 
-        get freeableCycles()
+        get load()
         {
             let minimum = 0;
             for(let task of this.tasks)
@@ -168,13 +176,20 @@ class Challenge extends EventListener
         this.solved = false;
     }
 
+    solve()
+    {
+        this.solved = true;
+        this.signalSolved();
+    }
+
     /**
      * A method to signal to the Mission Computer, or localhost that a Challenge has been complete.
      */
-    signalComplete()
+    signalSolved()
     {
         this.solved = true;
         this.trigger('solved');
+        return this;
     }
 }
 
@@ -205,11 +220,6 @@ class Encryption extends Challenge
         super(difficulty.name + ' Encryption', difficultyRatio);
         this.rows = rows;
         this.cols = cols;
-    }
-
-    complete()
-    {
-        this.signalComplete();
     }
 
     static get DIFFICULTIES()
@@ -254,7 +264,6 @@ class Password extends Challenge
         $(this).trigger('start');
         if (this.text === testPassword)
         {
-            this.signalComplete();
             return true;
         }
         return false;
@@ -2687,7 +2696,6 @@ class Downlink extends EventListener
     {
         super();
         this.playerComputer = PlayerComputer.getMyFirstComputer();
-        this.getNextMission();
     }
 
     tick()
@@ -2698,7 +2706,8 @@ class Downlink extends EventListener
 
     getNextMission()
     {
-        this.activeMission = MissionGenerator.getFirstAvailableMission().build();
+
+        this.activeMission = MissionGenerator.getFirstAvailableMission();
 
         for(let target of this.activeMission.hackTargets)
         {
@@ -2713,6 +2722,11 @@ class Downlink extends EventListener
     get availableMissions()
     {
         return MissionGenerator.availableMissions;
+    }
+
+    get currentMissionTasks()
+    {
+        return this.playerComputer.missionTasks;
     }
 
 }
@@ -2827,8 +2841,17 @@ module.exports = EventListener;
         interval:null,
         ticking:true,
         initialised:false,
+        mission:false,
+        /**
+         * jquery entities that are needed for updating
+         */
         $missionContainer:null,
-        $activeMission:null,
+        $activeMissionName:null,
+        $activeMissionPassword:null,
+        $activeMissionEncryptionGrid:null,
+        $activeMissionEncryptionType:null,
+        $activeMissionIPAddress:null,
+        $activeMissionServerName:null,
         initialise:function()
         {
             if(this.initialised)
@@ -2836,7 +2859,12 @@ module.exports = EventListener;
                 return;
             }
             this.$missionContainer = $('#mission-list');
-            this.$activeMission = $('#active-mission');
+            this.$activeMissionName = $('#active-mission');
+            this.$activeMissionPassword = $('#active-mission-password-input');
+            this.$activeMissionEncryptionGrid = $('#active-mission-encryption-grid');
+            this.$activeMissionEncryptionType = $('#active-mission-encryption-type');
+            this.$activeMissionIPAddress = $('#active-mission-server-ip-address');
+            this.$activeMissionServerName = $('#active-mission-server-name');
             this.getNewMission();
             this.initialised = true;
         },
@@ -2853,19 +2881,68 @@ module.exports = EventListener;
             if(this.ticking)
             {
                 Downlink.tick();
+                this.animateTick();
                 this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
             }
         },
-        getNewMission:function(){
-            let mission = Downlink.getNextMission();
-            this.updateMissionInterface();
-            mission.on('complete', ()=>{
-                this.getNewMission();
-            });
+        animateTick:function()
+        {
+            let tasks = Downlink.currentMissionTasks;
+            if(tasks.crackers.password)
+            {
+                this.animatePasswordField(tasks.crackers.password);
+            }
+            if(tasks.crackers.encryption)
+            {
+                this.animateEncryptionGrid(tasks.crackers.encryption);
+            }
         },
-        updateMissionInterface:function(){
+        /**
+         *
+         * @param {PasswordCracker} passwordCracker
+         */
+        animatePasswordField(passwordCracker)
+        {
+            this.$activeMissionPassword.val(passwordCracker.currentGuess)
+                .removeClass("solvedPassword unsolvedPassword")
+                .addClass(passwordCracker.isSolved?"solvedPassword":"unsolvedPassword");
+        },
+        /**
+         *
+         * @param {EncryptionCracker} encryptionCracker
+         */
+        animateEncryptionGrid(encryptionCracker)
+        {
+
+        },
+        getNewMission:function(){
+            console.log("Getting mission");
+            let mission = Downlink.getNextMission();
+            this.updateMissionInterface(mission);
+            mission.on('complete', ()=>{
+                //this.getNewMission();
+            });
+            this.mission = mission;
+        },
+        /**
+         *
+         * @param {Mission} mission
+         */
+        updateMissionInterface:function(mission){
+            this.updateAvailableMissionList(mission);
+            this.updateCurrentMissionView(mission.computer);
+
+        },
+        updateCurrentMissionView:function(server){
+            this.$activeMissionPassword.val('');
+            this.$activeMissionEncryptionGrid.empty();
+            this.$activeMissionEncryptionType.html(server.encryption.name);
+            this.$activeMissionIPAddress.html(server.ipAddress);
+            this.$activeMissionServerName.html(server.name);
+        },
+        updateAvailableMissionList:function(mission){
             $('.'+MISSION_LIST_CLASS).remove();
-            this.$activeMission.html(Downlink.activeMission.name);
+            this.$activeMissionName.html(Downlink.activeMission.name);
             let html = '';
             for(let mission of Downlink.availableMissions)
             {
@@ -2927,6 +3004,8 @@ class Mission extends EventListener
          * @type {MissionComputer}
          */
         this.computer = null;
+
+        this.status = "Available";
     }
 
     setDifficulty(difficulty)
@@ -2984,11 +3063,14 @@ class Mission extends EventListener
 
 
         this.target.addComputer(this.computer);
+        this.status = "Underway";
         return this;
     }
 
     signalComplete()
     {
+        this.status="Complete";
+
         this.trigger('complete');
     }
 
@@ -3058,9 +3140,9 @@ class MissionComputer extends Computer
         this.encryption = encryption;
 
         encryption
-            .on('complete', ()=>{
+            .on('solved', ()=>{
                 this.updateAccessStatus();
-                $(encryption).off();
+                encryption.off();
             })
             .on('start', ()=>{this.startTraceBack();});
         return this;
@@ -3074,8 +3156,8 @@ class MissionComputer extends Computer
         // because password is not a Tasks
         // the PasswordCracker Tasks isn't
         password.on('solved', ()=>{
-            password.off();
             this.updateAccessStatus();
+            password.off();
         }).on('start', ()=>{this.startTraceBack();});
         return this;
     }
@@ -3159,7 +3241,7 @@ class MissionGenerator
     static getFirstAvailableMission()
     {
         this.updateAvailableMissions();
-        let mission = availableMissions.shift();
+        let mission = availableMissions.shift().build();
         this.updateAvailableMissions();
         return mission;
     }
@@ -3169,7 +3251,7 @@ module.exports = MissionGenerator;
 
 },{"./Mission":12}],16:[function(require,module,exports){
 const   Password = require('./Challenges/Password'),
-        {DictionaryCracker} = require('./Tasks/PasswordCracker'),
+        {DictionaryCracker, PasswordCracker} = require('./Tasks/PasswordCracker'),
         Encryption = require('./Challenges/Encryption'),
         EncryptionCracker = require('./Tasks/EncryptionCracker'),
         Computer = require('./Computer'),
@@ -3247,6 +3329,38 @@ class PlayerComputer extends Computer
         ]);
         return potato;
     }
+
+    get tasks()
+    {
+        let tasks = {};
+        for(let cpu of this.cpus)
+        {
+            for(let task of cpu.tasks)
+            {
+                tasks[task.name] = task;
+            }
+        }
+        return tasks;
+    }
+
+    get missionTasks()
+    {
+        let allTasks = Object.values(this.tasks),
+            missionTasks = {crackers:{}};
+        for(let task of allTasks)
+        {
+            if(task instanceof PasswordCracker)
+            {
+                missionTasks.crackers.password = task;
+            }
+            if(task instanceof EncryptionCracker)
+            {
+                missionTasks.crackers.encryption = task;
+            }
+        }
+        return missionTasks;
+
+    }
 }
 
 module.exports = PlayerComputer;
@@ -3283,7 +3397,7 @@ class EncryptionCracker extends Task
 {
     constructor(encryption)
     {
-        super('EncryptionCracker', encryption.difficulty);
+        super('EncryptionCracker', encryption, encryption.difficulty);
         this.rows = encryption.rows;
         this.cols = encryption.cols;
         this.encryption = encryption;
@@ -3343,7 +3457,6 @@ class EncryptionCracker extends Task
 
     signalComplete()
     {
-        this.encryption.complete();
         super.signalComplete();
     }
 
@@ -3406,16 +3519,21 @@ class PasswordCracker extends Task
 {
     constructor(password, name, minimumRequiredCycles)
     {
-        super(name, minimumRequiredCycles);
+        super(name, password, minimumRequiredCycles);
         this.password = password.on('solved', ()=>{this.signalComplete()});
-        this.isSolved = false;
+        this.currentGuess = null;
     }
 
-    signalComplete()
+    attackPassword()
     {
-        this.isSolved = true;
-        super.signalComplete();
+        let result = this.password.attack(this.currentGuess);
+        if(result)
+        {
+            this.signalComplete();
+        }
+        return result;
     }
+
 }
 
 
@@ -3423,9 +3541,10 @@ class DictionaryCracker extends PasswordCracker
 {
     constructor(password)
     {
+        console.log("Building password cracker");
+        console.log(password);
         super(password, 'Dictionary Cracker', DICTIONARY_CRACKER_MINIMUM_CYCLES);
         this.dictionary = [...Password.dictionary];
-        this.currentGuess = null;
         this.totalGuesses = 0;
     }
 
@@ -3438,28 +3557,23 @@ class DictionaryCracker extends PasswordCracker
     {
         super.tick();
 
-        let attacking = true,
-            found = false,
-            guessesThisTick = 0;
-
-        while(attacking)
+        if(!this.solved)
         {
-            this.currentGuess = this.dictionary[this.totalGuesses];
-            let guessSuccessful = this.password.attack(this.currentGuess);
+            let attacking = true,
+                found = false,
+                guessesThisTick = 0;
 
-            guessesThisTick ++;
-            this.totalGuesses++;
-            found = found || guessSuccessful;
-
-            if(guessSuccessful || guessesThisTick >= this.cyclesPerTick)
+            while(attacking)
             {
-                attacking = false;
-            }
-        }
+                this.currentGuess = this.dictionary[this.totalGuesses++];
 
-        if(!this.dictionary.length && !found)
-        {
-            throw new Error(`${this.password.text} not found in dictionary some how`);
+                let guessSuccessful = this.attackPassword();
+                found = found || guessSuccessful;
+                if(guessSuccessful || guessesThisTick++ >= this.cyclesPerTick)
+                {
+                    attacking = false;
+                }
+            }
         }
     }
 }
@@ -3488,7 +3602,7 @@ const EventListener = require('../EventListener');
 
 class Task extends EventListener
 {
-    constructor(name, minimumRequiredCycles)
+    constructor(name, challenge, minimumRequiredCycles)
     {
         super();
         this.name= name;
@@ -3499,6 +3613,7 @@ class Task extends EventListener
         this.ticksTaken = 0;
         this.working = false;
         this.taskCompleted = false;
+        this.challenge = challenge;
     }
 
     setCyclesPerTick(cyclesPerTick)
@@ -3542,6 +3657,7 @@ class Task extends EventListener
     {
         this.working = false;
         this.taskCompleted = true;
+        this.challenge.solve();
         this.trigger('complete');
     }
 

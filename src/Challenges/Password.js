@@ -20,7 +20,6 @@ class Password extends Challenge
         $(this).trigger('start');
         if (this.text === testPassword)
         {
-            this.signalComplete();
             return true;
         }
         return false;

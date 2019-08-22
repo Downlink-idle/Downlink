@@ -8,10 +8,18 @@
     {
         constructor(name, speed)
         {
+            /**
+             * @type {string}
+             */
             this.name = name?name:"Processor";
+            /**
+             * @type {number}
+             */
             this.speed = speed?speed:150;
+            /**
+             * @type {Array.<TASK>}
+             */
             this.tasks = [];
-            this.load = 0;
         }
 
         getCyclesForTask(task)
@@ -89,7 +97,7 @@
             }
         }
 
-        get freeableCycles()
+        get load()
         {
             let minimum = 0;
             for(let task of this.tasks)

@@ -11,7 +11,6 @@ class Downlink extends EventListener
     {
         super();
         this.playerComputer = PlayerComputer.getMyFirstComputer();
-        this.getNextMission();
     }
 
     tick()
@@ -22,7 +21,8 @@ class Downlink extends EventListener
 
     getNextMission()
     {
-        this.activeMission = MissionGenerator.getFirstAvailableMission().build();
+
+        this.activeMission = MissionGenerator.getFirstAvailableMission();
 
         for(let target of this.activeMission.hackTargets)
         {
@@ -37,6 +37,11 @@ class Downlink extends EventListener
     get availableMissions()
     {
         return MissionGenerator.availableMissions;
+    }
+
+    get currentMissionTasks()
+    {
+        return this.playerComputer.missionTasks;
     }
 
 }

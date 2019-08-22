@@ -24,11 +24,6 @@ class Encryption extends Challenge
         this.cols = cols;
     }
 
-    complete()
-    {
-        this.signalComplete();
-    }
-
     static get DIFFICULTIES()
     {
         return DIFFICULTIES;

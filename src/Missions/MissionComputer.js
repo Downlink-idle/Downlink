@@ -44,9 +44,9 @@ class MissionComputer extends Computer
         this.encryption = encryption;
 
         encryption
-            .on('complete', ()=>{
+            .on('solved', ()=>{
                 this.updateAccessStatus();
-                $(encryption).off();
+                encryption.off();
             })
             .on('start', ()=>{this.startTraceBack();});
         return this;
@@ -60,8 +60,8 @@ class MissionComputer extends Computer
         // because password is not a Tasks
         // the PasswordCracker Tasks isn't
         password.on('solved', ()=>{
-            password.off();
             this.updateAccessStatus();
+            password.off();
         }).on('start', ()=>{this.startTraceBack();});
         return this;
     }

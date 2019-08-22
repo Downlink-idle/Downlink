@@ -45,6 +45,8 @@ class Mission extends EventListener
          * @type {MissionComputer}
          */
         this.computer = null;
+
+        this.status = "Available";
     }
 
     setDifficulty(difficulty)
@@ -102,11 +104,14 @@ class Mission extends EventListener
 
 
         this.target.addComputer(this.computer);
+        this.status = "Underway";
         return this;
     }
 
     signalComplete()
     {
+        this.status="Complete";
+
         this.trigger('complete');
     }
 

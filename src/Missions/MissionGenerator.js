@@ -23,7 +23,7 @@ class MissionGenerator
     static getFirstAvailableMission()
     {
         this.updateAvailableMissions();
-        let mission = availableMissions.shift();
+        let mission = availableMissions.shift().build();
         this.updateAvailableMissions();
         return mission;
     }
