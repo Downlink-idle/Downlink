@@ -29,7 +29,7 @@ class EncryptionCracker extends Task
 {
     constructor(encryption)
     {
-        super('EncryptionCracker', encryption.difficulty);
+        super('EncryptionCracker', encryption, encryption.difficulty);
         this.rows = encryption.rows;
         this.cols = encryption.cols;
         this.encryption = encryption;
@@ -89,7 +89,6 @@ class EncryptionCracker extends Task
 
     signalComplete()
     {
-        this.encryption.complete();
         super.signalComplete();
     }
 

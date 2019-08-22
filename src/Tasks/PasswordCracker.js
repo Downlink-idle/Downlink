@@ -7,16 +7,21 @@ class PasswordCracker extends Task
 {
     constructor(password, name, minimumRequiredCycles)
     {
-        super(name, minimumRequiredCycles);
+        super(name, password, minimumRequiredCycles);
         this.password = password.on('solved', ()=>{this.signalComplete()});
-        this.isSolved = false;
+        this.currentGuess = null;
     }
 
-    signalComplete()
+    attackPassword()
     {
-        this.isSolved = true;
-        super.signalComplete();
+        let result = this.password.attack(this.currentGuess);
+        if(result)
+        {
+            this.signalComplete();
+        }
+        return result;
     }
+
 }
 
 
@@ -24,9 +29,10 @@ class DictionaryCracker extends PasswordCracker
 {
     constructor(password)
     {
+        console.log("Building password cracker");
+        console.log(password);
         super(password, 'Dictionary Cracker', DICTIONARY_CRACKER_MINIMUM_CYCLES);
         this.dictionary = [...Password.dictionary];
-        this.currentGuess = null;
         this.totalGuesses = 0;
     }
 
@@ -39,28 +45,23 @@ class DictionaryCracker extends PasswordCracker
     {
         super.tick();
 
-        let attacking = true,
-            found = false,
-            guessesThisTick = 0;
-
-        while(attacking)
+        if(!this.solved)
         {
-            this.currentGuess = this.dictionary[this.totalGuesses];
-            let guessSuccessful = this.password.attack(this.currentGuess);
+            let attacking = true,
+                found = false,
+                guessesThisTick = 0;
 
-            guessesThisTick ++;
-            this.totalGuesses++;
-            found = found || guessSuccessful;
-
-            if(guessSuccessful || guessesThisTick >= this.cyclesPerTick)
+            while(attacking)
             {
-                attacking = false;
-            }
-        }
+                this.currentGuess = this.dictionary[this.totalGuesses++];
 
-        if(!this.dictionary.length && !found)
-        {
-            throw new Error(`${this.password.text} not found in dictionary some how`);
+                let guessSuccessful = this.attackPassword();
+                found = found || guessSuccessful;
+                if(guessSuccessful || guessesThisTick++ >= this.cyclesPerTick)
+                {
+                    attacking = false;
+                }
+            }
         }
     }
 }

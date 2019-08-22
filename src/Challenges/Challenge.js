@@ -19,13 +19,20 @@ class Challenge extends EventListener
         this.solved = false;
     }
 
+    solve()
+    {
+        this.solved = true;
+        this.signalSolved();
+    }
+
     /**
      * A method to signal to the Mission Computer, or localhost that a Challenge has been complete.
      */
-    signalComplete()
+    signalSolved()
     {
         this.solved = true;
         this.trigger('solved');
+        return this;
     }
 }
 

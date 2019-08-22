@@ -1,4 +1,3 @@
-require('./plugins.js');
 let alphabetGrid = [];
 
 class Alphabet

@@ -8,7 +8,6 @@ class MissionComputer extends Computer
         this.encryption = null;
         this.password = null;
         this.accessible = false;
-        this.files = [];
         this.currentPlayerConnection = null;
         this.previousPlayerConnection = null;
         this.alerted = false;
@@ -16,7 +15,7 @@ class MissionComputer extends Computer
     }
 
     /**
-     * @param {Downlink.Connection} connection
+     * @param {Connection} connection
      */
     connect(connection)
     {
@@ -45,9 +44,9 @@ class MissionComputer extends Computer
         this.encryption = encryption;
 
         encryption
-            .on('complete', ()=>{
+            .on('solved', ()=>{
                 this.updateAccessStatus();
-                $(encryption).off();
+                encryption.off();
             })
             .on('start', ()=>{this.startTraceBack();});
         return this;
@@ -61,8 +60,8 @@ class MissionComputer extends Computer
         // because password is not a Tasks
         // the PasswordCracker Tasks isn't
         password.on('solved', ()=>{
-            password.off();
             this.updateAccessStatus();
+            password.off();
         }).on('start', ()=>{this.startTraceBack();});
         return this;
     }
@@ -90,16 +89,6 @@ class MissionComputer extends Computer
     stopTraceBack()
     {
 
-    }
-
-    static newForTesting()
-    {
-        return new MissionComputer('Test Computer', Downlink.Company.getRandomCompany())
-            .setPassword(
-                Downlink.Challenges.Password.randomDictionaryPassword()
-            ).setEncryption(
-
-            );
     }
 }
 
