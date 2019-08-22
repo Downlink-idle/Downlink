@@ -73,7 +73,7 @@
         {
             this.$activeMissionPassword.val(passwordCracker.currentGuess)
                 .removeClass("solvedPassword unsolvedPassword")
-                .addClass(passwordCracker.isSolved?"solvedPassword":"unsolvedPassword");
+                .addClass(passwordCracker.completed?"solvedPassword":"unsolvedPassword");
         },
         /**
          *
@@ -84,11 +84,10 @@
 
         },
         getNewMission:function(){
-            console.log("Getting mission");
             let mission = Downlink.getNextMission();
             this.updateMissionInterface(mission);
             mission.on('complete', ()=>{
-                //this.getNewMission();
+                this.getNewMission();
             });
             this.mission = mission;
         },

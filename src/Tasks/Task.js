@@ -12,7 +12,7 @@ class Task extends EventListener
         this.difficultyRatio = 0;
         this.ticksTaken = 0;
         this.working = false;
-        this.taskCompleted = false;
+        this.completed = false;
         this.challenge = challenge;
     }
 
@@ -56,7 +56,7 @@ class Task extends EventListener
     signalComplete()
     {
         this.working = false;
-        this.taskCompleted = true;
+        this.completed = true;
         this.challenge.solve();
         this.trigger('complete');
     }

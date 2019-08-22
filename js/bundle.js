@@ -2905,7 +2905,7 @@ module.exports = EventListener;
         {
             this.$activeMissionPassword.val(passwordCracker.currentGuess)
                 .removeClass("solvedPassword unsolvedPassword")
-                .addClass(passwordCracker.isSolved?"solvedPassword":"unsolvedPassword");
+                .addClass(passwordCracker.completed?"solvedPassword":"unsolvedPassword");
         },
         /**
          *
@@ -2916,11 +2916,10 @@ module.exports = EventListener;
 
         },
         getNewMission:function(){
-            console.log("Getting mission");
             let mission = Downlink.getNextMission();
             this.updateMissionInterface(mission);
             mission.on('complete', ()=>{
-                //this.getNewMission();
+                this.getNewMission();
             });
             this.mission = mission;
         },
@@ -3541,8 +3540,6 @@ class DictionaryCracker extends PasswordCracker
 {
     constructor(password)
     {
-        console.log("Building password cracker");
-        console.log(password);
         super(password, 'Dictionary Cracker', DICTIONARY_CRACKER_MINIMUM_CYCLES);
         this.dictionary = [...Password.dictionary];
         this.totalGuesses = 0;
@@ -3612,7 +3609,7 @@ class Task extends EventListener
         this.difficultyRatio = 0;
         this.ticksTaken = 0;
         this.working = false;
-        this.taskCompleted = false;
+        this.completed = false;
         this.challenge = challenge;
     }
 
@@ -3656,7 +3653,7 @@ class Task extends EventListener
     signalComplete()
     {
         this.working = false;
-        this.taskCompleted = true;
+        this.completed = true;
         this.challenge.solve();
         this.trigger('complete');
     }
