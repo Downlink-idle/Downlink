@@ -42,16 +42,18 @@ Alphabet.build();
 module.exports = Alphabet;
 
 },{}],2:[function(require,module,exports){
-    const Task = require('./Tasks/Task');
+    const   Task = require('./Tasks/Task'),
+            EventListener = require('./EventListener');
 
     class CPUFullError extends Error{};
     class CPUDuplicateTaskError extends Error{};
     class InvalidTaskError extends Error{};
 
-    class CPU
+    class CPU extends EventListener
     {
         constructor(name, speed)
         {
+            super();
             /**
              * @type {string}
              */
@@ -61,7 +63,7 @@ module.exports = Alphabet;
              */
             this.speed = speed?speed:150;
             /**
-             * @type {Array.<TASK>}
+             * @type {Array.<Task>}
              */
             this.tasks = [];
         }
@@ -107,9 +109,7 @@ module.exports = Alphabet;
             task.setCyclesPerTick(cyclesToAssign);
 
             this.tasks.push(task);
-            $(task).on('complete', ()=>{
-                this.completeTask(task);
-            });
+            task.on('complete', ()=>{ this.completeTask(task); });
             return this;
         }
 
@@ -130,7 +130,7 @@ module.exports = Alphabet;
                     i++;
                 }
             }
-            $(this).trigger('taskComplete', [task]);
+            this.trigger('taskComplete');
         }
 
         tick()
@@ -154,7 +154,7 @@ module.exports = Alphabet;
 
 module.exports = CPU;
 
-},{"./Tasks/Task":19}],3:[function(require,module,exports){
+},{"./EventListener":10,"./Tasks/Task":19}],3:[function(require,module,exports){
 const EventListener = require('../EventListener');
 
 class Challenge extends EventListener
@@ -2842,6 +2842,7 @@ module.exports = EventListener;
         ticking:true,
         initialised:false,
         mission:false,
+        computer:null,
         /**
          * jquery entities that are needed for updating
          */
@@ -2858,6 +2859,10 @@ module.exports = EventListener;
             {
                 return;
             }
+            /**
+             * Bind the UI elements
+             * @type {*|jQuery|HTMLElement}
+             */
             this.$missionContainer = $('#mission-list');
             this.$activeMissionName = $('#active-mission');
             this.$activeMissionPassword = $('#active-mission-password-input');
@@ -2865,24 +2870,38 @@ module.exports = EventListener;
             this.$activeMissionEncryptionType = $('#active-mission-encryption-type');
             this.$activeMissionIPAddress = $('#active-mission-server-ip-address');
             this.$activeMissionServerName = $('#active-mission-server-name');
+
+            /**
+             * expose the player computer class for test purposes
+             */
+            this.computer = Downlink.playerComputer;
+
             this.getNewMission();
             this.initialised = true;
         },
         start:function(){
             this.initialise();
             this.ticking = true;
+
             this.tick();
         },
         stop:function(){
             this.ticking = false;
             window.clearTimeout(this.interval);
         },
-        tick:function(){
-            if(this.ticking)
+        tick:function() {
+            try
             {
-                Downlink.tick();
-                this.animateTick();
-                this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
+                if (this.ticking)
+                {
+                    Downlink.tick();
+                    this.animateTick();
+                    this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
+                }
+            }
+            catch(e)
+            {
+                console.log(e);
             }
         },
         animateTick:function()
@@ -2915,13 +2934,13 @@ module.exports = EventListener;
         {
             let html = '';
 
-            let grid = encryptionCracker.grid;
+            let grid = encryptionCracker.cellGridArrayForAnimating;
             for(let row of grid)
             {
                 html += '<div class="row">';
                 for(let cell of row)
                 {
-                    html += `<div class="col ${cell.solved?"unsolved-encryption-cell":"unsolved-encryption-cell"}">${cell.letter}</div>`;
+                    html += `<div class="col ${cell.solved?"solved-encryption-cell":"unsolved-encryption-cell"}">${cell.letter}</div>`;
                 }
                 html += '</div>';
             }
@@ -2963,7 +2982,9 @@ module.exports = EventListener;
             this.$missionContainer.append($html);
         }
     };
+
     game.start();
+
     window.game = game;
 })})(window.jQuery);
 
@@ -3081,7 +3102,6 @@ class Mission extends EventListener
     signalComplete()
     {
         this.status="Complete";
-
         this.trigger('complete');
     }
 
@@ -3293,6 +3313,7 @@ class PlayerComputer extends Computer
         {
             task = new EncryptionCracker(challenge);
         }
+
         if(!task)
         {
             throw new InvalidTaskError(`No task found for challenge ${challenge.constructor.name}`);
@@ -3307,21 +3328,9 @@ class PlayerComputer extends Computer
         while(searching)
         {
             let cpu = this.cpus[i];
-            try
-            {
-                cpu.addTask(task);
-                searching = false;
-                found = true;
-            }
-            catch(e)
-            {
-                console.log(e);
-                i++;
-                if (i == this.cpus.length)
-                {
-                    searching = false;
-                }
-            }
+            cpu.addTask(task);
+            searching = false;
+            found = true;
         }
     }
 
@@ -3466,10 +3475,22 @@ class EncryptionCracker extends Task
                 this.unsolvedCells.removeElement(cell);
             }
         }
+
+
+    }
+
+    /**
+     * This should hopefully update the graphic properly
+     * @returns {Array<Array<EncryptionCell>>}
+     */
+    get cellGridArrayForAnimating()
+    {
         if(!this.unsolvedCells.length)
         {
             this.signalComplete();
         }
+
+        return this.grid;
     }
 
     signalComplete()

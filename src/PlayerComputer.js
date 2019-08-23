@@ -30,6 +30,7 @@ class PlayerComputer extends Computer
         {
             task = new EncryptionCracker(challenge);
         }
+
         if(!task)
         {
             throw new InvalidTaskError(`No task found for challenge ${challenge.constructor.name}`);
@@ -44,21 +45,9 @@ class PlayerComputer extends Computer
         while(searching)
         {
             let cpu = this.cpus[i];
-            try
-            {
-                cpu.addTask(task);
-                searching = false;
-                found = true;
-            }
-            catch(e)
-            {
-                console.log(e);
-                i++;
-                if (i == this.cpus.length)
-                {
-                    searching = false;
-                }
-            }
+            cpu.addTask(task);
+            searching = false;
+            found = true;
         }
     }
 

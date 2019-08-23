@@ -87,10 +87,22 @@ class EncryptionCracker extends Task
                 this.unsolvedCells.removeElement(cell);
             }
         }
+
+
+    }
+
+    /**
+     * This should hopefully update the graphic properly
+     * @returns {Array<Array<EncryptionCell>>}
+     */
+    get cellGridArrayForAnimating()
+    {
         if(!this.unsolvedCells.length)
         {
             this.signalComplete();
         }
+
+        return this.grid;
     }
 
     signalComplete()
