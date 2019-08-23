@@ -96,7 +96,7 @@ class Mission extends EventListener
 
         if(this.difficulty === DIFFICULTIES.EASY)
         {
-            password = Password.randomDictionaryPassword();
+            password = Password.randomDictionaryPassword(Password.PASSWORD_DICTIONARY_DIFFICULTIES.EASIEST);
             encryption = Encryption.getNewLinearEncryption();
         }
 
