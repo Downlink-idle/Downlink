@@ -111,7 +111,6 @@ class Mission extends EventListener
     signalComplete()
     {
         this.status="Complete";
-
         this.trigger('complete');
     }
 

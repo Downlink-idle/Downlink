@@ -1,13 +1,15 @@
-    const Task = require('./Tasks/Task');
+    const   Task = require('./Tasks/Task'),
+            EventListener = require('./EventListener');
 
     class CPUFullError extends Error{};
     class CPUDuplicateTaskError extends Error{};
     class InvalidTaskError extends Error{};
 
-    class CPU
+    class CPU extends EventListener
     {
         constructor(name, speed)
         {
+            super();
             /**
              * @type {string}
              */
@@ -17,7 +19,7 @@
              */
             this.speed = speed?speed:150;
             /**
-             * @type {Array.<TASK>}
+             * @type {Array.<Task>}
              */
             this.tasks = [];
         }
@@ -63,9 +65,7 @@
             task.setCyclesPerTick(cyclesToAssign);
 
             this.tasks.push(task);
-            $(task).on('complete', ()=>{
-                this.completeTask(task);
-            });
+            task.on('complete', ()=>{ this.completeTask(task); });
             return this;
         }
 
@@ -86,7 +86,7 @@
                     i++;
                 }
             }
-            $(this).trigger('taskComplete', [task]);
+            this.trigger('taskComplete');
         }
 
         tick()

@@ -10,6 +10,7 @@
         ticking:true,
         initialised:false,
         mission:false,
+        computer:null,
         /**
          * jquery entities that are needed for updating
          */
@@ -26,6 +27,10 @@
             {
                 return;
             }
+            /**
+             * Bind the UI elements
+             * @type {*|jQuery|HTMLElement}
+             */
             this.$missionContainer = $('#mission-list');
             this.$activeMissionName = $('#active-mission');
             this.$activeMissionPassword = $('#active-mission-password-input');
@@ -33,24 +38,38 @@
             this.$activeMissionEncryptionType = $('#active-mission-encryption-type');
             this.$activeMissionIPAddress = $('#active-mission-server-ip-address');
             this.$activeMissionServerName = $('#active-mission-server-name');
+
+            /**
+             * expose the player computer class for test purposes
+             */
+            this.computer = Downlink.playerComputer;
+
             this.getNewMission();
             this.initialised = true;
         },
         start:function(){
             this.initialise();
             this.ticking = true;
+
             this.tick();
         },
         stop:function(){
             this.ticking = false;
             window.clearTimeout(this.interval);
         },
-        tick:function(){
-            if(this.ticking)
+        tick:function() {
+            try
             {
-                Downlink.tick();
-                this.animateTick();
-                this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
+                if (this.ticking)
+                {
+                    Downlink.tick();
+                    this.animateTick();
+                    this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
+                }
+            }
+            catch(e)
+            {
+                console.log(e);
             }
         },
         animateTick:function()
@@ -83,13 +102,13 @@
         {
             let html = '';
 
-            let grid = encryptionCracker.grid;
+            let grid = encryptionCracker.cellGridArrayForAnimating;
             for(let row of grid)
             {
                 html += '<div class="row">';
                 for(let cell of row)
                 {
-                    html += `<div class="col ${cell.solved?"unsolved-encryption-cell":"unsolved-encryption-cell"}">${cell.letter}</div>`;
+                    html += `<div class="col ${cell.solved?"solved-encryption-cell":"unsolved-encryption-cell"}">${cell.letter}</div>`;
                 }
                 html += '</div>';
             }
@@ -131,6 +150,8 @@
             this.$missionContainer.append($html);
         }
     };
+
     game.start();
+
     window.game = game;
 })})(window.jQuery);
