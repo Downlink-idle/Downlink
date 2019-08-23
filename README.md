@@ -26,4 +26,4 @@ This game loop is always going to be running in the background but there will be
 Any time a Mission is requested, it creates a computer which has some challenges that must be solved in order for the mission computer (an extended Computer class) to tell the mission it's done.
 When the mission is done it triggers an event. These tasks are passed to the player's computer which adds tasks to its CPUs. When those tasks solve their challenges, they tell the CPU they're done.
 
-The current very primitive UI can be seen at the [git hub pages branch page](https://cuannan.github.io/Downlink/).  
+The current very primitive UI can be seen at the [git hub pages branch page](https://cuannan.github.io/Downlink/). There is a [discord](https://discord.gg/mmmuCNq) but I am not yet presumptuous enough to start a subreddit.  
