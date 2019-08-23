@@ -261,13 +261,10 @@ class Password extends Challenge
 
     attack(testPassword)
     {
-        $(this).trigger('start');
-        if (this.text === testPassword)
-        {
-            return true;
-        }
-        return false;
+        this.trigger('start');
+        return testPassword === this.text;
     }
+
 
     static randomDictionaryPassword()
     {
@@ -280,7 +277,7 @@ class Password extends Challenge
         let password = '';
         for (let i = 0; i < stringLength; i++)
         {
-            password += Downlink.Alphabet.getRandomLetter();
+            password += Alphabet.getRandomLetter();
         }
         return new Password(password, PASSWORD_TYPES.ALPHANUMERIC, false, stringLength);
     }
@@ -3558,18 +3555,21 @@ class PasswordCracker extends Task
     constructor(password, name, minimumRequiredCycles)
     {
         super(name, password, minimumRequiredCycles);
-        this.password = password.on('solved', ()=>{this.signalComplete()});
+        this.password = password;
         this.currentGuess = null;
     }
 
     attackPassword()
     {
-        let result = this.password.attack(this.currentGuess);
-        if(result)
+        if(!this.password.solved)
         {
-            this.signalComplete();
+            let result = this.password.attack(this.currentGuess);
+            if (result)
+            {
+                this.signalComplete();
+            }
+            return result;
         }
-        return result;
     }
 
 }
