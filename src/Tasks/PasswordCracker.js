@@ -8,18 +8,21 @@ class PasswordCracker extends Task
     constructor(password, name, minimumRequiredCycles)
     {
         super(name, password, minimumRequiredCycles);
-        this.password = password.on('solved', ()=>{this.signalComplete()});
+        this.password = password;
         this.currentGuess = null;
     }
 
     attackPassword()
     {
-        let result = this.password.attack(this.currentGuess);
-        if(result)
+        if(!this.password.solved)
         {
-            this.signalComplete();
+            let result = this.password.attack(this.currentGuess);
+            if (result)
+            {
+                this.signalComplete();
+            }
+            return result;
         }
-        return result;
     }
 
 }
