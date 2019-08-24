@@ -6,6 +6,7 @@ const   Password = require('./Challenges/Password'),
         CPU = require('./CPU.js');
 
 class InvalidTaskError extends Error{};
+class NoFreeCPUCyclesError extends Error{};
 
 class PlayerComputer extends Computer
 {
@@ -44,10 +45,21 @@ class PlayerComputer extends Computer
             i= 0, searching = true, found = false;
         while(searching)
         {
-            let cpu = this.cpus[i];
-            cpu.addTask(task);
-            searching = false;
-            found = true;
+            try
+            {
+                let cpu = this.cpus[i];
+                cpu.addTask(task);
+                searching = false;
+                found = true;
+            }
+            catch(e)
+            {
+                i++;
+            }
+        }
+        if(!found)
+        {
+            throw new NoFreeCPUCyclesError(`Cannot find the cycles for ${challenge.name} on any of the CPUs`);
         }
     }
 

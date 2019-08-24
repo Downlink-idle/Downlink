@@ -1,5 +1,15 @@
 const EventListener = require('../EventListener');
 
+class CPUOverloadError extends Error
+{
+    constructor(task, cycles)
+    {
+        super(`Trying to run a task (${task.name}) with fewer cycles ${cycles} than it requires ${task.minimumRequiredCycles}`);
+        this.task = task;
+        this.cycles = cycles;
+    }
+}
+
 class Task extends EventListener
 {
     constructor(name, challenge, minimumRequiredCycles)
@@ -13,14 +23,14 @@ class Task extends EventListener
         this.ticksTaken = 0;
         this.working = false;
         this.completed = false;
-        this.challenge = challenge;
+        this.challenge = challenge.setTask(this);
     }
 
     setCyclesPerTick(cyclesPerTick)
     {
         if(cyclesPerTick < this.minimumRequiredCycles)
         {
-            throw new Error("Trying to run a task with fewer cycles than it requires");
+            throw new CPUOverloadError(this, cyclesPerTick);
         }
         this.cyclesPerTick = cyclesPerTick;
         return this;
@@ -57,8 +67,8 @@ class Task extends EventListener
     {
         this.working = false;
         this.completed = true;
-        this.challenge.solve();
         this.trigger('complete');
+        this.challenge.solve();
     }
 
     getRewardRatio()

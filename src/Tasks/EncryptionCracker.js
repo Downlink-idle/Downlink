@@ -105,11 +105,6 @@ class EncryptionCracker extends Task
         return this.grid;
     }
 
-    signalComplete()
-    {
-        super.signalComplete();
-    }
-
     get percentage()
     {
         return (this.cells.length - this.unsolvedCells.length) / (this.cells.length);

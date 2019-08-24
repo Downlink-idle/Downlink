@@ -1,9 +1,12 @@
     const   Task = require('./Tasks/Task'),
-            EventListener = require('./EventListener');
+            EventListener = require('./EventListener'),
+            Decimal = require('decimal.js');
 
     class CPUFullError extends Error{};
     class CPUDuplicateTaskError extends Error{};
     class InvalidTaskError extends Error{};
+
+    const DEFAULT_PROCESSOR_SPEED = 20;
 
     class CPU extends EventListener
     {
@@ -13,24 +16,27 @@
             /**
              * @type {string}
              */
-            this.name = name?name:"Processor";
+            this.name = name?name:"Garbo Processor";
             /**
-             * @type {number}
+             * @type {Decimal}
              */
-            this.speed = speed?speed:150;
+            this.speed = speed?speed:Decimal(DEFAULT_PROCESSOR_SPEED);
             /**
              * @type {Array.<Task>}
              */
             this.tasks = [];
         }
 
+        /**
+         *  @param task
+         * @returns {Decimal}
+         */
         getCyclesForTask(task)
         {
             // the amount of cycles the cpu is going to devote to each task is 1/nth of the total cycles
             // where n is the total of tasks that will be run including this task
             // I'm going to fudge with that a bit to make sure no rogue amounts start appearing and dissappearing
-
-            return Math.max(task.minimumRequiredCycles, Math.floor(this.speed / (this.tasks.length + 1)));
+            return Decimal.max(task.minimumRequiredCycles, Decimal.floor(this.speed.div(this.tasks.length + 1)));
         }
 
         addTask(task)
@@ -44,9 +50,11 @@
                 throw new CPUDuplicateTaskError('This task is already on the CPU');
             }
 
+
             let cyclesToAssign = this.getCyclesForTask(task),
                 idealCyclesToAssign = cyclesToAssign;
-            if(cyclesToAssign > this.freeableCycles)
+            //if(cyclesToAssign > (this.speed - this.load))
+            if(cyclesToAssign.greaterThan(this.speed.sub(this.load)))
             {
                 throw new CPUFullError('Tried to add more cycles to the CPU than there are free cycles for');
             }
@@ -63,7 +71,6 @@
                 cyclesToAssign = cyclesFreedUp;
             }
             task.setCyclesPerTick(cyclesToAssign);
-
             this.tasks.push(task);
             task.on('complete', ()=>{ this.completeTask(task); });
             return this;
@@ -99,12 +106,12 @@
 
         get load()
         {
-            let minimum = 0;
+            let minimum = new Decimal(0);
             for(let task of this.tasks)
             {
-                minimum += task.minimumRequiredCycles;
+                minimum = minimum.plus(task.minimumRequiredCycles);
             }
-            return this.speed - minimum;
+            return minimum;
         }
     }
 

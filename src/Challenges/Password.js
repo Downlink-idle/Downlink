@@ -1,16 +1,22 @@
-const dictionary = require('./dictionary');
+const   dictionary = require('./dictionary'),
+        Challenge = require('./Challenge'),
+        Decimal = require('decimal.js');
+
 const PASSWORD_TYPES = {
     'DICTIONARY':'Dictionary',
     'ALPHANUMERIC':'Alphanumeric'
 };
-const Challenge = require('./Challenge');
+const PASSWORD_DICTIONARY_DIFFICULTIES = {
+    'EASIEST':1,
+    'HARDEST':10
+};
 
 
 class Password extends Challenge
 {
-    constructor(text, type, solved, difficulty)
+    constructor(text, type, difficulty)
     {
-        super(type + ' Password', difficulty);
+        super(type + ' Password', new Decimal(difficulty));
         this.text = text;
         this.type = type;
     }
@@ -21,10 +27,27 @@ class Password extends Challenge
         return testPassword === this.text;
     }
 
-
-    static randomDictionaryPassword()
+    static get PASSWORD_DICTIONARY_DIFFICULTIES()
     {
-        return new Password(dictionary.randomElement(), PASSWORD_TYPES.DICTIONARY, false, 1);
+        return PASSWORD_DICTIONARY_DIFFICULTIES;
+    }
+
+
+    /**
+     *
+     * @param {number} difficulty should be between one and 10
+     * @returns {Password}
+     */
+    static randomDictionaryPassword(difficulty)
+    {
+        // limit the difficulty to be between the easiest and hardest allowed difficulties
+        difficulty = Math.min(Math.max(difficulty, PASSWORD_DICTIONARY_DIFFICULTIES.EASIEST), PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST);
+        // reduce the dictionary by a percentage of that amount
+        let reduction = 10 - difficulty,
+            usedDictionary = [];
+        dictionary.forEach((entry, index)=>{if(index%PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST >= reduction){usedDictionary.push(entry);}});
+        let dictionaryPassword = new Password(usedDictionary.randomElement(), PASSWORD_TYPES.DICTIONARY, difficulty);
+        return dictionaryPassword;
     }
 
     static randomAlphanumericPassword()
@@ -35,7 +58,7 @@ class Password extends Challenge
         {
             password += Alphabet.getRandomLetter();
         }
-        return new Password(password, PASSWORD_TYPES.ALPHANUMERIC, false, stringLength);
+        return new Password(password, PASSWORD_TYPES.ALPHANUMERIC,  stringLength);
     }
 
 
