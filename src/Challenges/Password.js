@@ -1,4 +1,7 @@
-const dictionary = require('./dictionary');
+const   dictionary = require('./dictionary'),
+        Challenge = require('./Challenge'),
+        Decimal = require('decimal.js');
+
 const PASSWORD_TYPES = {
     'DICTIONARY':'Dictionary',
     'ALPHANUMERIC':'Alphanumeric'
@@ -7,14 +10,13 @@ const PASSWORD_DICTIONARY_DIFFICULTIES = {
     'EASIEST':1,
     'HARDEST':10
 };
-const Challenge = require('./Challenge');
 
 
 class Password extends Challenge
 {
     constructor(text, type, difficulty)
     {
-        super(type + ' Password', difficulty);
+        super(type + ' Password', new Decimal(difficulty));
         this.text = text;
         this.type = type;
     }
@@ -38,19 +40,14 @@ class Password extends Challenge
      */
     static randomDictionaryPassword(difficulty)
     {
-        difficulty = difficulty || 1;
+        // limit the difficulty to be between the easiest and hardest allowed difficulties
         difficulty = Math.min(Math.max(difficulty, PASSWORD_DICTIONARY_DIFFICULTIES.EASIEST), PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST);
+        // reduce the dictionary by a percentage of that amount
         let reduction = 10 - difficulty,
             usedDictionary = [];
-
-        usedDictionary.forEach((entry, index)=>{
-            if(index%10 >= reduction)
-            {
-                usedDictionary.push(entry);
-            }
-        });
-
-        return new Password(usedDictionary.randomElement(), PASSWORD_TYPES.DICTIONARY, difficulty);
+        dictionary.forEach((entry, index)=>{if(index%PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST >= reduction){usedDictionary.push(entry);}});
+        let dictionaryPassword = new Password(usedDictionary.randomElement(), PASSWORD_TYPES.DICTIONARY, difficulty);
+        return dictionaryPassword;
     }
 
     static randomAlphanumericPassword()

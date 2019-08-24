@@ -22,11 +22,26 @@
 
     <div class="container-fluid min-vh-100">
         <div class="row" id="missionInterface">
-            <div class="col" id="mission-list">
+            <div class="col-6 col-md-3" id="player-details">
+                <h2 class="row">Player:</h2>
+                <div class="row" id="player-currency-row">
+                    <strong class="col">Currency Units: </strong>
+                    <div class="col" id="player-currency">0.00</div>
+                </div>
+                <h3 class="row" id="player-company-standings-title">Company Standings</h3>
+                <h3 class="row">Your PC</h3>
+                <div class="row">
+                    <div class="col-4"><strong>Processors:</strong></div>
+                    <div class="col" id="player-computer-processors"></div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-3" id="mission-list">
                 <div class="row"><h1>Missions</h1></div>
                 <div class="row"><b>Active Mission: </b><span id="active-mission"></span></div>
             </div>
-            <div class="col" id="active-mission-machine" style="border:1px solid black">
+
+            <div class="col-12 col-md-6" id="active-mission-machine" style="border:1px solid black">
                 <h2 class="row">Server details:</h2>
                 <div class="row">
                     <strong>Name: </strong><span id="active-mission-server-name"></span>

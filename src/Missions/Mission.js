@@ -6,15 +6,6 @@ const   Company = require('../Company'),
     MissionDifficulty = require('./MissionDifficulty');
 
 
-/**
- * @type {{EASY: MissionDifficulty, MEDIUM: MissionDifficulty, HARD: MissionDifficulty}}
- */
-const DIFFICULTIES = {
-    EASY:new MissionDifficulty(1, "Server"),
-    MEDIUM:new MissionDifficulty(5, "Cluster"),
-    HARD:new MissionDifficulty(10, "Farm"),
-};
-
 class Mission extends EventListener
 {
     /**
@@ -47,6 +38,7 @@ class Mission extends EventListener
         this.computer = null;
 
         this.status = "Available";
+
     }
 
     setDifficulty(difficulty)
@@ -59,18 +51,9 @@ class Mission extends EventListener
         return this;
     }
 
-    get hackTargets()
+    get challenges()
     {
-        let targets = [];
-        if(this.computer.password)
-        {
-            targets.push(this.computer.password);
-        }
-        if(this.computer.encryption)
-        {
-            targets.push(this.computer.encryption);
-        }
-        return targets;
+        return this.computer.challenges;
     }
 
     /**
@@ -94,7 +77,10 @@ class Mission extends EventListener
 
         let password = null, encryption = null;
 
-        if(this.difficulty === DIFFICULTIES.EASY)
+        /**
+         * This a hoist, not the end result
+         */
+        if(this.difficulty === MissionDifficulty.DIFFICULTIES.EASY)
         {
             password = Password.randomDictionaryPassword(Password.PASSWORD_DICTIONARY_DIFFICULTIES.EASIEST);
             encryption = Encryption.getNewLinearEncryption();
@@ -108,9 +94,18 @@ class Mission extends EventListener
         return this;
     }
 
+    /**
+     * @returns {Decimal}
+     */
+    get reward()
+    {
+        return this.difficulty.modifier.times(this.computer.difficultyModifier).times(this.sponsor.playerRespectModifier);
+    }
+
     signalComplete()
     {
         this.status="Complete";
+        this.sponsor.finishMission(this);
         this.trigger('complete');
     }
 
@@ -127,7 +122,7 @@ class Mission extends EventListener
             companies.shift(),
             companies.shift()
         ).setDifficulty(
-            DIFFICULTIES.EASY
+            MissionDifficulty.DIFFICULTIES.EASY
         );
     }
 }

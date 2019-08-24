@@ -9,3 +9,15 @@
     background-color:black;
     color:green;
 }
+
+
+.unsolved-password
+{
+    border: 1px solid red;
+    background-color: lightcoral;
+}
+
+.solved-password
+{
+    border: 1px solid green;
+}

@@ -8,7 +8,7 @@ class Challenge extends EventListener
      * Downlink.Challenges.Challenge
      *
      * @param {string} name         The name of the challenge, useful for UI purposes
-     * @param {number} difficulty   An int to describe in some abstract manner what reward ratio this challenge
+     * @param {Decimal} difficulty   An int to describe in some abstract manner what reward ratio this challenge
      *     should provide. Provided in the form of an integer.
      */
     constructor(name, difficulty)
@@ -17,11 +17,17 @@ class Challenge extends EventListener
         this.name = name;
         this.difficulty = difficulty;
         this.solved = false;
+        this.task = null;
+    }
+
+    setTask(task)
+    {
+        this.task = task;
+        return this;
     }
 
     solve()
     {
-        this.solved = true;
         this.signalSolved();
     }
 

@@ -25,7 +25,7 @@ class Event
     trigger(args)
     {
         this.callbacks.forEach(function(callback){
-            callback(args);
+            callback(...args);
         });
     }
 }
@@ -71,7 +71,7 @@ class EventListener
         return this.on(e, callback);
     }
 
-    trigger(eventName, args)
+    trigger(eventName, ...args)
     {
         let e = eventName.toLowerCase();
         if(this.events[e])
