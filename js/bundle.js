@@ -4921,126 +4921,6 @@ Alphabet.build();
 module.exports = Alphabet;
 
 },{}],3:[function(require,module,exports){
-    const   Task = require('./Tasks/Task'),
-            EventListener = require('./EventListener'),
-            Decimal = require('decimal.js');
-
-    class CPUFullError extends Error{};
-    class CPUDuplicateTaskError extends Error{};
-    class InvalidTaskError extends Error{};
-
-    const DEFAULT_PROCESSOR_SPEED = 20;
-
-    class CPU extends EventListener
-    {
-        constructor(name, speed)
-        {
-            super();
-            /**
-             * @type {string}
-             */
-            this.name = name?name:"Garbo Processor";
-            /**
-             * @type {Decimal}
-             */
-            this.speed = speed?speed:Decimal(DEFAULT_PROCESSOR_SPEED);
-            /**
-             * @type {Array.<Task>}
-             */
-            this.tasks = [];
-        }
-
-        /**
-         *  @param task
-         * @returns {Decimal}
-         */
-        getCyclesForTask(task)
-        {
-            // the amount of cycles the cpu is going to devote to each task is 1/nth of the total cycles
-            // where n is the total of tasks that will be run including this task
-            // I'm going to fudge with that a bit to make sure no rogue amounts start appearing and dissappearing
-            return Decimal.max(task.minimumRequiredCycles, Decimal.floor(this.speed.div(this.tasks.length + 1)));
-        }
-
-        addTask(task)
-        {
-            if (!(task instanceof Task))
-            {
-                throw new InvalidTaskError('Tried to add a non task object to a processor');
-            }
-            if(this.tasks.indexOf(task)>=0)
-            {
-                throw new CPUDuplicateTaskError('This task is already on the CPU');
-            }
-
-
-            let cyclesToAssign = this.getCyclesForTask(task),
-                idealCyclesToAssign = cyclesToAssign;
-            //if(cyclesToAssign > (this.speed - this.load))
-            if(cyclesToAssign.greaterThan(this.speed.sub(this.load)))
-            {
-                throw new CPUFullError('Tried to add more cycles to the CPU than there are free cycles for');
-            }
-
-            if(this.tasks.length > 0)
-            {
-                let cyclesToTryToTakeAwayFromEachProcess = Math.ceil(idealCyclesToAssign / this.tasks.length),
-                    cyclesFreedUp = 0;
-
-                for(let task of this.tasks)
-                {
-                    cyclesFreedUp += task.freeCycles(cyclesToTryToTakeAwayFromEachProcess);
-                }
-                cyclesToAssign = cyclesFreedUp;
-            }
-            task.setCyclesPerTick(cyclesToAssign);
-            this.tasks.push(task);
-            task.on('complete', ()=>{ this.completeTask(task); });
-            return this;
-        }
-
-        completeTask(task)
-        {
-            let freedCycles = task.cyclesPerTick;
-            this.tasks.removeElement(task);
-
-            if(this.tasks.length >= 1)
-            {
-                let freedCyclesPerTick = Math.floor(freedCycles/this.tasks.length);
-                let i = 0;
-                while(i < this.tasks.length && freedCycles > 0)
-                {
-                    let task = this.tasks[i];
-                    freedCycles -= freedCyclesPerTick;
-                    task.addCycles(freedCyclesPerTick);
-                    i++;
-                }
-            }
-            this.trigger('taskComplete');
-        }
-
-        tick()
-        {
-            for(let task of this.tasks)
-            {
-                task.tick();
-            }
-        }
-
-        get load()
-        {
-            let minimum = new Decimal(0);
-            for(let task of this.tasks)
-            {
-                minimum = minimum.plus(task.minimumRequiredCycles);
-            }
-            return minimum;
-        }
-    }
-
-module.exports = CPU;
-
-},{"./EventListener":11,"./Tasks/Task":20,"decimal.js":1}],4:[function(require,module,exports){
 const EventListener = require('../EventListener');
 
 class Challenge extends EventListener
@@ -5075,7 +4955,7 @@ class Challenge extends EventListener
     }
 
     /**
-     * A method to signal to the Mission Computer, or localhost that a Challenge has been complete.
+     * A method to signal to the Mission Computers, or localhost that a Challenge has been complete.
      */
     signalSolved()
     {
@@ -5087,7 +4967,7 @@ class Challenge extends EventListener
 
 module.exports = Challenge;
 
-},{"../EventListener":11}],5:[function(require,module,exports){
+},{"../EventListener":14}],4:[function(require,module,exports){
 const Decimal = require('decimal.js');
 
 /**
@@ -5135,7 +5015,7 @@ class Encryption extends Challenge
 
 module.exports = Encryption;
 
-},{"./Challenge":4,"decimal.js":1}],6:[function(require,module,exports){
+},{"./Challenge":3,"decimal.js":1}],5:[function(require,module,exports){
 const   dictionary = require('./dictionary'),
         Challenge = require('./Challenge'),
         Decimal = require('decimal.js');
@@ -5213,7 +5093,7 @@ class Password extends Challenge
 
 module.exports = Password;
 
-},{"./Challenge":4,"./dictionary":7,"decimal.js":1}],7:[function(require,module,exports){
+},{"./Challenge":3,"./dictionary":6,"decimal.js":1}],6:[function(require,module,exports){
 // stolen from Bart Busschot's xkpasswd JS github repo
 // See https://github.com/bbusschots/hsxkpasswd.js
 
@@ -7482,8 +7362,8 @@ let dictionary = [
 
 module.exports = dictionary;
 
-},{}],8:[function(require,module,exports){
-const   Computer = require('./Computer'),
+},{}],7:[function(require,module,exports){
+const   ComputerGenerator = require('./Computers/ComputerGenerator'),
         Decimal = require('decimal.js');
 
 
@@ -7496,6 +7376,9 @@ let companyNames = [
     "Popsy",
     "Ohm Djezis"
 ];
+/**
+ * @type {Array.<Company>}
+ */
 let companies = [];
 
 
@@ -7504,7 +7387,7 @@ class Company
     constructor(name)
     {
         this.name = name;
-        this.publicServer = new Computer(`${this.name} Public Server`);
+        this.publicServer = ComputerGenerator.newPublicServer(this);
         this.computers = [];
         this.addComputer(this.publicServer);
         /**
@@ -7535,9 +7418,20 @@ class Company
         return companies.randomElement();
     }
 
+    /**
+     * @returns {[<Company>]}
+     */
     static get allCompanies()
     {
         return companies;
+    }
+
+    static setAllPublicServerLocations()
+    {
+        for(let company of companies)
+        {
+            company.publicServer.setLocation(ComputerGenerator.getRandomLandboundPoint());
+        }
     }
 }
 
@@ -7548,8 +7442,128 @@ for(let companyName of companyNames)
 
 module.exports = Company;
 
-},{"./Computer":9,"decimal.js":1}],9:[function(require,module,exports){
-const EventListener = require('./EventListener');
+},{"./Computers/ComputerGenerator":10,"decimal.js":1}],8:[function(require,module,exports){
+    const   Task = require('../Tasks/Task'),
+            EventListener = require('../EventListener'),
+            Decimal = require('decimal.js');
+
+    class CPUFullError extends Error{};
+    class CPUDuplicateTaskError extends Error{};
+    class InvalidTaskError extends Error{};
+
+    const DEFAULT_PROCESSOR_SPEED = 20;
+
+    class CPU extends EventListener
+    {
+        constructor(name, speed)
+        {
+            super();
+            /**
+             * @type {string}
+             */
+            this.name = name?name:"Garbo Processor";
+            /**
+             * @type {Decimal}
+             */
+            this.speed = speed?speed:Decimal(DEFAULT_PROCESSOR_SPEED);
+            /**
+             * @type {Array.<Task>}
+             */
+            this.tasks = [];
+        }
+
+        /**
+         *  @param task
+         * @returns {Decimal}
+         */
+        getCyclesForTask(task)
+        {
+            // the amount of cycles the cpu is going to devote to each task is 1/nth of the total cycles
+            // where n is the total of tasks that will be run including this task
+            // I'm going to fudge with that a bit to make sure no rogue amounts start appearing and dissappearing
+            return Decimal.max(task.minimumRequiredCycles, Decimal.floor(this.speed.div(this.tasks.length + 1)));
+        }
+
+        addTask(task)
+        {
+            if (!(task instanceof Task))
+            {
+                throw new InvalidTaskError('Tried to add a non task object to a processor');
+            }
+            if(this.tasks.indexOf(task)>=0)
+            {
+                throw new CPUDuplicateTaskError('This task is already on the CPU');
+            }
+
+
+            let cyclesToAssign = this.getCyclesForTask(task),
+                idealCyclesToAssign = cyclesToAssign;
+            //if(cyclesToAssign > (this.speed - this.load))
+            if(cyclesToAssign.greaterThan(this.speed.sub(this.load)))
+            {
+                throw new CPUFullError('Tried to add more cycles to the CPU than there are free cycles for');
+            }
+
+            if(this.tasks.length > 0)
+            {
+                let cyclesToTryToTakeAwayFromEachProcess = Math.ceil(idealCyclesToAssign / this.tasks.length),
+                    cyclesFreedUp = 0;
+
+                for(let task of this.tasks)
+                {
+                    cyclesFreedUp += task.freeCycles(cyclesToTryToTakeAwayFromEachProcess);
+                }
+                cyclesToAssign = cyclesFreedUp;
+            }
+            task.setCyclesPerTick(cyclesToAssign);
+            this.tasks.push(task);
+            task.on('complete', ()=>{ this.completeTask(task); });
+            return this;
+        }
+
+        completeTask(task)
+        {
+            let freedCycles = task.cyclesPerTick;
+            this.tasks.removeElement(task);
+
+            if(this.tasks.length >= 1)
+            {
+                let freedCyclesPerTick = Math.floor(freedCycles/this.tasks.length);
+                let i = 0;
+                while(i < this.tasks.length && freedCycles > 0)
+                {
+                    let task = this.tasks[i];
+                    freedCycles -= freedCyclesPerTick;
+                    task.addCycles(freedCyclesPerTick);
+                    i++;
+                }
+            }
+            this.trigger('taskComplete');
+        }
+
+        tick()
+        {
+            for(let task of this.tasks)
+            {
+                task.tick();
+            }
+        }
+
+        get load()
+        {
+            let minimum = new Decimal(0);
+            for(let task of this.tasks)
+            {
+                minimum = minimum.plus(task.minimumRequiredCycles);
+            }
+            return minimum;
+        }
+    }
+
+module.exports = CPU;
+
+},{"../EventListener":14,"../Tasks/Task":23,"decimal.js":1}],9:[function(require,module,exports){
+const EventListener = require('../EventListener');
 
 function randomIPAddress()
 {
@@ -7567,6 +7581,12 @@ function randomIPAddress()
 
 class Computer extends EventListener
 {
+    /**
+     *
+     * @param {string}      name      The name of the computer
+     * @param {Computer}    company   The company the computer belongs to
+     * @param {string|null} ipAddress The ipAddress, if none provided a random ip address
+     */
     constructor(name, company, ipAddress)
     {
         super();
@@ -7615,14 +7635,216 @@ class Computer extends EventListener
 
 module.exports = Computer;
 
-},{"./EventListener":11}],10:[function(require,module,exports){
+},{"../EventListener":14}],10:[function(require,module,exports){
+const   PlayerComputer = require('../PlayerComputer'),
+        Computer = require('./Computer'),
+        CPU = require('./CPU'),
+        PublicComputer= require('./PublicComputer'),
+        MissionComputer = require('../Missions/MissionComputer');
+
+const LAND_COLOR = 0xf2efe9;
+
+function getRandomIntInclusive(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min; //The maximum is inclusive and the minimum is inclusive
+}
+
+function getRandomBoundInt(boundary)
+{
+    return getRandomIntInclusive(boundary.min, boundary.max);
+}
+
+function colorArrayToHex(colorArray)
+{
+    let [red, green, blue] = colorArray;
+    let rgb = red * 256 * 256 + green * 256 + blue;
+    return rgb;
+}
+
+class ComputerGenerator
+{
+    constructor()
+    {
+        this.canvasContext = null;
+        this.boundaries = {};
+    }
+
+
+    /**
+     *
+     */
+    getRandomLandboundPoint()
+    {
+        let point = null;
+        while(point == null)
+        {
+            let testPoint= this.getRandomPointData();
+            if(testPoint.color === LAND_COLOR)
+            {
+                point = testPoint;
+            }
+        }
+        return point;
+    }
+
+    getRandomPointData()
+    {
+        let point = {
+            x:getRandomBoundInt(this.boundaries.x),
+            y:getRandomBoundInt(this.boundaries.y)
+        };
+        let color = this.canvasContext.getImageData(point.x, point.y, 1, 1).data;
+        point.color =  colorArrayToHex(color);
+
+        return point;
+    }
+
+
+    /**
+     * In order to determine valid locations for any new computer, the class needs a reference to the image so that
+     * a random point on the image|map is on a land mass. This method builds up a canvas and throws the image onto
+     * the canvas. The canvas' context is then bound as an instance variable
+     * @see getRandomLandboundPoint
+     * @param mapImage
+     */
+    defineMapImage(canvas)
+    {
+
+        this.boundaries = {
+            x:{min:0, max:canvas.width},
+            y:{min:0, max:canvas.height}
+        };
+        this.canvasContext = canvas.getContext('2d');
+        return this;
+    }
+
+    newPlayerComputer()
+    {
+        let potato = new PlayerComputer([new CPU()]);
+        potato.setLocation(this.getRandomLandboundPoint());
+        return potato;
+    }
+
+    newPublicServer(company)
+    {
+        return new PublicComputer(company.name+' Public Server', company);
+    }
+}
+
+
+
+module.exports = new ComputerGenerator();
+
+},{"../Missions/MissionComputer":17,"../PlayerComputer":20,"./CPU":8,"./Computer":9,"./PublicComputer":11}],11:[function(require,module,exports){
+let Computer = require('./Computer');
+
+class PublicComputer extends Computer
+{
+    constructor(name, company)
+    {
+        super(name, company, null);
+    }
+
+}
+
+module.exports = PublicComputer;
+
+},{"./Computer":9}],12:[function(require,module,exports){
+const Computer = require('./Computers/Computer');
+
+    class InvalidTypeError extends Error{}
+    class InvalidComputerError extends Error{}
+    class DuplicateComputerError extends Error{}
+
+    let connections = 0;
+
+    /**
+     * A class to encapsulate the points in between you and the target computer, excluding both
+     */
+    class Connection
+    {
+        constructor(name)
+        {
+            connections++;
+            this.name = name?name:`Connection ${connections}`;
+            this.computers=[];
+            this.connectionLength = 0;
+            this.computersTraced = 0;
+        }
+
+        open()
+        {
+            for(let computer of this.computers)
+            {
+                computer.connect();
+            }
+            return this;
+        }
+
+        close()
+        {
+            let reverseComputers = this.computers.reverse();
+            for(let computer of reverseComputers)
+            {
+                computer.disconnect();
+            }
+            return this;
+        }
+
+        addComputer(computer)
+        {
+            if(!(computer instanceof Computer))
+            {
+                throw new InvalidTypeError("Incorrect object type added");
+            }
+            if(this.computers.indexOf(computer) >= 0)
+            {
+                this.removeComputer(computer);
+                return this;
+            }
+            computer.connect(this);
+            this.computers.push(computer);
+            this.connectionLength ++;
+            return this;
+        }
+
+        removeComputer(computer)
+        {
+            if(this.computers.indexOf(computer) < 0)
+            {
+                throw new InvalidComputerError("Computers not found in connection");
+            }
+            computer.disconnect();
+            this.computers.removeElement(computer);
+            this.connectionLength --;
+        }
+
+        equals(otherConnection)
+        {
+            if(!otherConnection || !(otherConnection instanceof this))
+            {
+                return false;
+            }
+
+            return JSON.stringify(this.computers) === JSON.stringify(otherConnection.computers);
+        }
+    }
+
+module.exports = Connection;
+
+},{"./Computers/Computer":9}],13:[function(require,module,exports){
 const   MissionGenerator = require('./Missions/MissionGenerator'),
-        PlayerComputer = require('./PlayerComputer'),
+        //PlayerComputer = require('./PlayerComputer'),
         EventListener = require('./EventListener'),
+        Connection = require('./Connection'),
         Company = require('./Company'),
+        ComputerGenerator = require('./Computers/ComputerGenerator'),
         Decimal = require('decimal.js');
 
 /**
+ * This class serves to expose, to the front end, any of the game classes functionality that the UI needs access to
+ * It exists only as a means of hard encapsulation
  * This exists as an instantiable class only because it's really difficult to get static classes to have events
  */
 class Downlink extends EventListener
@@ -7630,8 +7852,26 @@ class Downlink extends EventListener
     constructor()
     {
         super();
-        this.playerComputer = PlayerComputer.getMyFirstComputer();
+        this.playerComputer = null;
+        /**
+         *
+         * @type {Connection}
+         */
+        this.playerConnection = null;
+        this.getNewConnection();
         this.currency = new Decimal(0);
+    }
+
+    getNewConnection()
+    {
+        this.playerConnection = new Connection("Player Connection");
+        return this.playerComputer;
+    }
+
+    setPlayerComputer()
+    {
+        this.playerComputer = ComputerGenerator.newPlayerComputer();
+        return this.playerComputer;
     }
 
     tick()
@@ -7676,6 +7916,16 @@ class Downlink extends EventListener
         return this.playerComputer.missionTasks;
     }
 
+    get allPublicServers()
+    {
+        let servers = [];
+        for(let company of Company.allCompanies)
+        {
+            servers.push(company.publicServer);
+        }
+        return servers;
+    }
+
     /**
      *
      * @returns {[<Company>]}
@@ -7684,11 +7934,32 @@ class Downlink extends EventListener
     {
         return Company.allCompanies;
     }
+
+    performPostLoad(canvas)
+    {
+        this.buildComputerGenerator(canvas);
+        Company.setAllPublicServerLocations();
+    }
+
+    buildComputerGenerator(imageReference)
+    {
+        ComputerGenerator.defineMapImage(imageReference);
+    }
+
+    /**
+     * @param {<Computer>} computer
+     * @returns {<Connection>}
+     */
+    addComputerToConnection(computer)
+    {
+        let result = this.playerConnection.addComputer(computer);
+        return result;
+    }
 }
 
 module.exports = new Downlink();
 
-},{"./Company":8,"./EventListener":11,"./Missions/MissionGenerator":16,"./PlayerComputer":17,"decimal.js":1}],11:[function(require,module,exports){
+},{"./Company":7,"./Computers/ComputerGenerator":10,"./Connection":12,"./EventListener":14,"./Missions/MissionGenerator":19,"decimal.js":1}],14:[function(require,module,exports){
 class Event
 {
     constructor(name)
@@ -7784,7 +8055,7 @@ class EventListener
 
 module.exports = EventListener;
 
-},{}],12:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 // namespace for the entire game;
 
 (($)=>{$(()=>{
@@ -7813,15 +8084,15 @@ module.exports = EventListener;
         $playerCurrencySpan:null,
         $playerStandingsTitle:null,
         $playerComputerCPUListContainer:null,
-        initialise:function()
+        $worldMapModal:null,
+        $worldMapContainer:null,
+        $worldMapCanvasContainer:null,
+        /**
+         * HTML DOM elements, as opposed to jQuery entities for special cases
+         */
+        mapImageElement:null,
+        bindUIElements:function()
         {
-            if(this.initialised)
-            {
-                return;
-            }
-            /*
-             * Bind the UI elements
-             */
             this.$missionContainer = $('#mission-list');
             this.$activeMissionName = $('#active-mission');
             this.$activeMissionPassword = $('#active-mission-password-input');
@@ -7832,24 +8103,122 @@ module.exports = EventListener;
             this.$playerCurrencySpan = $('#player-currency');
             this.$playerStandingsTitle = $('#player-company-standings-title');
             this.$playerComputerCPUListContainer = $('#player-computer-processors');
+            this.$worldMapModal = $('#connection-modal');
+            this.$worldMapContainer = $('#world-map');
+            this.$worldMapCanvasContainer = $('#canvas-container');
+        },
+        buildWorldMap:function()
+        {
+            // resizing the worldmap container
+            let image = new Image();
+            this.mapImageElement = image;
+            let dimensionBounds = {x:{min:0, max:0}, y:{min:0, max:0}};
+            /*
+             This is needed so that we can know what the image values are before the game loads
+             */
+            let p = new Promise((resolve, reject)=>{
+
+                image.onload =()=>{
+                    this.buildCanvas();
+
+                    resolve();
+                };
+                image.src = './img/osm-world-map.png';
+            });
+
+            return p;
+        },
+        getFreshCanvas()
+        {
+            let canvas = document.createElement('canvas');
+            canvas.width = this.mapImageElement.width;
+            canvas.height = this.mapImageElement.height;
+            canvas
+                .getContext('2d')
+                .drawImage(
+                    this.mapImageElement, 0, 0,
+                    this.mapImageElement.width, this.mapImageElement.height
+                );
+            this.$worldMapCanvasContainer.empty().append($(canvas));
+            return canvas;
+        },
+        /**
+         * Using a canvas for two reasons. JavaScript requires one to figure out whether a random point is landbound or not
+         * This will pass a fresh copy of the canvas to the Downlink object to keep for that purpose and also draw
+         * one to the dom. The one on the dom will be drawn to and deleted and drawn to and deleted, but the
+         * Downlink object needs to know the raw one.
+         * @param image
+         */
+        buildCanvas:function()
+        {
+            Downlink.performPostLoad(this.getFreshCanvas());
+
+            this.$worldMapContainer.css({
+                height:this.mapImageElement.height+'px',
+                width:this.mapImageElement.width+'px'
+            });
+        },
+        initialise:function()
+        {
+            if(this.initialised)
+            {
+                return;
+            }
+
+            this.bindUIElements();
 
             // build the html elements that are used without missions stuff
             this.updatePlayerReputations();
-            this.updateComputerBuild();
 
             /*
              * expose the player computer class for test purposes
              */
             this.computer = Downlink.playerComputer;
 
-            this.getNewMission();
             this.initialised = true;
+            this.buildWorldMap().then(()=>{
+
+                let pc = Downlink.setPlayerComputer();
+                this.addComputerToWorldMap(pc);
+                this.updateComputerBuild();
+
+                this.addPublicComputersToWorldMap();
+
+                this.ticking = true;
+                this.getNewMission();
+            });
+        },
+        addPublicComputersToWorldMap:function()
+        {
+            for(let computer of Downlink.allPublicServers)
+            {
+                this.addComputerToWorldMap(computer, ()=>{
+                    this.addComputerToConnection(computer);
+                });
+            }
+        },
+        addComputerToConnection(computer)
+        {
+            let connection = Downlink.addComputerToConnection(computer);
+            let context = this.getFreshCanvas().getContext('2d');
+            let currentComputer = Downlink.playerComputer;
+            for(let computer of connection.computers)
+            {
+                // connect the current computer to the current computer in the connection
+
+                context.beginPath();
+                context.moveTo(currentComputer.location.x, currentComputer.location.y);
+                context.lineTo(computer.location.x, computer.location.y);
+                context.stroke();
+
+
+                // set the currentComputer to be the current computer in the connection
+                currentComputer = computer;
+            }
         },
         start:function(){
             this.initialise();
-            this.ticking = true;
-
-            this.tick();
+            //this.tick();
         },
         stop:function(){
             this.ticking = false;
@@ -7995,6 +8364,26 @@ module.exports = EventListener;
             }
             let $html = $(html);
             this.$missionContainer.append($html);
+        },
+        addComputerToWorldMap(computer, callback)
+        {
+            let $node = $('<div/>')
+                .addClass('computer')
+                .addClass(computer.constructor.name);
+            if(callback)
+            {
+                $node.on("click", callback);
+            }
+
+            this.$worldMapContainer.append($node);
+            let width = parseInt($node.css('width'), 10),
+                height = parseInt($node.css('height'), 10);
+            console.log(width, height);
+
+            $node.css({
+                top:(computer.location.y - height / 2)+'px',
+                left:(computer.location.x - width / 2)+'px'
+            })
         }
     };
 
@@ -8003,7 +8392,7 @@ module.exports = EventListener;
     window.game = game;
 })})(window.jQuery);
 
-},{"./Downlink":10}],13:[function(require,module,exports){
+},{"./Downlink":13}],16:[function(require,module,exports){
 const   Company = require('../Company'),
     MissionComputer = require('./MissionComputer'),
     Password = require('../Challenges/Password'),
@@ -8134,8 +8523,8 @@ class Mission extends EventListener
 }
 module.exports = Mission;
 
-},{"../Challenges/Encryption":5,"../Challenges/Password":6,"../Company":8,"../EventListener":11,"./MissionComputer":14,"./MissionDifficulty":15}],14:[function(require,module,exports){
-const   Computer = require('../Computer'),
+},{"../Challenges/Encryption":4,"../Challenges/Password":5,"../Company":7,"../EventListener":14,"./MissionComputer":17,"./MissionDifficulty":18}],17:[function(require,module,exports){
+const   Computer = require('../Computers/Computer'),
         Decimal = require('decimal.js');
 class MissionComputer extends Computer
 {
@@ -8280,7 +8669,7 @@ class MissionComputer extends Computer
 
 module.exports = MissionComputer;
 
-},{"../Computer":9,"decimal.js":1}],15:[function(require,module,exports){
+},{"../Computers/Computer":9,"decimal.js":1}],18:[function(require,module,exports){
 const Decimal = require('decimal.js');
 
 /**
@@ -8316,7 +8705,7 @@ MissionDifficulty.DIFFICULTIES = {
 
 module.exports = MissionDifficulty;
 
-},{"decimal.js":1}],16:[function(require,module,exports){
+},{"decimal.js":1}],19:[function(require,module,exports){
 const   Mission = require('./Mission'),
         MINIMUM_MISSIONS = 10;
 let availableMissions = [];
@@ -8350,13 +8739,13 @@ class MissionGenerator
 
 module.exports = MissionGenerator;
 
-},{"./Mission":13}],17:[function(require,module,exports){
+},{"./Mission":16}],20:[function(require,module,exports){
 const   Password = require('./Challenges/Password'),
         {DictionaryCracker, PasswordCracker} = require('./Tasks/PasswordCracker'),
         Encryption = require('./Challenges/Encryption'),
         EncryptionCracker = require('./Tasks/EncryptionCracker'),
-        Computer = require('./Computer'),
-        CPU = require('./CPU.js');
+        Computer = require('./Computers/Computer'),
+        CPU = require('./Computers/CPU.js');
 
 class InvalidTaskError extends Error{};
 class NoFreeCPUCyclesError extends Error{};
@@ -8424,13 +8813,6 @@ class PlayerComputer extends Computer
         }
     }
 
-    static getMyFirstComputer()
-    {
-        let potato = new PlayerComputer([
-            new CPU()
-        ]);
-        return potato;
-    }
 
     get tasks()
     {
@@ -8467,7 +8849,7 @@ class PlayerComputer extends Computer
 
 module.exports = PlayerComputer;
 
-},{"./CPU.js":3,"./Challenges/Encryption":5,"./Challenges/Password":6,"./Computer":9,"./Tasks/EncryptionCracker":18,"./Tasks/PasswordCracker":19}],18:[function(require,module,exports){
+},{"./Challenges/Encryption":4,"./Challenges/Password":5,"./Computers/CPU.js":8,"./Computers/Computer":9,"./Tasks/EncryptionCracker":21,"./Tasks/PasswordCracker":22}],21:[function(require,module,exports){
 const   Alphabet = require('../Alphabet'),
     Task = require('./Task');
 
@@ -8624,7 +9006,7 @@ class EncryptionCracker extends Task
 
 module.exports = EncryptionCracker;
 
-},{"../Alphabet":2,"./Task":20}],19:[function(require,module,exports){
+},{"../Alphabet":2,"./Task":23}],22:[function(require,module,exports){
 const   DICTIONARY_CRACKER_MINIMUM_CYCLES = 5,
         SEQUENTIAL_CRACKER_MINIMUM_CYCLES = 20,
         Task = require('./Task'),
@@ -8713,7 +9095,7 @@ module.exports = {
     SequentialAttacker:SequentialAttacker
 };
 
-},{"../Challenges/Password":6,"./Task":20}],20:[function(require,module,exports){
+},{"../Challenges/Password":5,"./Task":23}],23:[function(require,module,exports){
 const EventListener = require('../EventListener');
 
 class CPUOverloadError extends Error
@@ -8801,4 +9183,4 @@ class Task extends EventListener
 
 module.exports = Task;
 
-},{"../EventListener":11}]},{},[12]);
+},{"../EventListener":14}]},{},[15]);

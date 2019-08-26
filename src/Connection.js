@@ -1,3 +1,5 @@
+const Computer = require('./Computers/Computer');
+
     class InvalidTypeError extends Error{}
     class InvalidComputerError extends Error{}
     class DuplicateComputerError extends Error{}
@@ -39,24 +41,28 @@
 
         addComputer(computer)
         {
-            if(!typeof computer === Downlink.Computer)
+            if(!(computer instanceof Computer))
             {
                 throw new InvalidTypeError("Incorrect object type added");
             }
             if(this.computers.indexOf(computer) >= 0)
             {
-                throw new DuplicateComputerError("Already have this computer");
+                this.removeComputer(computer);
+                return this;
             }
+            computer.connect(this);
             this.computers.push(computer);
             this.connectionLength ++;
+            return this;
         }
 
         removeComputer(computer)
         {
             if(this.computers.indexOf(computer) < 0)
             {
-                throw new InvalidComputerError("Computer not found in connection");
+                throw new InvalidComputerError("Computers not found in connection");
             }
+            computer.disconnect();
             this.computers.removeElement(computer);
             this.connectionLength --;
         }

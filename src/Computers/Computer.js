@@ -1,4 +1,4 @@
-const EventListener = require('./EventListener');
+const EventListener = require('../EventListener');
 
 function randomIPAddress()
 {
@@ -16,6 +16,12 @@ function randomIPAddress()
 
 class Computer extends EventListener
 {
+    /**
+     *
+     * @param {string}      name      The name of the computer
+     * @param {Computer}    company   The company the computer belongs to
+     * @param {string|null} ipAddress The ipAddress, if none provided a random ip address
+     */
     constructor(name, company, ipAddress)
     {
         super();

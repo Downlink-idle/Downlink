@@ -2,8 +2,8 @@ const   Password = require('./Challenges/Password'),
         {DictionaryCracker, PasswordCracker} = require('./Tasks/PasswordCracker'),
         Encryption = require('./Challenges/Encryption'),
         EncryptionCracker = require('./Tasks/EncryptionCracker'),
-        Computer = require('./Computer'),
-        CPU = require('./CPU.js');
+        Computer = require('./Computers/Computer'),
+        CPU = require('./Computers/CPU.js');
 
 class InvalidTaskError extends Error{};
 class NoFreeCPUCyclesError extends Error{};
@@ -71,13 +71,6 @@ class PlayerComputer extends Computer
         }
     }
 
-    static getMyFirstComputer()
-    {
-        let potato = new PlayerComputer([
-            new CPU()
-        ]);
-        return potato;
-    }
 
     get tasks()
     {

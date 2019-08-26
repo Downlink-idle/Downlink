@@ -1,4 +1,4 @@
-const   Computer = require('./Computer'),
+const   ComputerGenerator = require('./Computers/ComputerGenerator'),
         Decimal = require('decimal.js');
 
 
@@ -11,6 +11,9 @@ let companyNames = [
     "Popsy",
     "Ohm Djezis"
 ];
+/**
+ * @type {Array.<Company>}
+ */
 let companies = [];
 
 
@@ -19,7 +22,7 @@ class Company
     constructor(name)
     {
         this.name = name;
-        this.publicServer = new Computer(`${this.name} Public Server`);
+        this.publicServer = ComputerGenerator.newPublicServer(this);
         this.computers = [];
         this.addComputer(this.publicServer);
         /**
@@ -50,9 +53,20 @@ class Company
         return companies.randomElement();
     }
 
+    /**
+     * @returns {[<Company>]}
+     */
     static get allCompanies()
     {
         return companies;
+    }
+
+    static setAllPublicServerLocations()
+    {
+        for(let company of companies)
+        {
+            company.publicServer.setLocation(ComputerGenerator.getRandomLandboundPoint());
+        }
     }
 }
 

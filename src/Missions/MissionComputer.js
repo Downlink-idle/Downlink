@@ -1,4 +1,4 @@
-const   Computer = require('../Computer'),
+const   Computer = require('../Computers/Computer'),
         Decimal = require('decimal.js');
 class MissionComputer extends Computer
 {

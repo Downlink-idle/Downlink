@@ -1,5 +1,5 @@
-    const   Task = require('./Tasks/Task'),
-            EventListener = require('./EventListener'),
+    const   Task = require('../Tasks/Task'),
+            EventListener = require('../EventListener'),
             Decimal = require('decimal.js');
 
     class CPUFullError extends Error{};
