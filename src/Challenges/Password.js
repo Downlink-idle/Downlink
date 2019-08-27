@@ -1,6 +1,6 @@
 const   dictionary = require('./dictionary'),
         Challenge = require('./Challenge'),
-        Decimal = require('decimal.js');
+        Decimal = require('break_infinity.js');
 
 const PASSWORD_TYPES = {
     'DICTIONARY':'Dictionary',

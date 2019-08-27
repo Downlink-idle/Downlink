@@ -4,9 +4,9 @@
   "description": "initial build of Downlink idle game",
   "main": "index.html",
   "dependencies": {
+    "break_infinity.js": "^1.0.9",
     "browserify": "^16.5.0",
     "cheerio": "^1.0.0-rc.3",
-    "decimal.js": "^10.2.0",
     "jquery": "^3.4.1",
     "jsdom": "^15.1.1",
     "save": "^2.4.0"

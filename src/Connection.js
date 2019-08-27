@@ -14,10 +14,17 @@ const Computer = require('./Computers/Computer');
         constructor(name)
         {
             connections++;
+            this.startingPoint = null;
             this.name = name?name:`Connection ${connections}`;
             this.computers=[];
             this.connectionLength = 0;
             this.computersTraced = 0;
+        }
+
+        setStartingPoint(playerComputer)
+        {
+            this.startingPoint = playerComputer;
+            return this;
         }
 
         open()
@@ -75,6 +82,21 @@ const Computer = require('./Computers/Computer');
             }
 
             return JSON.stringify(this.computers) === JSON.stringify(otherConnection.computers);
+        }
+
+        toJSON()
+        {
+            let json= {name:this.name, computers:[]};
+            for(let computer of this.computers)
+            {
+                json.computers.push(computer.toJSON());
+            }
+            return json;
+        }
+
+        static fromJSON(json, playerComputer)
+        {
+
         }
     }
 

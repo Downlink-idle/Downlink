@@ -103,6 +103,26 @@ class PlayerComputer extends Computer
         return missionTasks;
 
     }
+
+    toJSON()
+    {
+        let json = super.toJSON();
+        json.cpus = [];
+        for(let cpu of this.cpus)
+        {
+            json.cpus.push(cpu.toJSON());
+        }
+        return json;
+    }
+
+    static fromJSON(json)
+    {
+        let cpus = [];
+        for(let cpuJSON of json.cpus)
+        {
+            cpus.push(new CPU(cpuJSON.name, cpuJSON.speed))
+        }
+    }
 }
 
 module.exports = PlayerComputer;

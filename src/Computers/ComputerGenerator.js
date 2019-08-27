@@ -2,7 +2,8 @@ const   PlayerComputer = require('../PlayerComputer'),
         Computer = require('./Computer'),
         CPU = require('./CPU'),
         PublicComputer= require('./PublicComputer'),
-        MissionComputer = require('../Missions/MissionComputer');
+        MissionComputer = require('../Missions/MissionComputer'),
+        constructors = {PlayerComputer:PlayerComputer, PublicComputer:PublicComputer, MissionComputer:MissionComputer};
 
 const LAND_COLOR = 0xf2efe9;
 
@@ -91,6 +92,12 @@ class ComputerGenerator
     newPublicServer(company)
     {
         return new PublicComputer(company.name+' Public Server', company);
+    }
+
+    fromJSON(computerJSON, company)
+    {
+        let computer = constructors[computerJSON.className].fromJSON(computerJSON, company);
+        return computer;
     }
 }
 

@@ -1,11 +1,15 @@
 const   Computer = require('../Computers/Computer'),
-        Decimal = require('decimal.js');
+        Decimal = require('break_infinity.js');
 class MissionComputer extends Computer
 {
     constructor(company, serverType)
     {
         let name = company.name+' '+serverType;
-        super(name, company);
+        super(name, company, null);
+        /**
+         * @type {string}
+         */
+        this.serverType = serverType;
         /**
          * @type {Encryption}   The Encryption this computer has on it
          */
@@ -40,6 +44,18 @@ class MissionComputer extends Computer
          */
         this.challenges = [];
 
+    }
+
+    toJSON()
+    {
+        let json = super.toJSON();
+        json.serverType = this.serverType;
+    }
+
+    fromJSON(companyJSON, company)
+    {
+        let computer = new MissionComputer(company, companyJSON.serverType);
+        computer.setLocation(companyJSON.location);
     }
 
     /**

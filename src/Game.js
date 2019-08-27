@@ -7,12 +7,16 @@
             COMPANY_REP_CLASS = 'company-rep-row',
             PLAYER_COMPUTER_CPU_ROW_CLASS = "cpu-row";
 
+
     let game = {
         interval:null,
         ticking:true,
         initialised:false,
         mission:false,
         computer:null,
+
+        downlink:null,
+
         /**
          * jquery entities that are needed for updating
          */
@@ -93,12 +97,20 @@
          */
         buildCanvas:function()
         {
-            Downlink.performPostLoad(this.getFreshCanvas());
+            this.downlink.performPostLoad(this.getFreshCanvas());
 
             this.$worldMapContainer.css({
                 height:this.mapImageElement.height+'px',
                 width:this.mapImageElement.width+'px'
             });
+        },
+        newGame:function()
+        {
+            this.downlink = new Downlink();
+        },
+        loadGame:function(json)
+        {
+            this.downlink = Downlink.fromJSON(json);
         },
         initialise:function()
         {
@@ -109,18 +121,36 @@
 
             this.bindUIElements();
 
+            let saveFile = this.load();
+            try
+            {
+                if (saveFile)
+                {
+                    this.loadGame(saveFile);
+                }
+                else
+                {
+                    this.newGame();
+                }
+            }
+            catch(e)
+            {
+                console.log(e);
+                console.trace();
+            }
+
             // build the html elements that are used without missions stuff
             this.updatePlayerReputations();
 
             /*
              * expose the player computer class for test purposes
              */
-            this.computer = Downlink.playerComputer;
+            this.computer = this.downlink.playerComputer;
 
             this.initialised = true;
             this.buildWorldMap().then(()=>{
 
-                let pc = Downlink.setPlayerComputer();
+                let pc = this.downlink.setPlayerComputer();
                 this.addComputerToWorldMap(pc);
                 this.updateComputerBuild();
 
@@ -132,7 +162,7 @@
         },
         addPublicComputersToWorldMap:function()
         {
-            for(let computer of Downlink.allPublicServers)
+            for(let computer of this.downlink.allPublicServers)
             {
                 this.addComputerToWorldMap(computer, ()=>{
                     this.addComputerToConnection(computer);
@@ -141,9 +171,9 @@
         },
         addComputerToConnection(computer)
         {
-            let connection = Downlink.addComputerToConnection(computer);
+            let connection = this.downlink.addComputerToConnection(computer);
             let context = this.getFreshCanvas().getContext('2d');
-            let currentComputer = Downlink.playerComputer;
+            let currentComputer = this.downlink.playerComputer;
             for(let computer of connection.computers)
             {
                 // connect the current computer to the current computer in the connection
@@ -171,7 +201,7 @@
             {
                 if (this.ticking)
                 {
-                    Downlink.tick();
+                    this.downlink.tick();
                     this.animateTick();
                     this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
                 }
@@ -183,7 +213,7 @@
         },
         animateTick:function()
         {
-            let tasks = Downlink.currentMissionTasks;
+            let tasks = this.downlink.currentMissionTasks;
             if(tasks.crackers.password)
             {
                 this.animatePasswordField(tasks.crackers.password);
@@ -235,27 +265,27 @@
             this.$activeMissionEncryptionGrid.html(html);
         },
         getNewMission:function(){
-            this.mission = Downlink.getNextMission()
+            this.mission = this.downlink.getNextMission()
                 .on('complete', ()=>{
                     this.updatePlayerDetails();
                     this.getNewMission();
                 });
-            Downlink
+            this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
             this.updateMissionInterface(this.mission);
         },
         updatePlayerDetails:function()
         {
-            this.$playerCurrencySpan.html(Downlink.currency.toFixed(2));
+            this.$playerCurrencySpan.html(this.downlink.currency.toFixed(2));
             this.updatePlayerReputations();
         },
         updatePlayerReputations:function()
         {
             $(`.${COMPANY_REP_CLASS}`).remove();
             let html = '';
-            for(let company of Downlink.companies)
+            for(let company of this.downlink.companies)
             {
-                html += `<div class="row ${COMPANY_REP_CLASS}"><div class="col">${company.name}</div><div class="col">${company.playerRespectModifier.toFixed(2)}</div></div>`;
+                html += `<div class="row ${COMPANY_REP_CLASS}"><div class="col">${company.name}</div><div class="col-2">${company.playerRespectModifier.toFixed(2)}</div></div>`;
             }
             this.$playerStandingsTitle.after(html);
         },
@@ -264,7 +294,7 @@
             $(`.${PLAYER_COMPUTER_CPU_ROW_CLASS}`).remove();
 
             let html = '';
-            for(let cpu of Downlink.playerComputer.cpus)
+            for(let cpu of this.downlink.playerComputer.cpus)
             {
                 html += `<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}"><div class="col">${cpu.name}</div><div class="col">${cpu.speed}MHz</div></div>`;
             }
@@ -300,7 +330,7 @@
             $('.'+MISSION_LIST_CLASS).remove();
             this.$activeMissionName.html(mission.name);
             let html = '';
-            for(let mission of Downlink.availableMissions)
+            for(let mission of this.downlink.availableMissions)
             {
                 html += `<div class="row ${MISSION_LIST_CLASS}">${mission.name}</div>`;
             }
@@ -311,6 +341,7 @@
         {
             let $node = $('<div/>')
                 .addClass('computer')
+                .attr('title', computer.name)
                 .addClass(computer.constructor.name);
             if(callback)
             {
@@ -327,6 +358,27 @@
                 top:(computer.location.y - height / 2)+'px',
                 left:(computer.location.x - width / 2)+'px'
             })
+        },
+        getJSON:function()
+        {
+            return this.downlink.toJSON();
+        },
+        save:function()
+        {
+            let json = this.getJSON(),
+                jsonAsString = JSON.stringify(json),
+                jsonAsBinary = btoa(jsonAsString);
+            localStorage.setItem('saveFile', jsonAsBinary);
+        },
+        load:function()
+        {
+            let jsonAsBinary = localStorage.getItem('saveFile');
+            if(jsonAsBinary)
+            {
+                let jsonAsString = atob(jsonAsBinary), json = JSON.parse(jsonAsString);
+                return json;
+            }
+            return null;
         }
     };
 

@@ -2,9 +2,9 @@ const   MissionGenerator = require('./Missions/MissionGenerator'),
         //PlayerComputer = require('./PlayerComputer'),
         EventListener = require('./EventListener'),
         Connection = require('./Connection'),
-        Company = require('./Company'),
+        Company = require('./Companies/Company'),
         ComputerGenerator = require('./Computers/ComputerGenerator'),
-        Decimal = require('decimal.js');
+        Decimal = require('break_infinity.js');
 
 /**
  * This class serves to expose, to the front end, any of the game classes functionality that the UI needs access to
@@ -23,6 +23,7 @@ class Downlink extends EventListener
          */
         this.playerConnection = null;
         this.getNewConnection();
+
         this.currency = new Decimal(0);
     }
 
@@ -35,6 +36,7 @@ class Downlink extends EventListener
     setPlayerComputer()
     {
         this.playerComputer = ComputerGenerator.newPlayerComputer();
+        this.playerConnection.setStartingPoint(this.playerComputer);
         return this.playerComputer;
     }
 
@@ -119,6 +121,31 @@ class Downlink extends EventListener
         let result = this.playerConnection.addComputer(computer);
         return result;
     }
+
+    toJSON()
+    {
+        let json = {
+            playerComputer:this.playerComputer.toJSON(),
+            playerConnection:this.playerConnection.toJSON(),
+            companies:[],
+            currency:this.currency.toString()
+        };
+        for(let company of this.companies)
+        {
+            json.companies.push(company.toJSON());
+        }
+        return json;
+    }
+
+    static fromJSON(json)
+    {
+        let downlink = new Downlink();
+
+        downlink.currency = Decimal.fromString(json.currency);
+        Company.loadCompaniesFromJSON(json.companies);
+
+        return downlink;
+    }
 }
 
-module.exports = new Downlink();
+module.exports = Downlink;

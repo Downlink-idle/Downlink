@@ -52,15 +52,17 @@ class Computer extends EventListener
 
     }
 
-    static fromJSON(json)
+    static fromJSON(json, company)
     {
-        let computer = new Computer(json.name, json.ipAddress);
+        let computer = new this(json.name, company, json.ipAddress);
         computer.setLocation(json.location);
+        return computer;
     }
 
     toJSON()
     {
-        let json = {
+        return {
+            className:this.constructor.name,
             name:this.name,
             ipAddress:this.ipAddress,
             location:this.location
