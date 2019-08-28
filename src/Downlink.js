@@ -51,7 +51,10 @@ class Downlink extends EventListener
     tick()
     {
         this.playerComputer.tick();
-        this.activeMission.tick();
+        if(this.activeMission)
+        {
+            this.activeMission.tick();
+        }
     }
 
     getNextMission()

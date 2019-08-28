@@ -23,7 +23,7 @@
 
     <div class="container-fluid min-vh-100">
         <div class="row"><nav id="game-menu">
-            <a class="game-link" id="connectionModalLink" data-toggle="modal" data-target="#connectionModal" href="#">Connection Manager</a>
+            <a class="game-link" id="connectionModalLink" href="#">Connection Manager</a>
             |
             <span class="game-link">Shop</span>
         </nav></div>
@@ -76,9 +76,10 @@
                 <a href="https://github.com/CuAnnan/Downlink" target="_blank">Github</a>
             </nav>
         </div>
+
     </div>
 
-    <div class="modal" tabindex="-1" id="connectionModal" role="dialog" aria-labelledby="connectionModalLink" aria-hidden="true">
+    <div class="modal" tabindex="-1" id="connection-modal" role="dialog" aria-labelledby="connectionModalLink" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -98,21 +99,6 @@
             </div>
         </div>
     </div>
-
-    <script type="text/javascript">
-        // Modal not working via normal markup
-        // so hacking it to force it to work
-        /*
-        $(function(){
-            $('.game-link').click(
-                function()
-                {
-                    $($(this).data('target')).modal({keyboard:false,backdrop:"static"});
-                }
-            );
-        });
-         */
-    </script>
 
 </body>
 </html>

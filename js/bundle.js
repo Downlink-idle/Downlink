@@ -4670,7 +4670,10 @@ class Downlink extends EventListener
     tick()
     {
         this.playerComputer.tick();
-        this.activeMission.tick();
+        if(this.activeMission)
+        {
+            this.activeMission.tick();
+        }
     }
 
     getNextMission()
@@ -4900,9 +4903,9 @@ module.exports = EventListener;
         interval:null,
         ticking:true,
         initialised:false,
+        takingMissions:true,
         mission:false,
         computer:null,
-
         downlink:null,
 
         /**
@@ -4921,6 +4924,7 @@ module.exports = EventListener;
         $worldMapModal:null,
         $worldMapContainer:null,
         $worldMapCanvasContainer:null,
+        $activeMissionServer:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -4929,6 +4933,7 @@ module.exports = EventListener;
         {
             this.$missionContainer = $('#mission-list');
             this.$activeMissionName = $('#active-mission');
+            this.$activeMissionServer = $('#active-mission-machine-details');
             this.$activeMissionPassword = $('#active-mission-password-input');
             this.$activeMissionEncryptionGrid = $('#active-mission-encryption-grid');
             this.$activeMissionEncryptionType = $('#active-mission-encryption-type');
@@ -4940,6 +4945,7 @@ module.exports = EventListener;
             this.$worldMapModal = $('#connection-modal');
             this.$worldMapContainer = $('#world-map');
             this.$worldMapCanvasContainer = $('#canvas-container');
+            this.$worldMapModal.on("hide.bs.modal", ()=>{this.afterHideConnectionManager()});
         },
         buildWorldMap:function()
         {
@@ -5041,7 +5047,7 @@ module.exports = EventListener;
 
                 this.ticking = true;
                 this.updateConnectionMap();
-                this.getNewMission();
+                this.getNextMission();
             });
         },
         addPublicComputersToWorldMap:function()
@@ -5076,7 +5082,7 @@ module.exports = EventListener;
         },
         start:function(){
             this.initialise();
-            //this.tick();
+            this.tick();
         },
         stop:function(){
             this.ticking = false;
@@ -5150,11 +5156,17 @@ module.exports = EventListener;
             }
             this.$activeMissionEncryptionGrid.html(html);
         },
-        getNewMission:function(){
+        getNextMission:function(){
+            if(!this.takingMissions)
+            {
+                this.$activeMissionServer.hide();
+                return false;
+            }
+            this.$activeMissionServer.show();
             this.mission = this.downlink.getNextMission()
                 .on('complete', ()=>{
                     this.updatePlayerDetails();
-                    this.getNewMission();
+                    this.getNextMission();
                 });
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
@@ -5265,8 +5277,21 @@ module.exports = EventListener;
                 return json;
             }
             return null;
+        },
+        showConnectionManager:function()
+        {
+            this.takingMissions = false;
+            this.$worldMapModal.modal({keyboard:false, backdrop:"static"});
+        },
+        afterHideConnectionManager:function()
+        {
+            this.takingMissions = true;
+            this.getNextMission();
         }
     };
+
+    $('#connectionModalLink').click(()=>{game.showConnectionManager()});
+
 
     game.start();
 
