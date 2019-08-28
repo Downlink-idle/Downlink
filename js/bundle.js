@@ -5010,29 +5010,16 @@ module.exports = EventListener;
         },
         initialise:function()
         {
-            if(this.initialised)
-            {
-                return;
-            }
-
             this.bindUIElements();
 
             let saveFile = this.load();
-            try
+            if (saveFile)
             {
-                if (saveFile)
-                {
-                    this.loadGame(saveFile);
-                }
-                else
-                {
-                    this.newGame();
-                }
+                this.loadGame(saveFile);
             }
-            catch(e)
+            else
             {
-                console.log(e);
-                console.trace();
+                this.newGame();
             }
 
             // build the html elements that are used without missions stuff
@@ -5084,7 +5071,17 @@ module.exports = EventListener;
             }
         },
         start:function(){
-            this.initialise().then(()=>{this.tick()});
+            this.ticking = true;
+            if(this.initialised)
+            {
+                this.tick();
+            }
+            else
+            {
+                this.initialise().then(() => {
+                    this.tick()
+                });
+            }
         },
         stop:function(){
             this.ticking = false;
