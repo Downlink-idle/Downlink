@@ -4786,7 +4786,9 @@ class Downlink extends EventListener
     static getNew()
     {
         Company.buildCompanyList();
-        return new Downlink();
+
+        let dl = new Downlink();
+        return dl;
     }
 }
 
@@ -5037,7 +5039,7 @@ module.exports = EventListener;
             this.updatePlayerReputations();
 
             this.initialised = true;
-            this.buildWorldMap().then(()=>{
+            return this.buildWorldMap().then(()=>{
 
                 let pc = this.downlink.getPlayerComputer();
                 this.addComputerToWorldMap(pc);
@@ -5048,6 +5050,7 @@ module.exports = EventListener;
                 this.ticking = true;
                 this.updateConnectionMap();
                 this.getNextMission();
+
             });
         },
         addPublicComputersToWorldMap:function()
@@ -5081,8 +5084,7 @@ module.exports = EventListener;
             }
         },
         start:function(){
-            this.initialise();
-            this.tick();
+            this.initialise().then(()=>{this.tick()});
         },
         stop:function(){
             this.ticking = false;

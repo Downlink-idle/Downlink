@@ -146,7 +146,7 @@
             this.updatePlayerReputations();
 
             this.initialised = true;
-            this.buildWorldMap().then(()=>{
+            return this.buildWorldMap().then(()=>{
 
                 let pc = this.downlink.getPlayerComputer();
                 this.addComputerToWorldMap(pc);
@@ -157,6 +157,7 @@
                 this.ticking = true;
                 this.updateConnectionMap();
                 this.getNextMission();
+
             });
         },
         addPublicComputersToWorldMap:function()
@@ -190,8 +191,7 @@
             }
         },
         start:function(){
-            this.initialise();
-            this.tick();
+            this.initialise().then(()=>{this.tick()});
         },
         stop:function(){
             this.ticking = false;
