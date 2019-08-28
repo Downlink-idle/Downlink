@@ -32,7 +32,7 @@ class Challenge extends EventListener
     }
 
     /**
-     * A method to signal to the Mission Computer, or localhost that a Challenge has been complete.
+     * A method to signal to the Mission Computers, or localhost that a Challenge has been complete.
      */
     signalSolved()
     {

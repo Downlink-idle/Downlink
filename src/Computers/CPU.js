@@ -1,6 +1,6 @@
-    const   Task = require('./Tasks/Task'),
-            EventListener = require('./EventListener'),
-            Decimal = require('decimal.js');
+    const   Task = require('../Tasks/Task'),
+            EventListener = require('../EventListener'),
+            Decimal = require('break_infinity.js');
 
     class CPUFullError extends Error{};
     class CPUDuplicateTaskError extends Error{};
@@ -20,11 +20,19 @@
             /**
              * @type {Decimal}
              */
-            this.speed = speed?speed:Decimal(DEFAULT_PROCESSOR_SPEED);
+            this.speed = speed?new Decimal(speed):new Decimal(DEFAULT_PROCESSOR_SPEED);
             /**
              * @type {Array.<Task>}
              */
             this.tasks = [];
+        }
+
+        toJSON()
+        {
+            return {
+                name:this.name,
+                speed:this.speed.toJSON()
+            }
         }
 
         /**

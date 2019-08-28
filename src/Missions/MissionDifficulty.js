@@ -1,4 +1,4 @@
-const Decimal = require('decimal.js');
+const Decimal = require('break_infinity.js');
 
 /**
  * This class largely exists to make commenting cleaner

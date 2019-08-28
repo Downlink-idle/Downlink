@@ -1,4 +1,4 @@
-const   Company = require('../Company'),
+const   Company = require('../Companies/Company'),
     MissionComputer = require('./MissionComputer'),
     Password = require('../Challenges/Password'),
     Encryption = require('../Challenges/Encryption'),

@@ -1,9 +1,9 @@
-const   Password = require('./Challenges/Password'),
+   Password = require('./Challenges/Password'),
         {DictionaryCracker, PasswordCracker} = require('./Tasks/PasswordCracker'),
         Encryption = require('./Challenges/Encryption'),
         EncryptionCracker = require('./Tasks/EncryptionCracker'),
-        Computer = require('./Computer'),
-        CPU = require('./CPU.js');
+        Computer = require('./Computers/Computer'),
+        CPU = require('./Computers/CPU.js');
 
 class InvalidTaskError extends Error{};
 class NoFreeCPUCyclesError extends Error{};
@@ -71,13 +71,6 @@ class PlayerComputer extends Computer
         }
     }
 
-    static getMyFirstComputer()
-    {
-        let potato = new PlayerComputer([
-            new CPU()
-        ]);
-        return potato;
-    }
 
     get tasks()
     {
@@ -109,6 +102,29 @@ class PlayerComputer extends Computer
         }
         return missionTasks;
 
+    }
+
+    toJSON()
+    {
+        let json = super.toJSON();
+        json.cpus = [];
+        for(let cpu of this.cpus)
+        {
+            json.cpus.push(cpu.toJSON());
+        }
+        return json;
+    }
+
+    static fromJSON(json)
+    {
+        let cpus = [];
+        for(let cpuJSON of json.cpus)
+        {
+            cpus.push(new CPU(cpuJSON.name, cpuJSON.speed))
+        }
+        let pc = new PlayerComputer(cpus);
+        pc.setLocation(json.location);
+        return pc;
     }
 }
 
