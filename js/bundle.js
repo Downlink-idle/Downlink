@@ -4909,7 +4909,7 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-
+        version:"0.1a",
         /**
          * jquery entities that are needed for updating
          */
@@ -4948,6 +4948,7 @@ module.exports = EventListener;
             this.$worldMapContainer = $('#world-map');
             this.$worldMapCanvasContainer = $('#canvas-container');
             this.$worldMapModal.on("hide.bs.modal", ()=>{this.afterHideConnectionManager()});
+            $('#game-version').html(this.version);
         },
         buildWorldMap:function()
         {
@@ -5071,6 +5072,7 @@ module.exports = EventListener;
             }
         },
         start:function(){
+
             this.ticking = true;
             if(this.initialised)
             {
