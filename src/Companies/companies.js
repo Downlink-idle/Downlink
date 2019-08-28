@@ -12,7 +12,6 @@ let companyNames = [
     "Athena",
     "Hybrides",
     "Tógan Labs", // with permission from Eilís Ní Fhlannagáin
-
 ];
 
 module.exports = companyNames;

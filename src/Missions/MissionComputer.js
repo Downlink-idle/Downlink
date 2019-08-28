@@ -5,7 +5,7 @@ class MissionComputer extends Computer
     constructor(company, serverType)
     {
         let name = company.name+' '+serverType;
-        super(name, company, null);
+        super(name, null);
         /**
          * @type {string}
          */

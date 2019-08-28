@@ -82,16 +82,18 @@ class ComputerGenerator
         return this;
     }
 
-    newPlayerComputer()
+    newPlayerComputer(location)
     {
         let potato = new PlayerComputer([new CPU()]);
-        potato.setLocation(this.getRandomLandboundPoint());
+        potato.setLocation(location?location:this.getRandomLandboundPoint());
         return potato;
     }
 
     newPublicServer(company)
     {
-        return new PublicComputer(company.name+' Public Server', company);
+        let server = new PublicComputer(company.name+' Public Server');
+        server.setCompany(company);
+        return server;
     }
 
     fromJSON(computerJSON, company)

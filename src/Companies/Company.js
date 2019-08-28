@@ -6,6 +6,7 @@ const   ComputerGenerator = require('../Computers/ComputerGenerator'),
  * @type {Array.<Company>}
  */
 let companies = [],
+    /** @type {boolean} */
     locationsSet = false;
 
 
@@ -14,7 +15,7 @@ class Company
     constructor(name)
     {
         this.name = name;
-        this.publicServer = ComputerGenerator.newPublicServer(this);
+
         this.computers = [];
 
         /**
@@ -28,6 +29,12 @@ class Company
          * this is the increase exponent for successfully achieved missions
          */
         this.missionSuccessIncreaseExponent = new Decimal(1.05);
+    }
+
+    setPublicServer(publicServer)
+    {
+        this.publicServer = publicServer;
+        publicServer.setCompany(this);
     }
 
     addComputer(computer)
@@ -68,16 +75,17 @@ class Company
 
     toJSON()
     {
+
         let json = {
             name:this.name,
-            publicServer:this.publicServer,
+            publicServer:this.publicServer.toJSON(),
             computers:[],
             playerRespectModifier:this.playerRespectModifier.toString(),
             missionSuccessIncreaseExponent:this.missionSuccessIncreaseExponent.toString()
         };
         for(let computer of this.computers)
         {
-            json.computers.push(computer);
+            json.computers.push(computer.toJSON());
         }
         return json;
     }
@@ -89,26 +97,34 @@ class Company
         {
             companies.push(Company.fromJSON(companyJSON));
         }
-        locationsSet = true;
     }
 
     static fromJSON(companyJSON)
     {
         let company = new Company(companyJSON.name);
+        company.setPublicServer(ComputerGenerator.fromJSON(companyJSON.publicServer));
         company.playerRespectModifier = Decimal.fromString(companyJSON.playerRespectModifier);
         company.missionSuccessIncreaseExponent = Decimal.fromString(companyJSON.missionSuccessIncreaseExponent);
-        company.publicServer = ComputerGenerator.fromJSON(companyJSON.publicServer);
+
         for(let computerJSON of company.computers)
         {
             company.addComputer(ComputerGenerator.fromJSON(computerJSON, company));
         }
+        locationsSet = true;
         return company;
+    }
+
+    static buildCompanyList()
+    {
+        companies = [];
+        for(let companyName of companyNames)
+        {
+            let company = new Company(companyName);
+            company.setPublicServer(ComputerGenerator.newPublicServer(company));
+            companies.push(company);
+        }
     }
 }
 
-for(let companyName of companyNames)
-{
-    companies.push(new Company(companyName));
-}
 
 module.exports = Company;

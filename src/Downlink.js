@@ -1,5 +1,4 @@
 const   MissionGenerator = require('./Missions/MissionGenerator'),
-        //PlayerComputer = require('./PlayerComputer'),
         EventListener = require('./EventListener'),
         Connection = require('./Connection'),
         Company = require('./Companies/Company'),
@@ -37,6 +36,15 @@ class Downlink extends EventListener
     {
         this.playerComputer = ComputerGenerator.newPlayerComputer();
         this.playerConnection.setStartingPoint(this.playerComputer);
+        return this.playerComputer;
+    }
+
+    getPlayerComputer()
+    {
+        if(!this.playerComputer)
+        {
+            this.setPlayerComputer();
+        }
         return this.playerComputer;
     }
 
@@ -139,12 +147,23 @@ class Downlink extends EventListener
 
     static fromJSON(json)
     {
+        Company.loadCompaniesFromJSON(json.companies);
+
         let downlink = new Downlink();
 
         downlink.currency = Decimal.fromString(json.currency);
-        Company.loadCompaniesFromJSON(json.companies);
+        downlink.playerComputer = ComputerGenerator.fromJSON(json.playerComputer);
+
+        downlink.playerConnection = Connection.fromJSON(json.playerConnection);
+        downlink.playerConnection.setStartingPoint(downlink.playerComputer);
 
         return downlink;
+    }
+
+    static getNew()
+    {
+        Company.buildCompanyList();
+        return new Downlink();
     }
 }
 

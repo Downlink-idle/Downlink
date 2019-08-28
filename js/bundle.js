@@ -3999,6 +3999,7 @@ const   ComputerGenerator = require('../Computers/ComputerGenerator'),
  * @type {Array.<Company>}
  */
 let companies = [],
+    /** @type {boolean} */
     locationsSet = false;
 
 
@@ -4007,7 +4008,7 @@ class Company
     constructor(name)
     {
         this.name = name;
-        this.publicServer = ComputerGenerator.newPublicServer(this);
+
         this.computers = [];
 
         /**
@@ -4021,6 +4022,12 @@ class Company
          * this is the increase exponent for successfully achieved missions
          */
         this.missionSuccessIncreaseExponent = new Decimal(1.05);
+    }
+
+    setPublicServer(publicServer)
+    {
+        this.publicServer = publicServer;
+        publicServer.setCompany(this);
     }
 
     addComputer(computer)
@@ -4061,16 +4068,17 @@ class Company
 
     toJSON()
     {
+
         let json = {
             name:this.name,
-            publicServer:this.publicServer,
+            publicServer:this.publicServer.toJSON(),
             computers:[],
             playerRespectModifier:this.playerRespectModifier.toString(),
             missionSuccessIncreaseExponent:this.missionSuccessIncreaseExponent.toString()
         };
         for(let computer of this.computers)
         {
-            json.computers.push(computer);
+            json.computers.push(computer.toJSON());
         }
         return json;
     }
@@ -4082,27 +4090,35 @@ class Company
         {
             companies.push(Company.fromJSON(companyJSON));
         }
-        locationsSet = true;
     }
 
     static fromJSON(companyJSON)
     {
         let company = new Company(companyJSON.name);
+        company.setPublicServer(ComputerGenerator.fromJSON(companyJSON.publicServer));
         company.playerRespectModifier = Decimal.fromString(companyJSON.playerRespectModifier);
         company.missionSuccessIncreaseExponent = Decimal.fromString(companyJSON.missionSuccessIncreaseExponent);
-        company.publicServer = ComputerGenerator.fromJSON(companyJSON.publicServer);
+
         for(let computerJSON of company.computers)
         {
             company.addComputer(ComputerGenerator.fromJSON(computerJSON, company));
         }
+        locationsSet = true;
         return company;
+    }
+
+    static buildCompanyList()
+    {
+        companies = [];
+        for(let companyName of companyNames)
+        {
+            let company = new Company(companyName);
+            company.setPublicServer(ComputerGenerator.newPublicServer(company));
+            companies.push(company);
+        }
     }
 }
 
-for(let companyName of companyNames)
-{
-    companies.push(new Company(companyName));
-}
 
 module.exports = Company;
 
@@ -4121,7 +4137,6 @@ let companyNames = [
     "Athena",
     "Hybrides",
     "Tógan Labs", // with permission from Eilís Ní Fhlannagáin
-
 ];
 
 module.exports = companyNames;
@@ -4271,21 +4286,44 @@ function randomIPAddress()
     return ipAddress;
 }
 
+let allComputers = {};
+
 class Computer extends EventListener
 {
     /**
      *
      * @param {string}      name      The name of the computer
-     * @param {Computer}    company   The company the computer belongs to
      * @param {string|null} ipAddress The ipAddress, if none provided a random ip address
      */
-    constructor(name, company, ipAddress)
+    constructor(name, ipAddress)
     {
         super();
         this.name= name;
-        this.ipAddress = ipAddress?ipAddress:randomIPAddress();
+        // stop two computers having the same ip address
+        // while the statistic chances of this are **REALLY REALLY** small on any given instance, it will almost certainly
+        // happen to some poor schmuck and fuck his save file up
+        while(ipAddress == null)
+        {
+            let testIPAddress = randomIPAddress();
+            if(Object.keys(allComputers).indexOf(testIPAddress) < 0)
+            {
+                ipAddress = testIPAddress;
+            }
+        }
+        this.ipAddress = ipAddress;
         this.location = null;
+        this.company = null;
+        allComputers[this.simpleHash] = this;
+    }
+
+    setCompany(company)
+    {
         this.company = company;
+    }
+
+    get simpleHash()
+    {
+        return this.name+'::'+this.ipAddress;
     }
 
     setLocation(location)
@@ -4309,10 +4347,23 @@ class Computer extends EventListener
 
     }
 
+    static allComputers()
+    {
+        return allComputers;
+    }
+
+    static getComputerByHash(hash)
+    {
+        return allComputers[hash];
+    }
+
+
     static fromJSON(json, company)
     {
-        let computer = new this(json.name, company, json.ipAddress);
-        computer.setLocation(json.location);
+        let computer = new this(json.name, json.ipAddress);
+
+        computer.location = json.location;
+        computer.company = company;
         return computer;
     }
 
@@ -4325,6 +4376,8 @@ class Computer extends EventListener
             location:this.location
         };
     }
+
+
 }
 
 module.exports = Computer;
@@ -4414,16 +4467,18 @@ class ComputerGenerator
         return this;
     }
 
-    newPlayerComputer()
+    newPlayerComputer(location)
     {
         let potato = new PlayerComputer([new CPU()]);
-        potato.setLocation(this.getRandomLandboundPoint());
+        potato.setLocation(location?location:this.getRandomLandboundPoint());
         return potato;
     }
 
     newPublicServer(company)
     {
-        return new PublicComputer(company.name+' Public Server', company);
+        let server = new PublicComputer(company.name+' Public Server');
+        server.setCompany(company);
+        return server;
     }
 
     fromJSON(computerJSON, company)
@@ -4442,11 +4497,10 @@ let Computer = require('./Computer');
 
 class PublicComputer extends Computer
 {
-    constructor(name, company)
+    constructor(name, ipAddress)
     {
-        super(name, company, null);
+        super(name, ipAddress);
     }
-
 }
 
 module.exports = PublicComputer;
@@ -4540,12 +4594,23 @@ const Computer = require('./Computers/Computer');
 
         toJSON()
         {
-            let json= {computers:[]};
+            let json= {name:this.name, computerHashes:[]};
             for(let computer of this.computers)
             {
-                json.computers.push(computer.toJSON());
+                json.computerHashes.push(computer.simpleHash);
             }
             return json;
+        }
+
+        static fromJSON(json, startingPoint)
+        {
+            let connection = new Connection(json.name);
+            connection.startingPoint = startingPoint;
+            for(let computerHash of json.computerHashes)
+            {
+                connection.addComputer(Computer.getComputerByHash(computerHash));
+            }
+            return connection;
         }
     }
 
@@ -4553,7 +4618,6 @@ module.exports = Connection;
 
 },{"./Computers/Computer":10}],14:[function(require,module,exports){
 const   MissionGenerator = require('./Missions/MissionGenerator'),
-        //PlayerComputer = require('./PlayerComputer'),
         EventListener = require('./EventListener'),
         Connection = require('./Connection'),
         Company = require('./Companies/Company'),
@@ -4591,6 +4655,15 @@ class Downlink extends EventListener
     {
         this.playerComputer = ComputerGenerator.newPlayerComputer();
         this.playerConnection.setStartingPoint(this.playerComputer);
+        return this.playerComputer;
+    }
+
+    getPlayerComputer()
+    {
+        if(!this.playerComputer)
+        {
+            this.setPlayerComputer();
+        }
         return this.playerComputer;
     }
 
@@ -4693,12 +4766,23 @@ class Downlink extends EventListener
 
     static fromJSON(json)
     {
+        Company.loadCompaniesFromJSON(json.companies);
+
         let downlink = new Downlink();
 
         downlink.currency = Decimal.fromString(json.currency);
-        Company.loadCompaniesFromJSON(json.companies);
+        downlink.playerComputer = ComputerGenerator.fromJSON(json.playerComputer);
+
+        downlink.playerConnection = Connection.fromJSON(json.playerConnection);
+        downlink.playerConnection.setStartingPoint(downlink.playerComputer);
 
         return downlink;
+    }
+
+    static getNew()
+    {
+        Company.buildCompanyList();
+        return new Downlink();
     }
 }
 
@@ -4802,6 +4886,7 @@ module.exports = EventListener;
 
 },{}],16:[function(require,module,exports){
 // namespace for the entire game;
+const Computer = require('./Computers/Computer');
 
 (($)=>{$(()=>{
     const   Downlink = require('./Downlink'),
@@ -4909,7 +4994,7 @@ module.exports = EventListener;
         },
         newGame:function()
         {
-            this.downlink = new Downlink();
+            this.downlink = Downlink.getNew();
         },
         loadGame:function(json)
         {
@@ -4945,21 +5030,17 @@ module.exports = EventListener;
             // build the html elements that are used without missions stuff
             this.updatePlayerReputations();
 
-            /*
-             * expose the player computer class for test purposes
-             */
-            this.computer = this.downlink.playerComputer;
-
             this.initialised = true;
             this.buildWorldMap().then(()=>{
 
-                let pc = this.downlink.setPlayerComputer();
+                let pc = this.downlink.getPlayerComputer();
                 this.addComputerToWorldMap(pc);
                 this.updateComputerBuild();
 
                 this.addPublicComputersToWorldMap();
 
                 this.ticking = true;
+                this.updateConnectionMap();
                 this.getNewMission();
             });
         },
@@ -4972,9 +5053,14 @@ module.exports = EventListener;
                 });
             }
         },
-        addComputerToConnection(computer)
+        addComputerToConnection:function(computer)
         {
-            let connection = this.downlink.addComputerToConnection(computer);
+            this.downlink.addComputerToConnection(computer);
+            this.updateConnectionMap();
+        },
+        updateConnectionMap:function()
+        {
+            let connection = this.downlink.playerConnection;
             let context = this.getFreshCanvas().getContext('2d');
             let currentComputer = this.downlink.playerComputer;
             for(let computer of connection.computers)
@@ -5182,6 +5268,10 @@ module.exports = EventListener;
                 return json;
             }
             return null;
+        },
+        getComputers:function()
+        {
+            return Computer.allComputers();
         }
     };
 
@@ -5190,7 +5280,7 @@ module.exports = EventListener;
     window.game = game;
 })})(window.jQuery);
 
-},{"./Downlink":14}],17:[function(require,module,exports){
+},{"./Computers/Computer":10,"./Downlink":14}],17:[function(require,module,exports){
 const   Company = require('../Companies/Company'),
     MissionComputer = require('./MissionComputer'),
     Password = require('../Challenges/Password'),
@@ -5329,7 +5419,7 @@ class MissionComputer extends Computer
     constructor(company, serverType)
     {
         let name = company.name+' '+serverType;
-        super(name, company, null);
+        super(name, null);
         /**
          * @type {string}
          */
@@ -5554,7 +5644,7 @@ class MissionGenerator
 module.exports = MissionGenerator;
 
 },{"./Mission":17}],21:[function(require,module,exports){
-const   Password = require('./Challenges/Password'),
+   Password = require('./Challenges/Password'),
         {DictionaryCracker, PasswordCracker} = require('./Tasks/PasswordCracker'),
         Encryption = require('./Challenges/Encryption'),
         EncryptionCracker = require('./Tasks/EncryptionCracker'),
@@ -5678,6 +5768,9 @@ class PlayerComputer extends Computer
         {
             cpus.push(new CPU(cpuJSON.name, cpuJSON.speed))
         }
+        let pc = new PlayerComputer(cpus);
+        pc.setLocation(json.location);
+        return pc;
     }
 }
 

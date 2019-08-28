@@ -86,17 +86,23 @@ const Computer = require('./Computers/Computer');
 
         toJSON()
         {
-            let json= {name:this.name, computers:[]};
+            let json= {name:this.name, computerHashes:[]};
             for(let computer of this.computers)
             {
-                json.computers.push(computer.toJSON());
+                json.computerHashes.push(computer.simpleHash);
             }
             return json;
         }
 
-        static fromJSON(json, playerComputer)
+        static fromJSON(json, startingPoint)
         {
-
+            let connection = new Connection(json.name);
+            connection.startingPoint = startingPoint;
+            for(let computerHash of json.computerHashes)
+            {
+                connection.addComputer(Computer.getComputerByHash(computerHash));
+            }
+            return connection;
         }
     }
 

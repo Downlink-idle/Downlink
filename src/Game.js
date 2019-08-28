@@ -1,4 +1,5 @@
 // namespace for the entire game;
+const Computer = require('./Computers/Computer');
 
 (($)=>{$(()=>{
     const   Downlink = require('./Downlink'),
@@ -106,7 +107,7 @@
         },
         newGame:function()
         {
-            this.downlink = new Downlink();
+            this.downlink = Downlink.getNew();
         },
         loadGame:function(json)
         {
@@ -142,21 +143,17 @@
             // build the html elements that are used without missions stuff
             this.updatePlayerReputations();
 
-            /*
-             * expose the player computer class for test purposes
-             */
-            this.computer = this.downlink.playerComputer;
-
             this.initialised = true;
             this.buildWorldMap().then(()=>{
 
-                let pc = this.downlink.setPlayerComputer();
+                let pc = this.downlink.getPlayerComputer();
                 this.addComputerToWorldMap(pc);
                 this.updateComputerBuild();
 
                 this.addPublicComputersToWorldMap();
 
                 this.ticking = true;
+                this.updateConnectionMap();
                 this.getNewMission();
             });
         },
@@ -169,9 +166,14 @@
                 });
             }
         },
-        addComputerToConnection(computer)
+        addComputerToConnection:function(computer)
         {
-            let connection = this.downlink.addComputerToConnection(computer);
+            this.downlink.addComputerToConnection(computer);
+            this.updateConnectionMap();
+        },
+        updateConnectionMap:function()
+        {
+            let connection = this.downlink.playerConnection;
             let context = this.getFreshCanvas().getContext('2d');
             let currentComputer = this.downlink.playerComputer;
             for(let computer of connection.computers)
@@ -379,6 +381,10 @@
                 return json;
             }
             return null;
+        },
+        getComputers:function()
+        {
+            return Computer.allComputers();
         }
     };
 

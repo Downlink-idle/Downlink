@@ -1,4 +1,4 @@
-const   Password = require('./Challenges/Password'),
+   Password = require('./Challenges/Password'),
         {DictionaryCracker, PasswordCracker} = require('./Tasks/PasswordCracker'),
         Encryption = require('./Challenges/Encryption'),
         EncryptionCracker = require('./Tasks/EncryptionCracker'),
@@ -122,6 +122,9 @@ class PlayerComputer extends Computer
         {
             cpus.push(new CPU(cpuJSON.name, cpuJSON.speed))
         }
+        let pc = new PlayerComputer(cpus);
+        pc.setLocation(json.location);
+        return pc;
     }
 }
 

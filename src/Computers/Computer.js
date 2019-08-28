@@ -14,21 +14,44 @@ function randomIPAddress()
     return ipAddress;
 }
 
+let allComputers = {};
+
 class Computer extends EventListener
 {
     /**
      *
      * @param {string}      name      The name of the computer
-     * @param {Computer}    company   The company the computer belongs to
      * @param {string|null} ipAddress The ipAddress, if none provided a random ip address
      */
-    constructor(name, company, ipAddress)
+    constructor(name, ipAddress)
     {
         super();
         this.name= name;
-        this.ipAddress = ipAddress?ipAddress:randomIPAddress();
+        // stop two computers having the same ip address
+        // while the statistic chances of this are **REALLY REALLY** small on any given instance, it will almost certainly
+        // happen to some poor schmuck and fuck his save file up
+        while(ipAddress == null)
+        {
+            let testIPAddress = randomIPAddress();
+            if(Object.keys(allComputers).indexOf(testIPAddress) < 0)
+            {
+                ipAddress = testIPAddress;
+            }
+        }
+        this.ipAddress = ipAddress;
         this.location = null;
+        this.company = null;
+        allComputers[this.simpleHash] = this;
+    }
+
+    setCompany(company)
+    {
         this.company = company;
+    }
+
+    get simpleHash()
+    {
+        return this.name+'::'+this.ipAddress;
     }
 
     setLocation(location)
@@ -52,10 +75,23 @@ class Computer extends EventListener
 
     }
 
+    static allComputers()
+    {
+        return allComputers;
+    }
+
+    static getComputerByHash(hash)
+    {
+        return allComputers[hash];
+    }
+
+
     static fromJSON(json, company)
     {
-        let computer = new this(json.name, company, json.ipAddress);
-        computer.setLocation(json.location);
+        let computer = new this(json.name, json.ipAddress);
+
+        computer.location = json.location;
+        computer.company = company;
         return computer;
     }
 
@@ -68,6 +104,8 @@ class Computer extends EventListener
             location:this.location
         };
     }
+
+
 }
 
 module.exports = Computer;

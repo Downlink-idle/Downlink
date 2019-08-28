@@ -2,11 +2,10 @@ let Computer = require('./Computer');
 
 class PublicComputer extends Computer
 {
-    constructor(name, company)
+    constructor(name, ipAddress)
     {
-        super(name, company, null);
+        super(name, ipAddress);
     }
-
 }
 
 module.exports = PublicComputer;
