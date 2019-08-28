@@ -12,6 +12,7 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js" integrity="sha384-xrRywqdh3PHs8keKZN+8zzc5TX0GRTLCcmivcbNJWm2rs5C8PRhcEn3czEjhAO9o" crossorigin="anonymous"></script>
 
+
     <!-- main css -->
     <link href="./css/main.css" rel="stylesheet"/>
 
@@ -21,6 +22,11 @@
     <script src="js/bundle.js"></script>
 
     <div class="container-fluid min-vh-100">
+        <div class="row"><nav id="game-menu">
+            <a class="game-link" id="connectionModalLink" data-toggle="modal" data-target="#connectionModal" href="#">Connection Manager</a>
+            |
+            <span class="game-link">Shop</span>
+        </nav></div>
         <div class="row" id="missionInterface">
             <div class="col-6 col-lg-3" id="player-details">
                 <h2 class="row">Player:</h2>
@@ -72,7 +78,7 @@
         </div>
     </div>
 
-    <div class="modal" tabindex="-1" id="connection-modal" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal" tabindex="-1" id="connectionModal" role="dialog" aria-labelledby="connectionModalLink" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -94,8 +100,15 @@
     </div>
 
     <script type="text/javascript">
-        $(()=>{
-            game.$worldMapModal.modal({"backdrop": "static", "keyboard":false});
+        // Modal not working via normal markup
+        // so hacking it to force it to work
+        $(function(){
+            $('.game-link').click(
+                function()
+                {
+                    $($(this).data('target')).modal({keyboard:false,backdrop:"static"});
+                }
+            );
         });
     </script>
 

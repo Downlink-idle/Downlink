@@ -1,7 +1,6 @@
 // namespace for the entire game;
-const Computer = require('./Computers/Computer');
-
 (($)=>{$(()=>{
+
     const   Downlink = require('./Downlink'),
             TICK_INTERVAL_LENGTH=100,
             MISSION_LIST_CLASS = 'mission-list-row',
@@ -179,13 +178,10 @@ const Computer = require('./Computers/Computer');
             for(let computer of connection.computers)
             {
                 // connect the current computer to the current computer in the connection
-
                 context.beginPath();
                 context.moveTo(currentComputer.location.x, currentComputer.location.y);
                 context.lineTo(computer.location.x, computer.location.y);
                 context.stroke();
-
-
                 // set the currentComputer to be the current computer in the connection
                 currentComputer = computer;
             }
@@ -381,10 +377,6 @@ const Computer = require('./Computers/Computer');
                 return json;
             }
             return null;
-        },
-        getComputers:function()
-        {
-            return Computer.allComputers();
         }
     };
 

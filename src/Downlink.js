@@ -59,6 +59,7 @@ class Downlink extends EventListener
         this.activeMission = MissionGenerator.getFirstAvailableMission().on("complete", ()=>{
             this.finishCurrentMission(this.activeMission);
         });
+        this.activeMission.computer.connect(this.playerConnection);
         for(let challenge of this.activeMission.challenges)
         {
             challenge.on("solved", ()=>{this.challengeSolved(challenge)});

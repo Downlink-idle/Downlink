@@ -4678,6 +4678,7 @@ class Downlink extends EventListener
         this.activeMission = MissionGenerator.getFirstAvailableMission().on("complete", ()=>{
             this.finishCurrentMission(this.activeMission);
         });
+        this.activeMission.computer.connect(this.playerConnection);
         for(let challenge of this.activeMission.challenges)
         {
             challenge.on("solved", ()=>{this.challengeSolved(challenge)});
@@ -4886,9 +4887,8 @@ module.exports = EventListener;
 
 },{}],16:[function(require,module,exports){
 // namespace for the entire game;
-const Computer = require('./Computers/Computer');
-
 (($)=>{$(()=>{
+
     const   Downlink = require('./Downlink'),
             TICK_INTERVAL_LENGTH=100,
             MISSION_LIST_CLASS = 'mission-list-row',
@@ -5066,13 +5066,10 @@ const Computer = require('./Computers/Computer');
             for(let computer of connection.computers)
             {
                 // connect the current computer to the current computer in the connection
-
                 context.beginPath();
                 context.moveTo(currentComputer.location.x, currentComputer.location.y);
                 context.lineTo(computer.location.x, computer.location.y);
                 context.stroke();
-
-
                 // set the currentComputer to be the current computer in the connection
                 currentComputer = computer;
             }
@@ -5268,10 +5265,6 @@ const Computer = require('./Computers/Computer');
                 return json;
             }
             return null;
-        },
-        getComputers:function()
-        {
-            return Computer.allComputers();
         }
     };
 
@@ -5280,7 +5273,7 @@ const Computer = require('./Computers/Computer');
     window.game = game;
 })})(window.jQuery);
 
-},{"./Computers/Computer":10,"./Downlink":14}],17:[function(require,module,exports){
+},{"./Downlink":14}],17:[function(require,module,exports){
 const   Company = require('../Companies/Company'),
     MissionComputer = require('./MissionComputer'),
     Password = require('../Challenges/Password'),
