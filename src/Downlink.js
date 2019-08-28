@@ -167,7 +167,9 @@ class Downlink extends EventListener
     static getNew()
     {
         Company.buildCompanyList();
-        return new Downlink();
+
+        let dl = new Downlink();
+        return dl;
     }
 }
 
