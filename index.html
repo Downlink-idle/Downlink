@@ -22,11 +22,11 @@
 
     <div class="container-fluid min-vh-100">
         <div class="row" id="missionInterface">
-            <div class="col-6 col-md-3" id="player-details">
+            <div class="col-6 col-lg-3" id="player-details">
                 <h2 class="row">Player:</h2>
                 <div class="row" id="player-currency-row">
                     <strong class="col">Currency Units: </strong>
-                    <div class="col" id="player-currency">0.00</div>
+                    <div class="col-2" id="player-currency">0.00</div>
                 </div>
                 <h3 class="row" id="player-company-standings-title">Company Standings</h3>
                 <h3 class="row">Your PC</h3>
@@ -36,28 +36,30 @@
                 </div>
             </div>
 
-            <div class="col-6 col-md-3" id="mission-list">
+            <div class="col-6 col-lg-3" id="mission-list">
                 <div class="row"><h1>Missions</h1></div>
                 <div class="row"><b>Active Mission: </b><span id="active-mission"></span></div>
             </div>
 
-            <div class="col-12 col-md-6" id="active-mission-machine" style="border:1px solid black">
-                <h2 class="row">Server details:</h2>
-                <div class="row">
-                    <strong>Name: </strong><span id="active-mission-server-name"></span>
-                </div>
-                <div class="row">
-                    <strong>ip address: </strong><span id="active-mission-server-ip-address"></span>
-                </div>
-                <h2 class="row">Server security:</h2>
+            <div class="col-12 col-lg-6" id="active-mission-machine-container">
+                <div id="active-mission-machine-details" class="container-fluid">
+                    <h2 class="row">Server details:</h2>
+                    <div class="row">
+                        <strong>Name: </strong><span id="active-mission-server-name"></span>
+                    </div>
+                    <div class="row">
+                        <strong>ip address: </strong><span id="active-mission-server-ip-address"></span>
+                    </div>
+                    <h2 class="row">Server security:</h2>
 
-                <div class="row" id="active-mission-password-task">
-                    <strong>Password:</strong> <input type="text" autocomplete="off" value="" id="active-mission-password-input" disabled/>
-                </div>
+                    <div class="row" id="active-mission-password-task">
+                        <strong>Password:</strong> <input type="text" autocomplete="off" value="" id="active-mission-password-input" disabled/>
+                    </div>
 
-                <h1 class="row" id="active-mission-encryption-type"></h1>
-                <div class="row" id="active-mission-encryption-task">
-                    <div class="col" id="active-mission-encryption-grid"></div>
+                    <h1 class="row" id="active-mission-encryption-type"></h1>
+                    <div class="row" id="active-mission-encryption-task">
+                        <div class="col" id="active-mission-encryption-grid"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -69,6 +71,33 @@
             </nav>
         </div>
     </div>
+
+    <div class="modal" tabindex="-1" id="connection-modal" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Connection Builder</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="world-map" class="container-fluid">
+                        <div class="world-map-div" id="canvas-container"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        $(()=>{
+            game.$worldMapModal.modal({"backdrop": "static", "keyboard":false});
+        });
+    </script>
 
 </body>
 </html>

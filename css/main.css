@@ -21,3 +21,53 @@
 {
     border: 1px solid green;
 }
+
+#world-map
+{
+    padding:0px;
+    position:relative;
+}
+
+#active-mission-machine-details
+{
+    border:1px solid black;
+    display:none;
+}
+
+.computer
+{
+    position: absolute;
+    width:10px;
+    height:10px;
+    border: 1px solid black;
+    z-index:4;
+}
+
+.PlayerComputer
+{
+    background-color:#ffffff;
+    z-index:5;
+}
+
+.PublicComputer
+{
+    background-color:dodgerblue;
+}
+
+
+.world-map-div
+{
+    position:absolute;
+    top:0px;
+    left:0px;
+}
+
+#svg-container
+{
+    z-index:2;
+}
+
+#canvas-container
+{
+    z-index:1;
+}
