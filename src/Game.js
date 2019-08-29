@@ -16,7 +16,7 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.1.5a",
+        version:"0.1.6a",
         /**
          * jquery entities that are needed for updating
          */
@@ -251,6 +251,8 @@
             let html = '';
 
             let grid = encryptionCracker.cellGridArrayForAnimating;
+            let height = this.$activeMissionEncryptionGrid.height(),
+                cellHeight = height / grid.length;
 
             for(let row of grid)
             {
@@ -262,6 +264,8 @@
                 html += '</div>';
             }
             this.$activeMissionEncryptionGrid.html(html);
+
+            $('.encryption-cell').css('max-width', cellHeight+'px');
         },
         getNextMission:function(){
             if(!this.takingMissions)
