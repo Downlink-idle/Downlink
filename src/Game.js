@@ -1,7 +1,9 @@
-// namespace for the entire game;
+// This file is solely responsible for exposing the necessary parts of the game to the UI elements
 (($)=>{$(()=>{
 
     const   Downlink = require('./Downlink'),
+            CPU = require('./Computers/CPU'),
+            Decimal = require('break_infinity.js'),
             TICK_INTERVAL_LENGTH=100,
             MISSION_LIST_CLASS = 'mission-list-row',
             COMPANY_REP_CLASS = 'company-rep-row',
@@ -37,6 +39,9 @@
         $settingsTimePlayed:null,
         $settingsModal:null,
         $importExportTextarea:null,
+        $computerBuildModal:null,
+        $computerBuild:null,
+        $computerPartsCPURow:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -61,26 +66,19 @@
             this.$settingsTimePlayed = $('#settings-time-played');
             this.$settingsModal = $('#settings-modal');
             this.$importExportTextarea = $('#settings-import-export');
+            this.$computerBuildModal = $('#computer-build-modal');
+            this.$computerBuild = $('#computer-build-layout');
+            this.$computerPartsCPURow = $('#computer-parts-cpu-row');
 
             $('#settings-export-button').click(()=>{
                 this.$importExportTextarea.val(this.save());
             });
             $('#settings-import-button').click(()=>{this.importFile(this.$importExportTextarea.val())});
-            $('#settings-save-button').click(()=>{
-                console.log("Trying to generate save file");
-                let data = new Blob([this.save()], {type: 'text/plain'}),
-                    urlParam = window.URL.createObjectURL(data),
-                    a = document.createElement('a');
-                a.href = urlParam;
-                a.download = 'Downlink-Save.txt';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                console.log("Should have generated, downloaded and cleaned up after save file");
-            });
+            $('#settings-save-button').click(()=>{this.saveFile();});
             $('#connectionModalLink').click(()=>{this.showConnectionManager();});
             $('#settingsModalLink').click(()=>{this.showSettingsModal();});
             $('#game-version').html(this.version);
+            $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
         },
         buildWorldMap:function()
         {
@@ -140,6 +138,17 @@
         {
             this.downlink = Downlink.fromJSON(json);
         },
+        saveFile:function()
+        {
+            let data = new Blob([this.save()], {type: 'text/plain'}),
+                urlParam = window.URL.createObjectURL(data),
+                a = document.createElement('a');
+            a.href = urlParam;
+            a.download = 'Downlink-Save.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        },
         importFile:function(json)
         {
             this.stop();
@@ -175,6 +184,7 @@
                 let pc = this.downlink.getPlayerComputer();
                 this.addComputerToWorldMap(pc);
                 this.updateComputerBuild();
+                this.buildComputerPartsUI();
 
                 this.addPublicComputersToWorldMap();
 
@@ -219,11 +229,13 @@
             if(this.initialised)
             {
                 this.tick();
+                this.showComputerBuildModal();
             }
             else
             {
                 this.initialise().then(() => {
-                    this.tick()
+                    this.tick();
+                    this.showComputerBuildModal();
                 });
             }
         },
@@ -315,6 +327,7 @@
                 .on('complete', ()=>{
                     this.updatePlayerDetails();
                     this.getNextMission();
+                    this.updateComputerPartsUI();
                 });
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
@@ -406,6 +419,11 @@
                 left:(computer.location.x - width / 2)+'px'
             })
         },
+        hardReset:function()
+        {
+            this.stop();
+            localStorage.clear();
+        },
         getJSON:function()
         {
             return this.downlink.toJSON();
@@ -446,9 +464,79 @@
         {
             return this.downlink.secondsRunning;
         },
-        showSettingsModal()
+        showSettingsModal:function()
         {
             this.$settingsModal.modal({keyboard:false, backdrop:"static"});
+        },
+        showComputerBuildModal:function()
+        {
+            this.buildComputerGrid();
+            this.$computerBuildModal.modal({keyboard:false, backdrop:"static"});
+        },
+        buildComputerPartsUI:function()
+        {
+            this.$computerPartsCPURow.empty();
+
+            for(let cpu of CPU.getCPUs())
+            {
+                let cost = CPU.getPriceFor(cpu),
+                    affordable = this.downlink.canAfford(cost);
+                let $node = $(`<div data-part-cost="${cost.toString()}" class="col-4 cpu part ${affordable?"":"un"}affordable-part"><div class="row"><i class="fas fa-microchip"></i></div><div class="row">${cpu.name}</div><div class="row">${cpu.speed} MHz</div><div class="row">${cost.toString()}</div></div>`);
+                $node.click(() => {
+                    this.setChosenPart(cpu, 'CPU', cost, $node);
+                });
+
+                this.$computerPartsCPURow.append($node);
+            }
+        },
+        setChosenPart(part, type, cost, $node)
+        {
+            if(!this.downlink.canAfford(cost))
+            {
+                return;
+            }
+            $('.chosenPart').removeClass('chosenPart');
+            if(part === this.chosenPart)
+            {
+                this.chosenPart = null;
+                return;
+            }
+            this.chosenPart = part;
+            $node.addClass('chosenPart');
+        },
+        updateComputerPartsUI:function()
+        {
+            let downlink = this.downlink
+            $('.part').each(function(index){
+                let $node = $(this),
+                    cost = new Decimal($node.data('partCost')),
+                    canAfford = downlink.canAfford(cost);
+                $node.removeClass('affordable-part unaffordable-part').addClass(
+                    (canAfford?'':'un')+'affordable-part'
+                );
+            });
+        },
+        buildComputerGrid:function()
+        {
+            this.$computerBuild.empty();
+
+            let pc = this.downlink.playerComputer,
+                gridSize = Math.floor(Math.sqrt(pc.maxCPUs)),
+                html = '',
+                cpuCount = 0;
+
+            for(let i = 0; i < gridSize; i++)
+            {
+                html += '<div class="row cpuRow">'
+                for(let j = 0; j < gridSize; j++)
+                {
+                    html += `<div class="col cpuHolder">${pc.cpus[cpuCount]?'<i class="fas fa-microchip"></i>':''}</div>`;
+                    cpuCount++;
+                }
+                html += '</div>';
+            }
+            this.$computerBuild.html(html);
+            $('.cpuRow').css('width', gridSize * 30);
         }
     };
 

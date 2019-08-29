@@ -3,6 +3,7 @@ const   MissionGenerator = require('./Missions/MissionGenerator'),
         Connection = require('./Connection'),
         Company = require('./Companies/Company'),
         ComputerGenerator = require('./Computers/ComputerGenerator'),
+        CPU = require('./Computers/CPU'),
         Decimal = require('break_infinity.js');
 
 /**
@@ -67,6 +68,7 @@ class Downlink extends EventListener
     {
         this.activeMission = MissionGenerator.getFirstAvailableMission().on("complete", ()=>{
             this.finishCurrentMission(this.activeMission);
+            this.trigger('missionComplete');
         });
         this.activeMission.computer.connect(this.playerConnection);
         for(let challenge of this.activeMission.challenges)
@@ -189,6 +191,11 @@ class Downlink extends EventListener
     get secondsRunning()
     {
         return Math.floor(this.runTime / 1000);
+    }
+
+    canAfford(cost)
+    {
+        return cost.lessThanOrEqualTo(this.currency);
     }
 }
 

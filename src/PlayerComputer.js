@@ -7,10 +7,11 @@
 
 class InvalidTaskError extends Error{};
 class NoFreeCPUCyclesError extends Error{};
+const DEFAULT_MAX_CPUS = 4;
 
 class PlayerComputer extends Computer
 {
-    constructor(cpus)
+    constructor(cpus, maxCPUs)
     {
         super('Home', null, '127.0.0.1');
         /**
@@ -18,6 +19,8 @@ class PlayerComputer extends Computer
          */
         this.cpus = cpus;
         this.queuedTasks = [];
+        this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
+
     }
 
     getTaskForChallenge(challenge)
