@@ -1654,7 +1654,7 @@ const PASSWORD_TYPES = {
 };
 const PASSWORD_DICTIONARY_DIFFICULTIES = {
     'EASIEST':1,
-    'HARDEST':100
+    'HARDEST':10
 };
 
 
@@ -1693,6 +1693,7 @@ class Password extends Challenge
             usedDictionary = [];
         dictionary.forEach((entry, index)=>{if(index%PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST >= reduction){usedDictionary.push(entry);}});
         let dictionaryPassword = new Password(usedDictionary.randomElement(), PASSWORD_TYPES.DICTIONARY, difficulty);
+        dictionaryPassword.dictionary = usedDictionary;
         return dictionaryPassword;
     }
 
@@ -5144,6 +5145,8 @@ module.exports = EventListener;
             let html = '';
 
             let grid = encryptionCracker.cellGridArrayForAnimating;
+            let height = this.$activeMissionEncryptionGrid.height(),
+                cellHeight = height / grid.length;
 
             for(let row of grid)
             {
@@ -5155,6 +5158,8 @@ module.exports = EventListener;
                 html += '</div>';
             }
             this.$activeMissionEncryptionGrid.html(html);
+
+            $('.encryption-cell').css('max-width', cellHeight+'px');
         },
         getNextMission:function(){
             if(!this.takingMissions)
@@ -5994,7 +5999,7 @@ class DictionaryCracker extends PasswordCracker
     constructor(password)
     {
         super(password, 'Dictionary Cracker', DICTIONARY_CRACKER_MINIMUM_CYCLES);
-        this.dictionary = [...Password.dictionary];
+        this.dictionary = [...password.dictionary];
         this.totalGuesses = 0;
     }
 

@@ -251,6 +251,8 @@
             let html = '';
 
             let grid = encryptionCracker.cellGridArrayForAnimating;
+            let height = this.$activeMissionEncryptionGrid.height(),
+                cellHeight = height / grid.length;
 
             for(let row of grid)
             {
@@ -262,6 +264,8 @@
                 html += '</div>';
             }
             this.$activeMissionEncryptionGrid.html(html);
+
+            $('.encryption-cell').css('max-width', cellHeight+'px');
         },
         getNextMission:function(){
             if(!this.takingMissions)

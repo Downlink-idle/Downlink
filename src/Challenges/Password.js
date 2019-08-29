@@ -8,7 +8,7 @@ const PASSWORD_TYPES = {
 };
 const PASSWORD_DICTIONARY_DIFFICULTIES = {
     'EASIEST':1,
-    'HARDEST':100
+    'HARDEST':10
 };
 
 
@@ -47,6 +47,7 @@ class Password extends Challenge
             usedDictionary = [];
         dictionary.forEach((entry, index)=>{if(index%PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST >= reduction){usedDictionary.push(entry);}});
         let dictionaryPassword = new Password(usedDictionary.randomElement(), PASSWORD_TYPES.DICTIONARY, difficulty);
+        dictionaryPassword.dictionary = usedDictionary;
         return dictionaryPassword;
     }
 

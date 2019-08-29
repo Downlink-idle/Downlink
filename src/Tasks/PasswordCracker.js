@@ -33,7 +33,7 @@ class DictionaryCracker extends PasswordCracker
     constructor(password)
     {
         super(password, 'Dictionary Cracker', DICTIONARY_CRACKER_MINIMUM_CYCLES);
-        this.dictionary = [...Password.dictionary];
+        this.dictionary = [...password.dictionary];
         this.totalGuesses = 0;
     }
 
