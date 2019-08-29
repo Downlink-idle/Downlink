@@ -130,8 +130,7 @@
                 this.newGame();
             }
 
-            // build the html elements that are used without missions stuff
-            this.updatePlayerReputations();
+            this.updatePlayerDetails();
 
             this.initialised = true;
             return this.buildWorldMap().then(()=>{
@@ -279,6 +278,7 @@
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
             this.updateMissionInterface(this.mission);
+            this.save();
         },
         updatePlayerDetails:function()
         {

@@ -1654,7 +1654,7 @@ const PASSWORD_TYPES = {
 };
 const PASSWORD_DICTIONARY_DIFFICULTIES = {
     'EASIEST':1,
-    'HARDEST':10
+    'HARDEST':100
 };
 
 
@@ -1689,7 +1689,7 @@ class Password extends Challenge
         // limit the difficulty to be between the easiest and hardest allowed difficulties
         difficulty = Math.min(Math.max(difficulty, PASSWORD_DICTIONARY_DIFFICULTIES.EASIEST), PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST);
         // reduce the dictionary by a percentage of that amount
-        let reduction = 10 - difficulty,
+        let reduction = PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST - difficulty,
             usedDictionary = [];
         dictionary.forEach((entry, index)=>{if(index%PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST >= reduction){usedDictionary.push(entry);}});
         let dictionaryPassword = new Password(usedDictionary.randomElement(), PASSWORD_TYPES.DICTIONARY, difficulty);
@@ -5023,8 +5023,7 @@ module.exports = EventListener;
                 this.newGame();
             }
 
-            // build the html elements that are used without missions stuff
-            this.updatePlayerReputations();
+            this.updatePlayerDetails();
 
             this.initialised = true;
             return this.buildWorldMap().then(()=>{
@@ -5172,6 +5171,7 @@ module.exports = EventListener;
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
             this.updateMissionInterface(this.mission);
+            this.save();
         },
         updatePlayerDetails:function()
         {
@@ -5409,6 +5409,12 @@ class Mission extends EventListener
         this.status="Complete";
         this.sponsor.finishMission(this);
         this.trigger('complete');
+    }
+
+    set connection(connection)
+    {
+        this.computer.connect(connection);
+
     }
 
     tick()
