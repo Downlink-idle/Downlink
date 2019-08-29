@@ -4910,7 +4910,7 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.1.5a",
+        version:"0.1.6a",
         /**
          * jquery entities that are needed for updating
          */
