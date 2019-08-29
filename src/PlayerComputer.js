@@ -55,11 +55,15 @@ class PlayerComputer extends Computer
             catch(e)
             {
                 i++;
+                if(i > this.cpus.length)
+                {
+                    searching = false;
+                }
             }
         }
         if(!found)
         {
-            throw new NoFreeCPUCyclesError(`Cannot find the cycles for ${challenge.name} on any of the CPUs`);
+            throw new NoFreeCPUCyclesError(`Cannot find the cycles for ${challenge.name} on any of the CPUs. Requires ${task.minimumRequiredCycles}.`);
         }
     }
 
