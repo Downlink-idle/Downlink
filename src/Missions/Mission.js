@@ -109,6 +109,12 @@ class Mission extends EventListener
         this.trigger('complete');
     }
 
+    set connection(connection)
+    {
+        this.computer.connect(connection);
+
+    }
+
     tick()
     {
         this.build();
