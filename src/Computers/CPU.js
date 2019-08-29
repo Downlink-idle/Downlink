@@ -10,7 +10,7 @@
 
     class CPU extends EventListener
     {
-        constructor(name, speed)
+        constructor(name, speed, lifeCycle, lifeCycleUsed, living)
         {
             super();
             /**
@@ -25,14 +25,28 @@
              * @type {Array.<Task>}
              */
             this.tasks = [];
+            /**
+             * @type {Decimal}
+             */
+            this.lifeCycle = new Decimal(lifeCycle?lifeCycle:1000);
+            this.lifeCycleUsed = new Decimal(lifeCycleUsed?lifeCycleUsed:0);
+            this.living = living !== null?living:true;
         }
 
         toJSON()
         {
             return {
                 name:this.name,
-                speed:this.speed.toJSON()
+                speed:this.speed.toString(),
+                lifeCycle:this.lifeCycle.toString(),
+                lifeCycleUsed:this.lifeCycleUsed.toString(),
+                living:this.living
             }
+        }
+
+        static fromJSON(json)
+        {
+            return new CPU(json.name, json.speed, json.lifeCycle, json.lifeCycleUsed, json.living);
         }
 
         /**

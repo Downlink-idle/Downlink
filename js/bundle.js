@@ -1596,16 +1596,16 @@ class Challenge extends EventListener
 module.exports = Challenge;
 
 },{"../EventListener":15}],4:[function(require,module,exports){
-const Decimal = require('break_infinity.js');
-
+const   Decimal = require('break_infinity.js'),
 /**
  * @type {{}}
  */
-const DIFFICULTIES = {
-    'EASY':{name:'Linear', size:{min:7, max:10}},
-    'MEDIUM':{name:'Quadratic', size:{min:10,max:15}},
-    'HARD':{name:'Cubic', size:{min:15,max:20}}
-};
+       DIFFICULTIES = {
+            'EASY':{name:'Linear', size:{min:7, max:10}},
+            'MEDIUM':{name:'Quadratic', size:{min:10,max:15}},
+            'HARD':{name:'Cubic', size:{min:15,max:20}}
+        },
+        DIFFICULTY_EXPONENT = 0.4;
 
 function getRandomIntBetween(min, max)
 {
@@ -1618,7 +1618,7 @@ class Encryption extends Challenge
     {
         let rows = getRandomIntBetween(difficulty.size.min, difficulty.size.max),
             cols = getRandomIntBetween(difficulty.size.min, difficulty.size.max),
-            difficultyRatio = Math.floor(Math.sqrt(rows * cols));
+            difficultyRatio = Math.floor(Math.pow(rows * cols, DIFFICULTY_EXPONENT));
 
         super(difficulty.name + ' Encryption', new Decimal(difficultyRatio));
         this.rows = rows;
@@ -4023,7 +4023,7 @@ class Company
          * @type {Decimal} the reward modifier this company offers the player
          * this is the increase exponent for successfully achieved missions
          */
-        this.missionSuccessIncreaseExponent = new Decimal(1.01);
+        this.missionSuccessIncreaseExponent = new Decimal(1.001);
     }
 
     setPublicServer(publicServer)
@@ -4643,6 +4643,8 @@ class Downlink extends EventListener
          */
         this.playerConnection = null;
         this.getNewConnection();
+        this.runTime = 0;
+        this.lastTickTime = Date.now();
 
         this.currency = new Decimal(0);
     }
@@ -4671,11 +4673,15 @@ class Downlink extends EventListener
 
     tick()
     {
+        let now = Date.now();
+        this.runTime += now - this.lastTickTime;
+
         this.playerComputer.tick();
         if(this.activeMission)
         {
             this.activeMission.tick();
         }
+        this.lastTickTime = Date.now();
     }
 
     getNextMission()
@@ -4761,7 +4767,8 @@ class Downlink extends EventListener
             playerComputer:this.playerComputer.toJSON(),
             playerConnection:this.playerConnection.toJSON(),
             companies:[],
-            currency:this.currency.toString()
+            currency:this.currency.toString(),
+            runTime:this.runTime
         };
         for(let company of this.companies)
         {
@@ -4778,6 +4785,8 @@ class Downlink extends EventListener
 
         downlink.currency = Decimal.fromString(json.currency);
         downlink.playerComputer = ComputerGenerator.fromJSON(json.playerComputer);
+        downlink.runTime = parseInt(json.runTime);
+        downlink.lastTickTime = Date.now();
 
         downlink.playerConnection = Connection.fromJSON(json.playerConnection);
         downlink.playerConnection.setStartingPoint(downlink.playerComputer);
@@ -4791,6 +4800,16 @@ class Downlink extends EventListener
 
         let dl = new Downlink();
         return dl;
+    }
+
+    static stop()
+    {
+
+    }
+
+    get secondsRunning()
+    {
+        return Math.floor(this.runTime / 1000);
     }
 }
 
@@ -4929,6 +4948,9 @@ module.exports = EventListener;
         $worldMapContainer:null,
         $worldMapCanvasContainer:null,
         $activeMissionServer:null,
+        $settingsTimePlayed:null,
+        $settingsModal:null,
+        $importExportTextarea:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -4950,6 +4972,28 @@ module.exports = EventListener;
             this.$worldMapContainer = $('#world-map');
             this.$worldMapCanvasContainer = $('#canvas-container');
             this.$worldMapModal.on("hide.bs.modal", ()=>{this.afterHideConnectionManager()});
+            this.$settingsTimePlayed = $('#settings-time-played');
+            this.$settingsModal = $('#settings-modal');
+            this.$importExportTextarea = $('#settings-import-export');
+
+            $('#settings-export-button').click(()=>{
+                this.$importExportTextarea.val(this.save());
+            });
+            $('#settings-import-button').click(()=>{this.importFile(this.$importExportTextarea.val())});
+            $('#settings-save-button').click(()=>{
+                console.log("Trying to generate save file");
+                let data = new Blob([this.save()], {type: 'text/plain'}),
+                    urlParam = window.URL.createObjectURL(data),
+                    a = document.createElement('a');
+                a.href = urlParam;
+                a.download = 'Downlink-Save.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                console.log("Should have generated, downloaded and cleaned up after save file");
+            });
+            $('#connectionModalLink').click(()=>{this.showConnectionManager();});
+            $('#settingsModalLink').click(()=>{this.showSettingsModal();});
             $('#game-version').html(this.version);
         },
         buildWorldMap:function()
@@ -4965,7 +5009,6 @@ module.exports = EventListener;
 
                 image.onload =()=>{
                     this.buildCanvas();
-
                     resolve();
                 };
                 image.src = './img/osm-world-map.png';
@@ -5011,6 +5054,15 @@ module.exports = EventListener;
         {
             this.downlink = Downlink.fromJSON(json);
         },
+        importFile:function(json)
+        {
+            this.stop();
+            this.initialised = false;
+            this.loadGame(json);
+            this.performPostLoadCleanup().then(()=>{
+                this.start();
+            });
+        },
         initialise:function()
         {
             this.bindUIElements();
@@ -5025,6 +5077,10 @@ module.exports = EventListener;
                 this.newGame();
             }
 
+            return this.performPostLoadCleanup();
+        },
+        performPostLoadCleanup:function()
+        {
             this.updatePlayerDetails();
 
             this.initialised = true;
@@ -5073,7 +5129,6 @@ module.exports = EventListener;
             }
         },
         start:function(){
-
             this.ticking = true;
             if(this.initialised)
             {
@@ -5098,6 +5153,7 @@ module.exports = EventListener;
                     this.downlink.tick();
                     this.animateTick();
                     this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
+                    this.$settingsTimePlayed.html(this.getRunTime());
                 }
             }
             catch(e)
@@ -5272,16 +5328,21 @@ module.exports = EventListener;
         {
             let json = this.getJSON(),
                 jsonAsString = JSON.stringify(json),
-                jsonAsBinary = btoa(jsonAsString);
-            localStorage.setItem('saveFile', jsonAsBinary);
+                jsonAsAsciiSafeString = btoa(jsonAsString);
+            localStorage.setItem('saveFile', jsonAsAsciiSafeString);
+            return jsonAsAsciiSafeString;
+        },
+        parseLoadFile:function(loadFile)
+        {
+            let jsonAsString = atob(loadFile), json = JSON.parse(jsonAsString);
+            return json;
         },
         load:function()
         {
-            let jsonAsBinary = localStorage.getItem('saveFile');
-            if(jsonAsBinary)
+            let jsonAsAsciiSafeString = localStorage.getItem('saveFile');
+            if(jsonAsAsciiSafeString)
             {
-                let jsonAsString = atob(jsonAsBinary), json = JSON.parse(jsonAsString);
-                return json;
+                return this.parseLoadFile(jsonAsAsciiSafeString);
             }
             return null;
         },
@@ -5294,11 +5355,16 @@ module.exports = EventListener;
         {
             this.takingMissions = true;
             this.getNextMission();
+        },
+        getRunTime:function()
+        {
+            return this.downlink.secondsRunning;
+        },
+        showSettingsModal()
+        {
+            this.$settingsModal.modal({keyboard:false, backdrop:"static"});
         }
     };
-
-    $('#connectionModalLink').click(()=>{game.showConnectionManager()});
-
 
     game.start();
 

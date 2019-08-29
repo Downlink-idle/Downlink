@@ -23,9 +23,9 @@
 
     <div class="container-fluid min-vh-100">
         <div class="row"><nav id="game-menu">
-            <a class="game-link" id="connectionModalLink" href="#">Connection Manager</a>
-            |
-            <span class="game-link">Shop</span>
+            <a class="game-link" id="connectionModalLink" href="#">Connection Manager</a> |
+            <span class="game-link">Shop</span> |
+            <a class="game-link" id="settingsModalLink" href="#">Settings</a>
         </nav></div>
         <div class="row" id="missionInterface">
             <div class="col-6 col-lg-3" id="player-details">
@@ -92,6 +92,36 @@
                 <div class="modal-body">
                     <div id="world-map" class="container-fluid">
                         <div class="world-map-div" id="canvas-container"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" tabindex="-1" id="settings-modal" role="dialog" aria-labelledby="settingsModalLink" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Settings</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container">
+                        <h4 class="row">About</h4>
+                        <div class="row">Downlink is roughly inspired by the 2000 Introversion hacking game. There's a more complete schpiel about it on the github's home page (link at bottom right of normal page).</div>
+                        <div class="row">You have been playing for <span id="settings-time-played"></span> seconds.</div>
+                        <h4 class="row">Import/export</h4>
+                        <div class="row"><textarea id="settings-import-export"></textarea></div>
+                        <div class="row">
+                            <button id="settings-import-button">Import</button>
+                            <button id="settings-export-button">Export</button>
+                            <button id="settings-save-button">Save</button>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">

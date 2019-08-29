@@ -34,6 +34,9 @@
         $worldMapContainer:null,
         $worldMapCanvasContainer:null,
         $activeMissionServer:null,
+        $settingsTimePlayed:null,
+        $settingsModal:null,
+        $importExportTextarea:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -55,6 +58,28 @@
             this.$worldMapContainer = $('#world-map');
             this.$worldMapCanvasContainer = $('#canvas-container');
             this.$worldMapModal.on("hide.bs.modal", ()=>{this.afterHideConnectionManager()});
+            this.$settingsTimePlayed = $('#settings-time-played');
+            this.$settingsModal = $('#settings-modal');
+            this.$importExportTextarea = $('#settings-import-export');
+
+            $('#settings-export-button').click(()=>{
+                this.$importExportTextarea.val(this.save());
+            });
+            $('#settings-import-button').click(()=>{this.importFile(this.$importExportTextarea.val())});
+            $('#settings-save-button').click(()=>{
+                console.log("Trying to generate save file");
+                let data = new Blob([this.save()], {type: 'text/plain'}),
+                    urlParam = window.URL.createObjectURL(data),
+                    a = document.createElement('a');
+                a.href = urlParam;
+                a.download = 'Downlink-Save.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                console.log("Should have generated, downloaded and cleaned up after save file");
+            });
+            $('#connectionModalLink').click(()=>{this.showConnectionManager();});
+            $('#settingsModalLink').click(()=>{this.showSettingsModal();});
             $('#game-version').html(this.version);
         },
         buildWorldMap:function()
@@ -70,7 +95,6 @@
 
                 image.onload =()=>{
                     this.buildCanvas();
-
                     resolve();
                 };
                 image.src = './img/osm-world-map.png';
@@ -116,6 +140,15 @@
         {
             this.downlink = Downlink.fromJSON(json);
         },
+        importFile:function(json)
+        {
+            this.stop();
+            this.initialised = false;
+            this.loadGame(json);
+            this.performPostLoadCleanup().then(()=>{
+                this.start();
+            });
+        },
         initialise:function()
         {
             this.bindUIElements();
@@ -130,6 +163,10 @@
                 this.newGame();
             }
 
+            return this.performPostLoadCleanup();
+        },
+        performPostLoadCleanup:function()
+        {
             this.updatePlayerDetails();
 
             this.initialised = true;
@@ -178,7 +215,6 @@
             }
         },
         start:function(){
-
             this.ticking = true;
             if(this.initialised)
             {
@@ -203,6 +239,7 @@
                     this.downlink.tick();
                     this.animateTick();
                     this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
+                    this.$settingsTimePlayed.html(this.getRunTime());
                 }
             }
             catch(e)
@@ -377,16 +414,21 @@
         {
             let json = this.getJSON(),
                 jsonAsString = JSON.stringify(json),
-                jsonAsBinary = btoa(jsonAsString);
-            localStorage.setItem('saveFile', jsonAsBinary);
+                jsonAsAsciiSafeString = btoa(jsonAsString);
+            localStorage.setItem('saveFile', jsonAsAsciiSafeString);
+            return jsonAsAsciiSafeString;
+        },
+        parseLoadFile:function(loadFile)
+        {
+            let jsonAsString = atob(loadFile), json = JSON.parse(jsonAsString);
+            return json;
         },
         load:function()
         {
-            let jsonAsBinary = localStorage.getItem('saveFile');
-            if(jsonAsBinary)
+            let jsonAsAsciiSafeString = localStorage.getItem('saveFile');
+            if(jsonAsAsciiSafeString)
             {
-                let jsonAsString = atob(jsonAsBinary), json = JSON.parse(jsonAsString);
-                return json;
+                return this.parseLoadFile(jsonAsAsciiSafeString);
             }
             return null;
         },
@@ -399,11 +441,16 @@
         {
             this.takingMissions = true;
             this.getNextMission();
+        },
+        getRunTime:function()
+        {
+            return this.downlink.secondsRunning;
+        },
+        showSettingsModal()
+        {
+            this.$settingsModal.modal({keyboard:false, backdrop:"static"});
         }
     };
-
-    $('#connectionModalLink').click(()=>{game.showConnectionManager()});
-
 
     game.start();
 

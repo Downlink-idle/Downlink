@@ -28,7 +28,7 @@ class Company
          * @type {Decimal} the reward modifier this company offers the player
          * this is the increase exponent for successfully achieved missions
          */
-        this.missionSuccessIncreaseExponent = new Decimal(1.01);
+        this.missionSuccessIncreaseExponent = new Decimal(1.001);
     }
 
     setPublicServer(publicServer)
