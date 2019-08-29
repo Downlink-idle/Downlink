@@ -4,14 +4,14 @@ const Decimal = require('break_infinity.js');
  * @type {{}}
  */
 const DIFFICULTIES = {
-    'EASY':{name:'Linear', size:{min:7, max:11}},
+    'EASY':{name:'Linear', size:{min:7, max:10}},
     'MEDIUM':{name:'Quadratic', size:{min:10,max:15}},
     'HARD':{name:'Cubic', size:{min:15,max:20}}
 };
 
 function getRandomIntBetween(min, max)
 {
-    return Math.floor(Math.random() * (+max - +min)) + +min
+    return  Math.floor(Math.random() * (max - min + 1)) + min;
 }
 const Challenge = require('./Challenge');
 class Encryption extends Challenge
@@ -21,6 +21,7 @@ class Encryption extends Challenge
         let rows = getRandomIntBetween(difficulty.size.min, difficulty.size.max),
             cols = getRandomIntBetween(difficulty.size.min, difficulty.size.max),
             difficultyRatio = Math.floor(Math.sqrt(rows * cols));
+
         super(difficulty.name + ' Encryption', new Decimal(difficultyRatio));
         this.rows = rows;
         this.cols = cols;
