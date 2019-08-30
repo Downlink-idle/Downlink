@@ -201,11 +201,11 @@ class Downlink extends EventListener
         return this.currency.greaterThan(cost);
     }
 
-    buyCPU(cpuData)
+    buyCPU(cpuData, slot)
     {
         let cpu = CPU.fromJSON(cpuData);
         this.currency = this.currency.minus(CPU.getPriceFor(cpuData));
-        this.playerComputer.addCPU(cpu);
+        this.playerComputer.setCPUSlot(slot, cpu);
 
     }
 }

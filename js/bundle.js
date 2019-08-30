@@ -4646,6 +4646,11 @@ class PlayerComputer extends Computer
         this.cpuPool.addCPU(cpu);
     }
 
+    setCPUSlot(slot, cpu)
+    {
+        this.cpuPool[slot] = cpu;
+    }
+
     getTaskForChallenge(challenge)
     {
         let task = null;
@@ -5064,11 +5069,11 @@ class Downlink extends EventListener
         return this.currency.greaterThan(cost);
     }
 
-    buyCPU(cpuData)
+    buyCPU(cpuData, slot)
     {
         let cpu = CPU.fromJSON(cpuData);
         this.currency = this.currency.minus(CPU.getPriceFor(cpuData));
-        this.playerComputer.addCPU(cpu);
+        this.playerComputer.setCPUSlot(slot, cpu);
 
     }
 }
@@ -5182,7 +5187,24 @@ module.exports = EventListener;
             MISSION_LIST_CLASS = 'mission-list-row',
             COMPANY_REP_CLASS = 'company-rep-row',
             PLAYER_COMPUTER_CPU_ROW_CLASS = "cpu-row";
+    function parseVersionNumber(versionNumberAsString)
+    {
+        let parts = versionNumberAsString.split('.'),
+            partAsNumber = 0;
+        for(let partIndex in parts)
+        {
+            partAsNumber +=  parts[partIndex] * Math.pow(1000, parts.length - 1 - partIndex);
+        }
+        return partAsNumber
+    }
 
+    function saveIsOlder(oldVersionString, currentVersionString)
+    {
+        let oldVersion = parseVersionNumber(oldVersionString),
+            currentVersion = parseVersionNumber(currentVersionString);
+
+        return oldVersion < currentVersion;
+    }
 
     let game = {
         interval:null,
@@ -5192,7 +5214,8 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.2.1a",
+        version:"0.2.2a",
+        requiresHardReset:true,
         /**
          * jquery entities that are needed for updating
          */
@@ -5332,12 +5355,16 @@ module.exports = EventListener;
                 this.start();
             });
         },
+        needsHardReset:function(saveFile)
+        {
+            return (this.requiresHardReset && saveIsOlder(saveFile.version, this.version));
+        },
         initialise:function()
         {
             this.bindUIElements();
 
             let saveFile = this.load();
-            if (saveFile)
+            if (saveFile && !this.needsHardReset(saveFile))
             {
                 this.loadGame(saveFile);
             }
@@ -5704,24 +5731,25 @@ module.exports = EventListener;
                 html += '<div class="row cpuRow">'
                 for(let j = 0; j < gridSize; j++)
                 {
-                    html += `<div class="col cpuHolder">${pc.cpus[cpuCount]?'<i class="fas fa-microchip"></i>':''}</div>`;
+                    html += `<div data-cpu-slot="${cpuCount}" class="col cpuHolder">${pc.cpus[cpuCount]?'<i class="fas fa-microchip"></i>':''}</div>`;
                     cpuCount++;
                 }
                 html += '</div>';
             }
             this.$computerBuild.html(html);
-            $('.cpuHolder').click(()=> {
-                this.buyCPU()
+            $('.cpuHolder').click((evt)=> {
+                let cpuSlot = (evt.currentTarget).data('cpuSlot');
+                this.buyCPU(cpuSlot)
             });
             $('.cpuRow').css('width', gridSize * 30);
         },
-        buyCPU:function()
+        buyCPU:function(cpuSlot)
         {
             if(!this.chosenPart)
             {
                 return;
             }
-            this.downlink.buyCPU(this.chosenPart);
+            this.downlink.buyCPU(this.chosenPart, cpuSlot);
             this.buildComputerGrid();
         }
     };

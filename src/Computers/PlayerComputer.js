@@ -29,6 +29,11 @@ class PlayerComputer extends Computer
         this.cpuPool.addCPU(cpu);
     }
 
+    setCPUSlot(slot, cpu)
+    {
+        this.cpuPool[slot] = cpu;
+    }
+
     getTaskForChallenge(challenge)
     {
         let task = null;
