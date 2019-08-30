@@ -1,5 +1,6 @@
 const   Alphabet = require('../Alphabet'),
-    Task = require('./Task');
+        Decimal = require('break_infinity.js'),
+        Task = require('./Task');
 
 class EncryptionCell
 {
@@ -47,7 +48,7 @@ class EncryptionCracker extends Task
         /**
          * The amount of progress you have made on the current tick
          */
-        this.currentTickPercentage = 0;
+        this.currentTickPercentage = new Decimal(0);
 
         /**
          * @type {Array.<Array.<EncryptionCell>>}
@@ -77,7 +78,6 @@ class EncryptionCracker extends Task
     solveNCells(cellsToSolve)
     {
         this.trigger('start');
-
         for(let i = 0; i < cellsToSolve; i++)
         {
             let cell = this.unsolvedCells.randomElement();
@@ -128,14 +128,14 @@ class EncryptionCracker extends Task
         // figure out how many cells to solve
         // by determining how many cycles per tick we have divided by the difficulty of this task
         // this may lead to a number less than zero and so, this tick, nothing will happen
-
-        this.currentTickPercentage += this.cyclesPerTick / this.encryptionDifficulty;
+        const increase = this.cyclesPerTick.dividedBy(this.encryptionDifficulty);
+        this.currentTickPercentage = this.currentTickPercentage.plus(increase);
 
         // if the currentTickPercentage is bigger than one, we solve that many cells
-        if(this.currentTickPercentage >= 1)
+        if(this.currentTickPercentage.greaterThanOrEqualTo(1))
         {
-            let fullCells = parseInt(this.currentTickPercentage);
-            this.currentTickPercentage -= fullCells;
+            let fullCells = this.currentTickPercentage.floor().toNumber();
+            this.currentTickPercentage = this.currentTickPercentage.minus(fullCells);
             this.solveNCells(fullCells);
         }
     }

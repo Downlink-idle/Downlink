@@ -230,13 +230,13 @@
             if(this.initialised)
             {
                 this.tick();
-                this.showComputerBuildModal();
+                //this.showComputerBuildModal();
             }
             else
             {
                 this.initialise().then(() => {
                     this.tick();
-                    this.showComputerBuildModal();
+                  //  this.showComputerBuildModal();
                 });
             }
         },
@@ -327,8 +327,8 @@
             this.mission = this.downlink.getNextMission()
                 .on('complete', ()=>{
                     this.updatePlayerDetails();
-                    this.getNextMission();
                     this.updateComputerPartsUI();
+                    this.getNextMission();
                 });
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});

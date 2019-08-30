@@ -1595,7 +1595,7 @@ class Challenge extends EventListener
 
 module.exports = Challenge;
 
-},{"../EventListener":17}],4:[function(require,module,exports){
+},{"../EventListener":18}],4:[function(require,module,exports){
 const   Decimal = require('break_infinity.js'),
 /**
  * @type {{}}
@@ -4124,7 +4124,7 @@ class Company
 
 module.exports = Company;
 
-},{"../Computers/ComputerGenerator":11,"./companies":8,"break_infinity.js":1}],8:[function(require,module,exports){
+},{"../Computers/ComputerGenerator":12,"./companies":8,"break_infinity.js":1}],8:[function(require,module,exports){
 let companyNames = [
     "Mike Rowe soft",
     "Pear",
@@ -4196,96 +4196,14 @@ class CPU extends EventListener
         return new CPU(json.name, json.speed, json.lifeCycle, json.lifeCycleUsed, json.living);
     }
 
-    /**
-     *  @param task
-     * @returns {Decimal}
-     */
-    getCyclesForTask(task)
+    static getCPUs()
     {
-        // the amount of cycles the cpu is going to devote to each task is 1/nth of the total cycles
-        // where n is the total of tasks that will be run including this task
-        // I'm going to fudge with that a bit to make sure no rogue amounts start appearing and dissappearing
-        return Decimal.max(task.minimumRequiredCycles, Decimal.floor(this.speed.div(this.tasks.length + 1)));
-    }
-
-    addTask(task)
-    {
-        if (!(task instanceof Task))
-        {
-            throw new InvalidTaskError('Tried to add a non task object to a processor');
-        }
-        if(this.tasks.indexOf(task)>=0)
-        {
-            throw new CPUDuplicateTaskError('This task is already on the CPU');
-        }
-
-
-        let cyclesToAssign = this.getCyclesForTask(task),
-            idealCyclesToAssign = cyclesToAssign;
-        //if(cyclesToAssign > (this.speed - this.load))
-        if(cyclesToAssign.greaterThan(this.speed.sub(this.load)))
-        {
-            throw new CPUFullError('Tried to add more cycles to the CPU than there are free cycles for');
-        }
-
-        if(this.tasks.length > 0)
-        {
-            let cyclesToTryToTakeAwayFromEachProcess = Math.ceil(idealCyclesToAssign / this.tasks.length),
-                cyclesFreedUp = 0;
-
-            for(let task of this.tasks)
-            {
-                cyclesFreedUp += task.freeCycles(cyclesToTryToTakeAwayFromEachProcess);
-            }
-            cyclesToAssign = cyclesFreedUp;
-        }
-        task.setCyclesPerTick(cyclesToAssign);
-        this.tasks.push(task);
-        task.on('complete', ()=>{ this.completeTask(task); });
-        return this;
-    }
-
-    completeTask(task)
-    {
-        let freedCycles = task.cyclesPerTick;
-        this.tasks.removeElement(task);
-
-        if(this.tasks.length >= 1)
-        {
-            let freedCyclesPerTick = Math.floor(freedCycles/this.tasks.length);
-            let i = 0;
-            while(i < this.tasks.length && freedCycles > 0)
-            {
-                let task = this.tasks[i];
-                freedCycles -= freedCyclesPerTick;
-                task.addCycles(freedCyclesPerTick);
-                i++;
-            }
-        }
-        this.trigger('taskComplete');
+        return cpus;
     }
 
     tick()
     {
-        for(let task of this.tasks)
-        {
-            task.tick();
-        }
-    }
 
-    get load()
-    {
-        let minimum = new Decimal(0);
-        for(let task of this.tasks)
-        {
-            minimum = minimum.plus(task.minimumRequiredCycles);
-        }
-        return minimum;
-    }
-
-    static getCPUs()
-    {
-        return cpus;
     }
 
     /**
@@ -4299,7 +4217,185 @@ class CPU extends EventListener
 
 module.exports = CPU;
 
-},{"../EventListener":17,"../Tasks/Task":25,"./cpus":14,"break_infinity.js":1}],10:[function(require,module,exports){
+},{"../EventListener":18,"../Tasks/Task":26,"./cpus":15,"break_infinity.js":1}],10:[function(require,module,exports){
+const   CPU = require('./CPU'),
+        Task = require('../Tasks/Task'),
+        Decimal = require('break_infinity.js'),
+        EventListener = require('../EventListener');
+
+/*
+ * Custom exceptions
+ */
+class NoFreeCPUCyclesError extends Error{};
+class CPUDuplicateTaskError extends Error{};
+class InvalidTaskError extends Error{};
+
+class CPUPool extends EventListener
+{
+    constructor(cpus)
+    {
+        super();
+        /**
+         * @type {Array.<CPU>}
+         */
+        this.cpus = [];
+        /**
+         * @type {Decimal} The average speed of all cpus in the pool
+         */
+        this.averageSpeed = new Decimal(0);
+        /**
+         * @type {Decimal} The average speed of all cpus in the pool
+         */
+        this.totalSpeed = new Decimal(0);
+        /**
+         * @type {Decimal} The total cycles used by all tasks
+         */
+        this.load = new Decimal(0);
+        /**
+         * * @type {Array.<Task>}
+         */
+        this.tasks = [];
+
+        for(let cpu of cpus)
+        {
+            this.addCPU(cpu);
+        }
+    }
+
+    /**
+     * @param {CPU} cpu
+     */
+    addCPU(cpu)
+    {
+        this.cpus.push(cpu);
+        this.totalSpeed = this.totalSpeed.plus(cpu.speed);
+        this.averageSpeed = this.totalSpeed.dividedBy(this.cpus.length);
+    }
+
+    /**
+     * figure out how many cycles to assign the task. This number will be the larger of the minimum required cycles
+     * and 1/nth of the total cycles available to the pool (where n is the number of total tasks being run, including
+     * this task).
+     * @param {Task} task   The task to figure out the cycles for
+     * @returns {Decimal}   The number of cycles to assign the task
+     */
+    getCyclesForTask(task)
+    {
+        return Decimal.max(task.minimumRequiredCycles, Decimal.floor(this.totalSpeed.div(this.tasks.length + 1)));
+    }
+
+    /**
+     * Figure out how many cycles to remove from all of the current tasks in the pool and do so.
+     * This method will keep a tally of the freed cycles, as no task will lower its assigned cycles below the minimum
+     * required amount.
+     * @param task
+     * @returns {Decimal}
+     */
+    balanceTaskLoadForNewTask(task)
+    {
+        // get the number of cycles to assign
+        let cyclesToAssign = this.getCyclesForTask(task);
+        if(this.tasks.length === 0)
+        {
+            return cyclesToAssign;
+        }
+
+        let idealCyclesToAssign = cyclesToAssign;
+        if(this.tasks.length > 0)
+        {
+            // average that out
+            let cyclesToTryToTakeAwayFromEachProcess = idealCyclesToAssign.dividedBy(this.tasks.length).ceil(),
+                cyclesFreedUp = new Decimal(0);
+
+            for(let task of this.tasks)
+            {
+                // add the actual amount freed up to the total freed
+                cyclesFreedUp = cyclesFreedUp.plus(task.freeCycles(cyclesToTryToTakeAwayFromEachProcess));
+            }
+            cyclesToAssign = cyclesFreedUp;
+        }
+        return cyclesToAssign;
+    }
+
+    /**
+     * Add a task to the cpu pool
+     * @param {Task} task   The task to be added
+     */
+    addTask(task)
+    {
+        // if it's not a task, complain
+        if (!(task instanceof Task))
+        {
+            throw new InvalidTaskError('Tried to add a non task object to a processor');
+        }
+        // if it's already in the pool, complain
+        if(this.tasks.indexOf(task)>=0)
+        {
+            throw new CPUDuplicateTaskError('This task is already on the CPU');
+        }
+        let freeCycles = this.freeCycles;
+        // if you don't have the free oomph, complain
+        if(task.minimumRequiredCycles.greaterThan(freeCycles))
+        {
+            throw new NoFreeCPUCyclesError(`CPU pool does not have the required cycles for ${task.name}. Need ${task.minimumRequiredCycles.toString()} but only have ${freeCycles}.`);
+        }
+
+        // figure out how many cycles to assign
+        let cyclesToAssign = this.balanceTaskLoadForNewTask(task);
+
+        task.setCyclesPerTick(cyclesToAssign);
+        task.on('complete', ()=>{ this.completeTask(task); });
+
+        this.load = this.load.plus(task.minimumRequiredCycles);
+        this.tasks.push(task);
+    }
+
+    /**
+     * Finish a task and remove it from the cpu pool
+     * @param {Task} task
+     */
+    completeTask(task)
+    {
+        let freedCycles = task.cyclesPerTick;
+        this.tasks.removeElement(task);
+        this.load = this.load.minus(task.minimumRequiredCycles);
+
+        if(this.tasks.length >= 1)
+        {
+            let freedCyclesPerTick = freedCycles.dividedBy(this.tasks.length).floor();
+            let i = 0;
+            while(i < this.tasks.length && freedCycles.greaterThan(0))
+            {
+                let task = this.tasks[i];
+                freedCycles = freedCycles.minus(freedCyclesPerTick);
+                task.addCycles(freedCyclesPerTick);
+                i++;
+            }
+        }
+        this.trigger('taskComplete');
+    }
+
+    get freeCycles()
+    {
+        return this.totalSpeed.minus(this.load);
+    }
+
+    tick()
+    {
+        for(let task of this.tasks)
+        {
+            task.tick();
+        }
+        for(let cpu of this.cpus)
+        {
+            cpu.tick();
+        }
+    }
+}
+
+module.exports = CPUPool;
+
+},{"../EventListener":18,"../Tasks/Task":26,"./CPU":9,"break_infinity.js":1}],11:[function(require,module,exports){
 const EventListener = require('../EventListener');
 
 function randomIPAddress()
@@ -4412,7 +4508,7 @@ class Computer extends EventListener
 
 module.exports = Computer;
 
-},{"../EventListener":17}],11:[function(require,module,exports){
+},{"../EventListener":18}],12:[function(require,module,exports){
 const   PlayerComputer = require('./PlayerComputer'),
         Computer = require('./Computer'),
         CPU = require('./CPU'),
@@ -4522,16 +4618,16 @@ class ComputerGenerator
 
 module.exports = new ComputerGenerator();
 
-},{"../Missions/MissionComputer":20,"./CPU":9,"./Computer":10,"./PlayerComputer":12,"./PublicComputer":13}],12:[function(require,module,exports){
+},{"../Missions/MissionComputer":21,"./CPU":9,"./Computer":11,"./PlayerComputer":13,"./PublicComputer":14}],13:[function(require,module,exports){
 const   Password = require('../Challenges/Password'),
         {DictionaryCracker, PasswordCracker} = require('../Tasks/PasswordCracker'),
         Encryption = require('../Challenges/Encryption'),
         EncryptionCracker = require('../Tasks/EncryptionCracker'),
         Computer = require('./Computer'),
+        CPUPool = require('./CPUPool'),
         CPU = require('./CPU.js');
 
 class InvalidTaskError extends Error{};
-class NoFreeCPUCyclesError extends Error{};
 const DEFAULT_MAX_CPUS = 4;
 
 class PlayerComputer extends Computer
@@ -4539,18 +4635,19 @@ class PlayerComputer extends Computer
     constructor(cpus, maxCPUs)
     {
         super('Home', null, '127.0.0.1');
-        /**
-         * @type {Array.<CPU>}
-         */
-        this.cpus = cpus;
+        this.cpuPool = new CPUPool(cpus);
         this.queuedTasks = [];
         this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
+    }
 
+    get cpus()
+    {
+        return this.cpuPool.cpus;
     }
 
     addCPU(cpu)
     {
-        this.cpus.push(cpu);
+        this.cpuPool.addCPU(cpu);
     }
 
     getTaskForChallenge(challenge)
@@ -4574,52 +4671,19 @@ class PlayerComputer extends Computer
 
     addTaskForChallenge(challenge)
     {
-        let task = this.getTaskForChallenge(challenge),
-            i= 0, searching = true, found = false;
-        while(searching)
-        {
-            try
-            {
-                let cpu = this.cpus[i];
-                cpu.addTask(task);
-                searching = false;
-                found = true;
-            }
-            catch(e)
-            {
-                i++;
-                if(i > this.cpus.length)
-                {
-                    searching = false;
-                }
-            }
-        }
-        if(!found)
-        {
-            throw new NoFreeCPUCyclesError(`Cannot find the cycles for ${challenge.name} on any of the CPUs. Requires ${task.minimumRequiredCycles}.`);
-        }
+        let task = this.getTaskForChallenge(challenge);
+        this.cpuPool.addTask(task);
     }
 
     tick()
     {
-        for(let cpu of this.cpus)
-        {
-            cpu.tick();
-        }
+        this.cpuPool.tick();
     }
 
 
     get tasks()
     {
-        let tasks = {};
-        for(let cpu of this.cpus)
-        {
-            for(let task of cpu.tasks)
-            {
-                tasks[task.name] = task;
-            }
-        }
-        return tasks;
+        return this.cpuPool.tasks;
     }
 
     get missionTasks()
@@ -4667,7 +4731,7 @@ class PlayerComputer extends Computer
 
 module.exports = PlayerComputer;
 
-},{"../Challenges/Encryption":4,"../Challenges/Password":5,"../Tasks/EncryptionCracker":23,"../Tasks/PasswordCracker":24,"./CPU.js":9,"./Computer":10}],13:[function(require,module,exports){
+},{"../Challenges/Encryption":4,"../Challenges/Password":5,"../Tasks/EncryptionCracker":24,"../Tasks/PasswordCracker":25,"./CPU.js":9,"./CPUPool":10,"./Computer":11}],14:[function(require,module,exports){
 let Computer = require('./Computer');
 
 class PublicComputer extends Computer
@@ -4680,7 +4744,7 @@ class PublicComputer extends Computer
 
 module.exports = PublicComputer;
 
-},{"./Computer":10}],14:[function(require,module,exports){
+},{"./Computer":11}],15:[function(require,module,exports){
 let cpus = [
     {name:"Garbo Processor", speed:20, lifeCycle:100},
     {name:"Garbo Processor II", speed:40, lifeCycle:1000},
@@ -4689,7 +4753,7 @@ let cpus = [
 ];
 module.exports = cpus;
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 const Computer = require('./Computers/Computer');
 
     class InvalidTypeError extends Error{}
@@ -4800,7 +4864,7 @@ const Computer = require('./Computers/Computer');
 
 module.exports = Connection;
 
-},{"./Computers/Computer":10}],16:[function(require,module,exports){
+},{"./Computers/Computer":11}],17:[function(require,module,exports){
 const   MissionGenerator = require('./Missions/MissionGenerator'),
         EventListener = require('./EventListener'),
         Connection = require('./Connection'),
@@ -5015,7 +5079,7 @@ class Downlink extends EventListener
 
 module.exports = Downlink;
 
-},{"./Companies/Company":7,"./Computers/CPU":9,"./Computers/ComputerGenerator":11,"./Connection":15,"./EventListener":17,"./Missions/MissionGenerator":22,"break_infinity.js":1}],17:[function(require,module,exports){
+},{"./Companies/Company":7,"./Computers/CPU":9,"./Computers/ComputerGenerator":12,"./Connection":16,"./EventListener":18,"./Missions/MissionGenerator":23,"break_infinity.js":1}],18:[function(require,module,exports){
 class Event
 {
     constructor(name)
@@ -5111,7 +5175,7 @@ class EventListener
 
 module.exports = EventListener;
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 // This file is solely responsible for exposing the necessary parts of the game to the UI elements
 (($)=>{$(()=>{
 
@@ -5344,13 +5408,13 @@ module.exports = EventListener;
             if(this.initialised)
             {
                 this.tick();
-                this.showComputerBuildModal();
+                //this.showComputerBuildModal();
             }
             else
             {
                 this.initialise().then(() => {
                     this.tick();
-                    this.showComputerBuildModal();
+                  //  this.showComputerBuildModal();
                 });
             }
         },
@@ -5441,8 +5505,8 @@ module.exports = EventListener;
             this.mission = this.downlink.getNextMission()
                 .on('complete', ()=>{
                     this.updatePlayerDetails();
-                    this.getNextMission();
                     this.updateComputerPartsUI();
+                    this.getNextMission();
                 });
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
@@ -5671,7 +5735,7 @@ module.exports = EventListener;
     window.game = game;
 })})(window.jQuery);
 
-},{"./Computers/CPU":9,"./Downlink":16,"break_infinity.js":1}],19:[function(require,module,exports){
+},{"./Computers/CPU":9,"./Downlink":17,"break_infinity.js":1}],20:[function(require,module,exports){
 const   Company = require('../Companies/Company'),
     MissionComputer = require('./MissionComputer'),
     Password = require('../Challenges/Password'),
@@ -5808,7 +5872,7 @@ class Mission extends EventListener
 }
 module.exports = Mission;
 
-},{"../Challenges/Encryption":4,"../Challenges/Password":5,"../Companies/Company":7,"../EventListener":17,"./MissionComputer":20,"./MissionDifficulty":21}],20:[function(require,module,exports){
+},{"../Challenges/Encryption":4,"../Challenges/Password":5,"../Companies/Company":7,"../EventListener":18,"./MissionComputer":21,"./MissionDifficulty":22}],21:[function(require,module,exports){
 const   Computer = require('../Computers/Computer'),
         Decimal = require('break_infinity.js');
 class MissionComputer extends Computer
@@ -5970,7 +6034,7 @@ class MissionComputer extends Computer
 
 module.exports = MissionComputer;
 
-},{"../Computers/Computer":10,"break_infinity.js":1}],21:[function(require,module,exports){
+},{"../Computers/Computer":11,"break_infinity.js":1}],22:[function(require,module,exports){
 const Decimal = require('break_infinity.js');
 
 /**
@@ -6006,7 +6070,7 @@ MissionDifficulty.DIFFICULTIES = {
 
 module.exports = MissionDifficulty;
 
-},{"break_infinity.js":1}],22:[function(require,module,exports){
+},{"break_infinity.js":1}],23:[function(require,module,exports){
 const   Mission = require('./Mission'),
         MINIMUM_MISSIONS = 10;
 let availableMissions = [];
@@ -6040,9 +6104,10 @@ class MissionGenerator
 
 module.exports = MissionGenerator;
 
-},{"./Mission":19}],23:[function(require,module,exports){
+},{"./Mission":20}],24:[function(require,module,exports){
 const   Alphabet = require('../Alphabet'),
-    Task = require('./Task');
+        Decimal = require('break_infinity.js'),
+        Task = require('./Task');
 
 class EncryptionCell
 {
@@ -6090,7 +6155,7 @@ class EncryptionCracker extends Task
         /**
          * The amount of progress you have made on the current tick
          */
-        this.currentTickPercentage = 0;
+        this.currentTickPercentage = new Decimal(0);
 
         /**
          * @type {Array.<Array.<EncryptionCell>>}
@@ -6120,7 +6185,6 @@ class EncryptionCracker extends Task
     solveNCells(cellsToSolve)
     {
         this.trigger('start');
-
         for(let i = 0; i < cellsToSolve; i++)
         {
             let cell = this.unsolvedCells.randomElement();
@@ -6171,14 +6235,14 @@ class EncryptionCracker extends Task
         // figure out how many cells to solve
         // by determining how many cycles per tick we have divided by the difficulty of this task
         // this may lead to a number less than zero and so, this tick, nothing will happen
-
-        this.currentTickPercentage += this.cyclesPerTick / this.encryptionDifficulty;
+        const increase = this.cyclesPerTick.dividedBy(this.encryptionDifficulty);
+        this.currentTickPercentage = this.currentTickPercentage.plus(increase);
 
         // if the currentTickPercentage is bigger than one, we solve that many cells
-        if(this.currentTickPercentage >= 1)
+        if(this.currentTickPercentage.greaterThanOrEqualTo(1))
         {
-            let fullCells = parseInt(this.currentTickPercentage);
-            this.currentTickPercentage -= fullCells;
+            let fullCells = this.currentTickPercentage.floor().toNumber();
+            this.currentTickPercentage = this.currentTickPercentage.minus(fullCells);
             this.solveNCells(fullCells);
         }
     }
@@ -6197,7 +6261,7 @@ class EncryptionCracker extends Task
 
 module.exports = EncryptionCracker;
 
-},{"../Alphabet":2,"./Task":25}],24:[function(require,module,exports){
+},{"../Alphabet":2,"./Task":26,"break_infinity.js":1}],25:[function(require,module,exports){
 const   DICTIONARY_CRACKER_MINIMUM_CYCLES = 5,
         SEQUENTIAL_CRACKER_MINIMUM_CYCLES = 20,
         Task = require('./Task'),
@@ -6286,8 +6350,9 @@ module.exports = {
     SequentialAttacker:SequentialAttacker
 };
 
-},{"../Challenges/Password":5,"./Task":25}],25:[function(require,module,exports){
-const EventListener = require('../EventListener');
+},{"../Challenges/Password":5,"./Task":26}],26:[function(require,module,exports){
+const   EventListener = require('../EventListener'),
+        Decimal = require('break_infinity.js');
 
 class CPUOverloadError extends Error
 {
@@ -6305,7 +6370,7 @@ class Task extends EventListener
     {
         super();
         this.name= name;
-        this.minimumRequiredCycles = minimumRequiredCycles?minimumRequiredCycles:10;
+        this.minimumRequiredCycles = new Decimal(minimumRequiredCycles?minimumRequiredCycles:10);
         this.cyclesPerTick = 0;
         this.weight = 1;
         this.difficultyRatio = 0;
@@ -6317,7 +6382,7 @@ class Task extends EventListener
 
     setCyclesPerTick(cyclesPerTick)
     {
-        if(cyclesPerTick < this.minimumRequiredCycles)
+        if(cyclesPerTick.lessThan(this.minimumRequiredCycles))
         {
             throw new CPUOverloadError(this, cyclesPerTick);
         }
@@ -6327,29 +6392,33 @@ class Task extends EventListener
 
     addCycles(tickIncrease)
     {
-        this.cyclesPerTick += tickIncrease;
+        this.cyclesPerTick = this.cyclesPerTick.plus(tickIncrease);
     }
 
     /**
      * Try to release a number of ticks from the task and return the number actually released
-     * @param tickReduction
+     * @param {Decimal} tickReduction
      * @returns {number|*}
      */
     freeCycles(tickReduction)
     {
-        if(this.cyclesPerTick <= (tickReduction + this.minimumRequiredCycles))
+        // figure out how many freeable ticks we have
+        const freeableTicks = this.cyclesPerTick.minus(this.minimumRequiredCycles);
+        // if it's one or less, free none and return 0
+        let ticksToFree = new Decimal(0);
+        if(freeableTicks.greaterThan(1))
         {
-
-            if(this.cyclesPerTick > 1)
+            if(freeableTicks.greaterThan(tickReduction))
             {
-                let halfMyCyclesRoundedDown = Math.floor(this.cyclesPerTick / 2);
-                this.cyclesPerTick -= halfMyCyclesRoundedDown;
-                return halfMyCyclesRoundedDown;
+                ticksToFree = tickReduction;
             }
-            return 0;
+            else
+            {
+                ticksToFree = freeableTicks.dividedBy(2).floor();
+            }
         }
-        this.cyclesPerTick -= tickReduction;
-        return tickReduction;
+        this.cyclesPerTick = this.cyclesPerTick.minus(ticksToFree);
+        return ticksToFree;
     }
 
     signalComplete()
@@ -6374,4 +6443,4 @@ class Task extends EventListener
 
 module.exports = Task;
 
-},{"../EventListener":17}]},{},[18]);
+},{"../EventListener":18,"break_infinity.js":1}]},{},[19]);

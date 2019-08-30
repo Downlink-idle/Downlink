@@ -3,10 +3,10 @@ const   Password = require('../Challenges/Password'),
         Encryption = require('../Challenges/Encryption'),
         EncryptionCracker = require('../Tasks/EncryptionCracker'),
         Computer = require('./Computer'),
+        CPUPool = require('./CPUPool'),
         CPU = require('./CPU.js');
 
 class InvalidTaskError extends Error{};
-class NoFreeCPUCyclesError extends Error{};
 const DEFAULT_MAX_CPUS = 4;
 
 class PlayerComputer extends Computer
@@ -14,18 +14,19 @@ class PlayerComputer extends Computer
     constructor(cpus, maxCPUs)
     {
         super('Home', null, '127.0.0.1');
-        /**
-         * @type {Array.<CPU>}
-         */
-        this.cpus = cpus;
+        this.cpuPool = new CPUPool(cpus);
         this.queuedTasks = [];
         this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
+    }
 
+    get cpus()
+    {
+        return this.cpuPool.cpus;
     }
 
     addCPU(cpu)
     {
-        this.cpus.push(cpu);
+        this.cpuPool.addCPU(cpu);
     }
 
     getTaskForChallenge(challenge)
@@ -49,52 +50,19 @@ class PlayerComputer extends Computer
 
     addTaskForChallenge(challenge)
     {
-        let task = this.getTaskForChallenge(challenge),
-            i= 0, searching = true, found = false;
-        while(searching)
-        {
-            try
-            {
-                let cpu = this.cpus[i];
-                cpu.addTask(task);
-                searching = false;
-                found = true;
-            }
-            catch(e)
-            {
-                i++;
-                if(i > this.cpus.length)
-                {
-                    searching = false;
-                }
-            }
-        }
-        if(!found)
-        {
-            throw new NoFreeCPUCyclesError(`Cannot find the cycles for ${challenge.name} on any of the CPUs. Requires ${task.minimumRequiredCycles}.`);
-        }
+        let task = this.getTaskForChallenge(challenge);
+        this.cpuPool.addTask(task);
     }
 
     tick()
     {
-        for(let cpu of this.cpus)
-        {
-            cpu.tick();
-        }
+        this.cpuPool.tick();
     }
 
 
     get tasks()
     {
-        let tasks = {};
-        for(let cpu of this.cpus)
-        {
-            for(let task of cpu.tasks)
-            {
-                tasks[task.name] = task;
-            }
-        }
-        return tasks;
+        return this.cpuPool.tasks;
     }
 
     get missionTasks()

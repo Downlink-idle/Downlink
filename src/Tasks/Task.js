@@ -1,4 +1,5 @@
-const EventListener = require('../EventListener');
+const   EventListener = require('../EventListener'),
+        Decimal = require('break_infinity.js');
 
 class CPUOverloadError extends Error
 {
@@ -16,7 +17,7 @@ class Task extends EventListener
     {
         super();
         this.name= name;
-        this.minimumRequiredCycles = minimumRequiredCycles?minimumRequiredCycles:10;
+        this.minimumRequiredCycles = new Decimal(minimumRequiredCycles?minimumRequiredCycles:10);
         this.cyclesPerTick = 0;
         this.weight = 1;
         this.difficultyRatio = 0;
@@ -28,7 +29,7 @@ class Task extends EventListener
 
     setCyclesPerTick(cyclesPerTick)
     {
-        if(cyclesPerTick < this.minimumRequiredCycles)
+        if(cyclesPerTick.lessThan(this.minimumRequiredCycles))
         {
             throw new CPUOverloadError(this, cyclesPerTick);
         }
@@ -38,29 +39,33 @@ class Task extends EventListener
 
     addCycles(tickIncrease)
     {
-        this.cyclesPerTick += tickIncrease;
+        this.cyclesPerTick = this.cyclesPerTick.plus(tickIncrease);
     }
 
     /**
      * Try to release a number of ticks from the task and return the number actually released
-     * @param tickReduction
+     * @param {Decimal} tickReduction
      * @returns {number|*}
      */
     freeCycles(tickReduction)
     {
-        if(this.cyclesPerTick <= (tickReduction + this.minimumRequiredCycles))
+        // figure out how many freeable ticks we have
+        const freeableTicks = this.cyclesPerTick.minus(this.minimumRequiredCycles);
+        // if it's one or less, free none and return 0
+        let ticksToFree = new Decimal(0);
+        if(freeableTicks.greaterThan(1))
         {
-
-            if(this.cyclesPerTick > 1)
+            if(freeableTicks.greaterThan(tickReduction))
             {
-                let halfMyCyclesRoundedDown = Math.floor(this.cyclesPerTick / 2);
-                this.cyclesPerTick -= halfMyCyclesRoundedDown;
-                return halfMyCyclesRoundedDown;
+                ticksToFree = tickReduction;
             }
-            return 0;
+            else
+            {
+                ticksToFree = freeableTicks.dividedBy(2).floor();
+            }
         }
-        this.cyclesPerTick -= tickReduction;
-        return tickReduction;
+        this.cyclesPerTick = this.cyclesPerTick.minus(ticksToFree);
+        return ticksToFree;
     }
 
     signalComplete()
