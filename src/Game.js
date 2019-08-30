@@ -36,7 +36,7 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.0a",
+        version:"0.3.5a",
         requiresHardReset:true,
         /**
          * jquery entities that are needed for updating
