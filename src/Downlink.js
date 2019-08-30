@@ -3,6 +3,7 @@ const   MissionGenerator = require('./Missions/MissionGenerator'),
         Connection = require('./Connection'),
         Company = require('./Companies/Company'),
         ComputerGenerator = require('./Computers/ComputerGenerator'),
+        CPU = require('./Computers/CPU'),
         Decimal = require('break_infinity.js');
 
 /**
@@ -15,6 +16,9 @@ class Downlink extends EventListener
     constructor()
     {
         super();
+        /**
+         * @type {PlayerComputer}
+         */
         this.playerComputer = null;
         /**
          *
@@ -22,6 +26,8 @@ class Downlink extends EventListener
          */
         this.playerConnection = null;
         this.getNewConnection();
+        this.runTime = 0;
+        this.lastTickTime = Date.now();
 
         this.currency = new Decimal(0);
     }
@@ -50,17 +56,22 @@ class Downlink extends EventListener
 
     tick()
     {
+        let now = Date.now();
+        this.runTime += now - this.lastTickTime;
+
         this.playerComputer.tick();
         if(this.activeMission)
         {
             this.activeMission.tick();
         }
+        this.lastTickTime = Date.now();
     }
 
     getNextMission()
     {
         this.activeMission = MissionGenerator.getFirstAvailableMission().on("complete", ()=>{
             this.finishCurrentMission(this.activeMission);
+            this.trigger('missionComplete');
         });
         this.activeMission.computer.connect(this.playerConnection);
         for(let challenge of this.activeMission.challenges)
@@ -140,7 +151,8 @@ class Downlink extends EventListener
             playerComputer:this.playerComputer.toJSON(),
             playerConnection:this.playerConnection.toJSON(),
             companies:[],
-            currency:this.currency.toString()
+            currency:this.currency.toString(),
+            runTime:this.runTime
         };
         for(let company of this.companies)
         {
@@ -157,6 +169,8 @@ class Downlink extends EventListener
 
         downlink.currency = Decimal.fromString(json.currency);
         downlink.playerComputer = ComputerGenerator.fromJSON(json.playerComputer);
+        downlink.runTime = parseInt(json.runTime);
+        downlink.lastTickTime = Date.now();
 
         downlink.playerConnection = Connection.fromJSON(json.playerConnection);
         downlink.playerConnection.setStartingPoint(downlink.playerComputer);
@@ -170,6 +184,29 @@ class Downlink extends EventListener
 
         let dl = new Downlink();
         return dl;
+    }
+
+    static stop()
+    {
+
+    }
+
+    get secondsRunning()
+    {
+        return Math.floor(this.runTime / 1000);
+    }
+
+    canAfford(cost)
+    {
+        return this.currency.greaterThan(cost);
+    }
+
+    buyCPU(cpuData)
+    {
+        let cpu = CPU.fromJSON(cpuData);
+        this.currency = this.currency.minus(CPU.getPriceFor(cpuData));
+        this.playerComputer.addCPU(cpu);
+
     }
 }
 

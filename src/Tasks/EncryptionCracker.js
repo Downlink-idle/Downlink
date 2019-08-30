@@ -1,5 +1,5 @@
 const   Alphabet = require('../Alphabet'),
-    Task = require('./Task');
+        Task = require('./Task');
 
 class EncryptionCell
 {
@@ -77,7 +77,6 @@ class EncryptionCracker extends Task
     solveNCells(cellsToSolve)
     {
         this.trigger('start');
-
         for(let i = 0; i < cellsToSolve; i++)
         {
             let cell = this.unsolvedCells.randomElement();
@@ -128,13 +127,12 @@ class EncryptionCracker extends Task
         // figure out how many cells to solve
         // by determining how many cycles per tick we have divided by the difficulty of this task
         // this may lead to a number less than zero and so, this tick, nothing will happen
-
         this.currentTickPercentage += this.cyclesPerTick / this.encryptionDifficulty;
 
         // if the currentTickPercentage is bigger than one, we solve that many cells
         if(this.currentTickPercentage >= 1)
         {
-            let fullCells = parseInt(this.currentTickPercentage);
+            let fullCells = Math.floor(this.currentTickPercentage);
             this.currentTickPercentage -= fullCells;
             this.solveNCells(fullCells);
         }

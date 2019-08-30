@@ -70,3 +70,45 @@
 {
     z-index:1;
 }
+
+.cpuHolder
+{
+    background-color:dimgray;
+    min-width:30px;
+    max-width:30px;
+    min-height:30px;
+    max-height:30px;
+    padding: 3px 3px 3px 7px;
+    border-right:1px solid black;
+    cursor:pointer;
+}
+
+.cpuHolder:last-child
+{
+    border:none;
+}
+
+.cpuRow
+{
+    border-bottom: 1px solid black;
+}
+
+.cpuRow:last-child
+{
+    border:none;
+}
+
+.unaffordable-part
+{
+    color: lightgray;
+}
+
+.affordable-part
+{
+    cursor:pointer;
+}
+
+.chosenPart
+{
+    background-color: lightblue;
+}

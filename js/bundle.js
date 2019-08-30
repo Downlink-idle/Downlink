@@ -1595,17 +1595,16 @@ class Challenge extends EventListener
 
 module.exports = Challenge;
 
-},{"../EventListener":15}],4:[function(require,module,exports){
-const Decimal = require('break_infinity.js');
-
+},{"../EventListener":18}],4:[function(require,module,exports){
 /**
  * @type {{}}
  */
-const DIFFICULTIES = {
-    'EASY':{name:'Linear', size:{min:7, max:10}},
-    'MEDIUM':{name:'Quadratic', size:{min:10,max:15}},
-    'HARD':{name:'Cubic', size:{min:15,max:20}}
-};
+       DIFFICULTIES = {
+            'EASY':{name:'Linear', size:{min:7, max:10}},
+            'MEDIUM':{name:'Quadratic', size:{min:10,max:15}},
+            'HARD':{name:'Cubic', size:{min:15,max:20}}
+        },
+        DIFFICULTY_EXPONENT = 0.4;
 
 function getRandomIntBetween(min, max)
 {
@@ -1618,9 +1617,9 @@ class Encryption extends Challenge
     {
         let rows = getRandomIntBetween(difficulty.size.min, difficulty.size.max),
             cols = getRandomIntBetween(difficulty.size.min, difficulty.size.max),
-            difficultyRatio = Math.floor(Math.sqrt(rows * cols));
+            difficultyRatio = Math.floor(Math.pow(rows * cols, DIFFICULTY_EXPONENT));
 
-        super(difficulty.name + ' Encryption', new Decimal(difficultyRatio));
+        super(difficulty.name + ' Encryption', difficultyRatio);
         this.rows = rows;
         this.cols = cols;
     }
@@ -1644,10 +1643,9 @@ class Encryption extends Challenge
 
 module.exports = Encryption;
 
-},{"./Challenge":3,"break_infinity.js":1}],5:[function(require,module,exports){
+},{"./Challenge":3}],5:[function(require,module,exports){
 const   dictionary = require('./dictionary'),
-        Challenge = require('./Challenge'),
-        Decimal = require('break_infinity.js');
+        Challenge = require('./Challenge');
 
 const PASSWORD_TYPES = {
     'DICTIONARY':'Dictionary',
@@ -1663,7 +1661,7 @@ class Password extends Challenge
 {
     constructor(text, type, difficulty)
     {
-        super(type + ' Password', new Decimal(difficulty));
+        super(type + ' Password', difficulty) ;
         this.text = text;
         this.type = type;
     }
@@ -1723,7 +1721,7 @@ class Password extends Challenge
 
 module.exports = Password;
 
-},{"./Challenge":3,"./dictionary":6,"break_infinity.js":1}],6:[function(require,module,exports){
+},{"./Challenge":3,"./dictionary":6}],6:[function(require,module,exports){
 // stolen from Bart Busschot's xkpasswd JS github repo
 // See https://github.com/bbusschots/hsxkpasswd.js
 
@@ -4023,7 +4021,7 @@ class Company
          * @type {Decimal} the reward modifier this company offers the player
          * this is the increase exponent for successfully achieved missions
          */
-        this.missionSuccessIncreaseExponent = new Decimal(1.01);
+        this.missionSuccessIncreaseExponent = new Decimal(1.001);
     }
 
     setPublicServer(publicServer)
@@ -4124,7 +4122,7 @@ class Company
 
 module.exports = Company;
 
-},{"../Computers/ComputerGenerator":11,"./companies":8,"break_infinity.js":1}],8:[function(require,module,exports){
+},{"../Computers/ComputerGenerator":12,"./companies":8,"break_infinity.js":1}],8:[function(require,module,exports){
 let companyNames = [
     "Mike Rowe soft",
     "Pear",
@@ -4144,134 +4142,256 @@ let companyNames = [
 module.exports = companyNames;
 
 },{}],9:[function(require,module,exports){
-    const   Task = require('../Tasks/Task'),
-            EventListener = require('../EventListener'),
-            Decimal = require('break_infinity.js');
+const   Task = require('../Tasks/Task'),
+        EventListener = require('../EventListener'),
+        cpus = require('./cpus');
 
-    class CPUFullError extends Error{};
-    class CPUDuplicateTaskError extends Error{};
-    class InvalidTaskError extends Error{};
+class CPUFullError extends Error{};
+class CPUDuplicateTaskError extends Error{};
+class InvalidTaskError extends Error{};
 
-    const DEFAULT_PROCESSOR_SPEED = 20;
+const DEFAULT_PROCESSOR_SPEED = 20;
 
-    class CPU extends EventListener
+class CPU extends EventListener
+{
+    constructor(name, speed, lifeCycle, lifeCycleUsed, living)
     {
-        constructor(name, speed)
-        {
-            super();
-            /**
-             * @type {string}
-             */
-            this.name = name?name:"Garbo Processor";
-            /**
-             * @type {Decimal}
-             */
-            this.speed = speed?new Decimal(speed):new Decimal(DEFAULT_PROCESSOR_SPEED);
-            /**
-             * @type {Array.<Task>}
-             */
-            this.tasks = [];
-        }
-
-        toJSON()
-        {
-            return {
-                name:this.name,
-                speed:this.speed.toJSON()
-            }
-        }
-
+        super();
         /**
-         *  @param task
-         * @returns {Decimal}
+         * @type {string}
          */
-        getCyclesForTask(task)
-        {
-            // the amount of cycles the cpu is going to devote to each task is 1/nth of the total cycles
-            // where n is the total of tasks that will be run including this task
-            // I'm going to fudge with that a bit to make sure no rogue amounts start appearing and dissappearing
-            return Decimal.max(task.minimumRequiredCycles, Decimal.floor(this.speed.div(this.tasks.length + 1)));
-        }
+        this.name = name?name:"Garbo Processor";
+        /**
+         * @type {Decimal}
+         */
+        this.speed = parseInt(speed?speed:DEFAULT_PROCESSOR_SPEED);
+        /**
+         * @type {Array.<Task>}
+         */
+        this.tasks = [];
+        /**
+         * @type {Decimal}
+         */
+        this.lifeCycle = lifeCycle?lifeCycle:1000;
+        this.lifeCycleUsed = lifeCycleUsed?lifeCycleUsed:0;
+        this.living = living !== null?living:true;
+    }
 
-        addTask(task)
-        {
-            if (!(task instanceof Task))
-            {
-                throw new InvalidTaskError('Tried to add a non task object to a processor');
-            }
-            if(this.tasks.indexOf(task)>=0)
-            {
-                throw new CPUDuplicateTaskError('This task is already on the CPU');
-            }
-
-
-            let cyclesToAssign = this.getCyclesForTask(task),
-                idealCyclesToAssign = cyclesToAssign;
-            //if(cyclesToAssign > (this.speed - this.load))
-            if(cyclesToAssign.greaterThan(this.speed.sub(this.load)))
-            {
-                throw new CPUFullError('Tried to add more cycles to the CPU than there are free cycles for');
-            }
-
-            if(this.tasks.length > 0)
-            {
-                let cyclesToTryToTakeAwayFromEachProcess = Math.ceil(idealCyclesToAssign / this.tasks.length),
-                    cyclesFreedUp = 0;
-
-                for(let task of this.tasks)
-                {
-                    cyclesFreedUp += task.freeCycles(cyclesToTryToTakeAwayFromEachProcess);
-                }
-                cyclesToAssign = cyclesFreedUp;
-            }
-            task.setCyclesPerTick(cyclesToAssign);
-            this.tasks.push(task);
-            task.on('complete', ()=>{ this.completeTask(task); });
-            return this;
-        }
-
-        completeTask(task)
-        {
-            let freedCycles = task.cyclesPerTick;
-            this.tasks.removeElement(task);
-
-            if(this.tasks.length >= 1)
-            {
-                let freedCyclesPerTick = Math.floor(freedCycles/this.tasks.length);
-                let i = 0;
-                while(i < this.tasks.length && freedCycles > 0)
-                {
-                    let task = this.tasks[i];
-                    freedCycles -= freedCyclesPerTick;
-                    task.addCycles(freedCyclesPerTick);
-                    i++;
-                }
-            }
-            this.trigger('taskComplete');
-        }
-
-        tick()
-        {
-            for(let task of this.tasks)
-            {
-                task.tick();
-            }
-        }
-
-        get load()
-        {
-            let minimum = new Decimal(0);
-            for(let task of this.tasks)
-            {
-                minimum = minimum.plus(task.minimumRequiredCycles);
-            }
-            return minimum;
+    toJSON()
+    {
+        return {
+            name:this.name,
+            speed:this.speed.toString(),
+            lifeCycle:this.lifeCycle.toString(),
+            lifeCycleUsed:this.lifeCycleUsed.toString(),
+            living:this.living
         }
     }
 
+    static fromJSON(json)
+    {
+        return new CPU(json.name, json.speed, json.lifeCycle, json.lifeCycleUsed, json.living);
+    }
+
+    static getCPUs()
+    {
+        return cpus;
+    }
+
+    tick()
+    {
+
+    }
+
+    /**
+     * @param cpuData
+     */
+    static getPriceFor(cpuData)
+    {
+        return cpuData.lifeCycle * cpuData.speed / 20;
+    }
+}
+
 module.exports = CPU;
 
-},{"../EventListener":15,"../Tasks/Task":24,"break_infinity.js":1}],10:[function(require,module,exports){
+},{"../EventListener":18,"../Tasks/Task":26,"./cpus":15}],10:[function(require,module,exports){
+const   CPU = require('./CPU'),
+        Task = require('../Tasks/Task'),
+        EventListener = require('../EventListener');
+
+/*
+ * Custom exceptions
+ */
+class NoFreeCPUCyclesError extends Error{};
+class CPUDuplicateTaskError extends Error{};
+class InvalidTaskError extends Error{};
+
+class CPUPool extends EventListener
+{
+    constructor(cpus)
+    {
+        super();
+        /**
+         * @type {Array.<CPU>}
+         */
+        this.cpus = [];
+        /**
+         * @type {number} The average speed of all cpus in the pool
+         */
+        this.averageSpeed = 0;
+        /**
+         * @type {Decimal} The average speed of all cpus in the pool
+         */
+        this.totalSpeed = 0;
+        /**
+         * @type {Decimal} The total cycles used by all tasks
+         */
+        this.load = 0;
+        /**
+         * * @type {Array.<Task>}
+         */
+        this.tasks = [];
+
+        for(let cpu of cpus)
+        {
+            this.addCPU(cpu);
+        }
+    }
+
+    /**
+     * @param {CPU} cpu
+     */
+    addCPU(cpu)
+    {
+        this.cpus.push(cpu);
+        this.totalSpeed += cpu.speed;
+        this.averageSpeed =  this.totalSpeed/this.cpus.length;
+    }
+
+    /**
+     * figure out how many cycles to assign the task. This number will be the larger of the minimum required cycles
+     * and 1/nth of the total cycles available to the pool (where n is the number of total tasks being run, including
+     * this task).
+     * @param {Task} task   The task to figure out the cycles for
+     * @returns {number}   The number of cycles to assign the task
+     */
+    getCyclesForTask(task)
+    {
+        return Math.max(task.minimumRequiredCycles, Math.floor(this.totalSpeed / (this.tasks.length + 1)));
+    }
+
+    /**
+     * Figure out how many cycles to remove from all of the current tasks in the pool and do so.
+     * This method will keep a tally of the freed cycles, as no task will lower its assigned cycles below the minimum
+     * required amount.
+     * @param task
+     * @returns {number}
+     */
+    balanceTaskLoadForNewTask(task)
+    {
+        // get the number of cycles to assign
+        let cyclesToAssign = this.getCyclesForTask(task);
+        if(this.tasks.length === 0)
+        {
+            return cyclesToAssign;
+        }
+
+        let idealCyclesToAssign = cyclesToAssign;
+        if(this.tasks.length > 0)
+        {
+            // average that out
+            let cyclesToTryToTakeAwayFromEachProcess = Math.ceil(idealCyclesToAssign /this.tasks.length),
+                cyclesFreedUp = 0;
+
+            for(let task of this.tasks)
+            {
+                // add the actual amount freed up to the total freed
+                cyclesFreedUp += task.freeCycles(cyclesToTryToTakeAwayFromEachProcess);
+            }
+            cyclesToAssign = cyclesFreedUp;
+        }
+        return cyclesToAssign;
+    }
+
+    /**
+     * Add a task to the cpu pool
+     * @param {Task} task   The task to be added
+     */
+    addTask(task)
+    {
+        // if it's not a task, complain
+        if (!(task instanceof Task))
+        {
+            throw new InvalidTaskError('Tried to add a non task object to a processor');
+        }
+        // if it's already in the pool, complain
+        if(this.tasks.indexOf(task)>=0)
+        {
+            throw new CPUDuplicateTaskError('This task is already on the CPU');
+        }
+        let freeCycles = this.availableCycles;
+        // if you don't have the free oomph, complain
+        if(task.minimumRequiredCycles > freeCycles)
+        {
+            throw new NoFreeCPUCyclesError(`CPU pool does not have the required cycles for ${task.name}. Need ${task.minimumRequiredCycles.toString()} but only have ${freeCycles}.`);
+        }
+
+        // figure out how many cycles to assign
+        let cyclesToAssign = this.balanceTaskLoadForNewTask(task);
+
+        task.setCyclesPerTick(cyclesToAssign);
+        task.on('complete', ()=>{ this.completeTask(task); });
+
+        this.load += task.minimumRequiredCycles;
+        this.tasks.push(task);
+    }
+
+    /**
+     * Finish a task and remove it from the cpu pool
+     * @param {Task} task
+     */
+    completeTask(task)
+    {
+        let freedCycles = task.cyclesPerTick;
+        this.tasks.removeElement(task);
+        this.load -= task.minimumRequiredCycles;
+
+        if(this.tasks.length >= 1)
+        {
+            let freedCyclesPerTick = Math.floor(freedCycles / this.tasks.length);
+            let i = 0;
+            while(i < this.tasks.length && freedCycles > (0))
+            {
+                let task = this.tasks[i];
+                freedCycles -= freedCyclesPerTick;
+                task.addCycles(freedCyclesPerTick);
+                i++;
+            }
+        }
+        this.trigger('taskComplete');
+    }
+
+    get availableCycles()
+    {
+        return this.totalSpeed - this.load;
+    }
+
+    tick()
+    {
+        for(let task of this.tasks)
+        {
+            task.tick();
+        }
+        for(let cpu of this.cpus)
+        {
+            cpu.tick();
+        }
+    }
+}
+
+module.exports = CPUPool;
+
+},{"../EventListener":18,"../Tasks/Task":26,"./CPU":9}],11:[function(require,module,exports){
 const EventListener = require('../EventListener');
 
 function randomIPAddress()
@@ -4384,8 +4504,8 @@ class Computer extends EventListener
 
 module.exports = Computer;
 
-},{"../EventListener":15}],11:[function(require,module,exports){
-const   PlayerComputer = require('../PlayerComputer'),
+},{"../EventListener":18}],12:[function(require,module,exports){
+const   PlayerComputer = require('./PlayerComputer'),
         Computer = require('./Computer'),
         CPU = require('./CPU'),
         PublicComputer= require('./PublicComputer'),
@@ -4494,7 +4614,120 @@ class ComputerGenerator
 
 module.exports = new ComputerGenerator();
 
-},{"../Missions/MissionComputer":18,"../PlayerComputer":21,"./CPU":9,"./Computer":10,"./PublicComputer":12}],12:[function(require,module,exports){
+},{"../Missions/MissionComputer":21,"./CPU":9,"./Computer":11,"./PlayerComputer":13,"./PublicComputer":14}],13:[function(require,module,exports){
+const   Password = require('../Challenges/Password'),
+        {DictionaryCracker, PasswordCracker} = require('../Tasks/PasswordCracker'),
+        Encryption = require('../Challenges/Encryption'),
+        EncryptionCracker = require('../Tasks/EncryptionCracker'),
+        Computer = require('./Computer'),
+        CPUPool = require('./CPUPool'),
+        CPU = require('./CPU.js');
+
+class InvalidTaskError extends Error{};
+const DEFAULT_MAX_CPUS = 4;
+
+class PlayerComputer extends Computer
+{
+    constructor(cpus, maxCPUs)
+    {
+        super('Home', null, '127.0.0.1');
+        this.cpuPool = new CPUPool(cpus);
+        this.queuedTasks = [];
+        this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
+    }
+
+    get cpus()
+    {
+        return this.cpuPool.cpus;
+    }
+
+    addCPU(cpu)
+    {
+        this.cpuPool.addCPU(cpu);
+    }
+
+    getTaskForChallenge(challenge)
+    {
+        let task = null;
+        if(challenge instanceof Password)
+        {
+            task = new DictionaryCracker(challenge);
+        }
+        if(challenge instanceof  Encryption)
+        {
+            task = new EncryptionCracker(challenge);
+        }
+
+        if(!task)
+        {
+            throw new InvalidTaskError(`No task found for challenge ${challenge.constructor.name}`);
+        }
+        return task;
+    }
+
+    addTaskForChallenge(challenge)
+    {
+        let task = this.getTaskForChallenge(challenge);
+        this.cpuPool.addTask(task);
+    }
+
+    tick()
+    {
+        this.cpuPool.tick();
+    }
+
+
+    get tasks()
+    {
+        return this.cpuPool.tasks;
+    }
+
+    get missionTasks()
+    {
+        let allTasks = Object.values(this.tasks),
+            missionTasks = {crackers:{}};
+        for(let task of allTasks)
+        {
+            if(task instanceof PasswordCracker)
+            {
+                missionTasks.crackers.password = task;
+            }
+            if(task instanceof EncryptionCracker)
+            {
+                missionTasks.crackers.encryption = task;
+            }
+        }
+        return missionTasks;
+
+    }
+
+    toJSON()
+    {
+        let json = super.toJSON();
+        json.cpus = [];
+        for(let cpu of this.cpus)
+        {
+            json.cpus.push(cpu.toJSON());
+        }
+        return json;
+    }
+
+    static fromJSON(json)
+    {
+        let cpus = [];
+        for(let cpuJSON of json.cpus)
+        {
+            cpus.push(new CPU(cpuJSON.name, cpuJSON.speed))
+        }
+        let pc = new PlayerComputer(cpus);
+        pc.setLocation(json.location);
+        return pc;
+    }
+}
+
+module.exports = PlayerComputer;
+
+},{"../Challenges/Encryption":4,"../Challenges/Password":5,"../Tasks/EncryptionCracker":24,"../Tasks/PasswordCracker":25,"./CPU.js":9,"./CPUPool":10,"./Computer":11}],14:[function(require,module,exports){
 let Computer = require('./Computer');
 
 class PublicComputer extends Computer
@@ -4507,7 +4740,16 @@ class PublicComputer extends Computer
 
 module.exports = PublicComputer;
 
-},{"./Computer":10}],13:[function(require,module,exports){
+},{"./Computer":11}],15:[function(require,module,exports){
+let cpus = [
+    {name:"Garbo Processor", speed:20, lifeCycle:100},
+    {name:"Garbo Processor II", speed:40, lifeCycle:1000},
+    {name:"Garbo Processor II.5", speed:80, lifeCycle:1500},
+    {name:"Garbo Processor BLT", speed:133, lifeCycle: 2000}
+];
+module.exports = cpus;
+
+},{}],16:[function(require,module,exports){
 const Computer = require('./Computers/Computer');
 
     class InvalidTypeError extends Error{}
@@ -4618,12 +4860,13 @@ const Computer = require('./Computers/Computer');
 
 module.exports = Connection;
 
-},{"./Computers/Computer":10}],14:[function(require,module,exports){
+},{"./Computers/Computer":11}],17:[function(require,module,exports){
 const   MissionGenerator = require('./Missions/MissionGenerator'),
         EventListener = require('./EventListener'),
         Connection = require('./Connection'),
         Company = require('./Companies/Company'),
         ComputerGenerator = require('./Computers/ComputerGenerator'),
+        CPU = require('./Computers/CPU'),
         Decimal = require('break_infinity.js');
 
 /**
@@ -4636,6 +4879,9 @@ class Downlink extends EventListener
     constructor()
     {
         super();
+        /**
+         * @type {PlayerComputer}
+         */
         this.playerComputer = null;
         /**
          *
@@ -4643,6 +4889,8 @@ class Downlink extends EventListener
          */
         this.playerConnection = null;
         this.getNewConnection();
+        this.runTime = 0;
+        this.lastTickTime = Date.now();
 
         this.currency = new Decimal(0);
     }
@@ -4671,17 +4919,22 @@ class Downlink extends EventListener
 
     tick()
     {
+        let now = Date.now();
+        this.runTime += now - this.lastTickTime;
+
         this.playerComputer.tick();
         if(this.activeMission)
         {
             this.activeMission.tick();
         }
+        this.lastTickTime = Date.now();
     }
 
     getNextMission()
     {
         this.activeMission = MissionGenerator.getFirstAvailableMission().on("complete", ()=>{
             this.finishCurrentMission(this.activeMission);
+            this.trigger('missionComplete');
         });
         this.activeMission.computer.connect(this.playerConnection);
         for(let challenge of this.activeMission.challenges)
@@ -4761,7 +5014,8 @@ class Downlink extends EventListener
             playerComputer:this.playerComputer.toJSON(),
             playerConnection:this.playerConnection.toJSON(),
             companies:[],
-            currency:this.currency.toString()
+            currency:this.currency.toString(),
+            runTime:this.runTime
         };
         for(let company of this.companies)
         {
@@ -4778,6 +5032,8 @@ class Downlink extends EventListener
 
         downlink.currency = Decimal.fromString(json.currency);
         downlink.playerComputer = ComputerGenerator.fromJSON(json.playerComputer);
+        downlink.runTime = parseInt(json.runTime);
+        downlink.lastTickTime = Date.now();
 
         downlink.playerConnection = Connection.fromJSON(json.playerConnection);
         downlink.playerConnection.setStartingPoint(downlink.playerComputer);
@@ -4792,11 +5048,34 @@ class Downlink extends EventListener
         let dl = new Downlink();
         return dl;
     }
+
+    static stop()
+    {
+
+    }
+
+    get secondsRunning()
+    {
+        return Math.floor(this.runTime / 1000);
+    }
+
+    canAfford(cost)
+    {
+        return this.currency.greaterThan(cost);
+    }
+
+    buyCPU(cpuData)
+    {
+        let cpu = CPU.fromJSON(cpuData);
+        this.currency = this.currency.minus(CPU.getPriceFor(cpuData));
+        this.playerComputer.addCPU(cpu);
+
+    }
 }
 
 module.exports = Downlink;
 
-},{"./Companies/Company":7,"./Computers/ComputerGenerator":11,"./Connection":13,"./EventListener":15,"./Missions/MissionGenerator":20,"break_infinity.js":1}],15:[function(require,module,exports){
+},{"./Companies/Company":7,"./Computers/CPU":9,"./Computers/ComputerGenerator":12,"./Connection":16,"./EventListener":18,"./Missions/MissionGenerator":23,"break_infinity.js":1}],18:[function(require,module,exports){
 class Event
 {
     constructor(name)
@@ -4892,11 +5171,13 @@ class EventListener
 
 module.exports = EventListener;
 
-},{}],16:[function(require,module,exports){
-// namespace for the entire game;
+},{}],19:[function(require,module,exports){
+// This file is solely responsible for exposing the necessary parts of the game to the UI elements
 (($)=>{$(()=>{
 
     const   Downlink = require('./Downlink'),
+            CPU = require('./Computers/CPU'),
+            Decimal = require('break_infinity.js'),
             TICK_INTERVAL_LENGTH=100,
             MISSION_LIST_CLASS = 'mission-list-row',
             COMPANY_REP_CLASS = 'company-rep-row',
@@ -4911,7 +5192,7 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.1.7a",
+        version:"0.2.0a",
         /**
          * jquery entities that are needed for updating
          */
@@ -4929,6 +5210,12 @@ module.exports = EventListener;
         $worldMapContainer:null,
         $worldMapCanvasContainer:null,
         $activeMissionServer:null,
+        $settingsTimePlayed:null,
+        $settingsModal:null,
+        $importExportTextarea:null,
+        $computerBuildModal:null,
+        $computerBuild:null,
+        $computerPartsCPURow:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -4950,7 +5237,22 @@ module.exports = EventListener;
             this.$worldMapContainer = $('#world-map');
             this.$worldMapCanvasContainer = $('#canvas-container');
             this.$worldMapModal.on("hide.bs.modal", ()=>{this.afterHideConnectionManager()});
+            this.$settingsTimePlayed = $('#settings-time-played');
+            this.$settingsModal = $('#settings-modal');
+            this.$importExportTextarea = $('#settings-import-export');
+            this.$computerBuildModal = $('#computer-build-modal');
+            this.$computerBuild = $('#computer-build-layout');
+            this.$computerPartsCPURow = $('#computer-parts-cpu-row');
+
+            $('#settings-export-button').click(()=>{
+                this.$importExportTextarea.val(this.save());
+            });
+            $('#settings-import-button').click(()=>{this.importFile(this.$importExportTextarea.val())});
+            $('#settings-save-button').click(()=>{this.saveFile();});
+            $('#connectionModalLink').click(()=>{this.showConnectionManager();});
+            $('#settingsModalLink').click(()=>{this.showSettingsModal();});
             $('#game-version').html(this.version);
+            $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
         },
         buildWorldMap:function()
         {
@@ -4965,7 +5267,6 @@ module.exports = EventListener;
 
                 image.onload =()=>{
                     this.buildCanvas();
-
                     resolve();
                 };
                 image.src = './img/osm-world-map.png';
@@ -5011,6 +5312,26 @@ module.exports = EventListener;
         {
             this.downlink = Downlink.fromJSON(json);
         },
+        saveFile:function()
+        {
+            let data = new Blob([this.save()], {type: 'text/plain'}),
+                urlParam = window.URL.createObjectURL(data),
+                a = document.createElement('a');
+            a.href = urlParam;
+            a.download = 'Downlink-Save.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        },
+        importFile:function(json)
+        {
+            this.stop();
+            this.initialised = false;
+            this.loadGame(json);
+            this.performPostLoadCleanup().then(()=>{
+                this.start();
+            });
+        },
         initialise:function()
         {
             this.bindUIElements();
@@ -5025,6 +5346,10 @@ module.exports = EventListener;
                 this.newGame();
             }
 
+            return this.performPostLoadCleanup();
+        },
+        performPostLoadCleanup:function()
+        {
             this.updatePlayerDetails();
 
             this.initialised = true;
@@ -5033,6 +5358,8 @@ module.exports = EventListener;
                 let pc = this.downlink.getPlayerComputer();
                 this.addComputerToWorldMap(pc);
                 this.updateComputerBuild();
+                this.buildComputerPartsUI();
+                this.buildComputerGrid();
 
                 this.addPublicComputersToWorldMap();
 
@@ -5073,16 +5400,17 @@ module.exports = EventListener;
             }
         },
         start:function(){
-
             this.ticking = true;
             if(this.initialised)
             {
                 this.tick();
+                //this.showComputerBuildModal();
             }
             else
             {
                 this.initialise().then(() => {
-                    this.tick()
+                    this.tick();
+                  //  this.showComputerBuildModal();
                 });
             }
         },
@@ -5098,6 +5426,7 @@ module.exports = EventListener;
                     this.downlink.tick();
                     this.animateTick();
                     this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
+                    this.$settingsTimePlayed.html(this.getRunTime());
                 }
             }
             catch(e)
@@ -5172,6 +5501,7 @@ module.exports = EventListener;
             this.mission = this.downlink.getNextMission()
                 .on('complete', ()=>{
                     this.updatePlayerDetails();
+                    this.updateComputerPartsUI();
                     this.getNextMission();
                 });
             this.downlink
@@ -5264,6 +5594,11 @@ module.exports = EventListener;
                 left:(computer.location.x - width / 2)+'px'
             })
         },
+        hardReset:function()
+        {
+            this.stop();
+            localStorage.clear();
+        },
         getJSON:function()
         {
             return this.downlink.toJSON();
@@ -5272,16 +5607,21 @@ module.exports = EventListener;
         {
             let json = this.getJSON(),
                 jsonAsString = JSON.stringify(json),
-                jsonAsBinary = btoa(jsonAsString);
-            localStorage.setItem('saveFile', jsonAsBinary);
+                jsonAsAsciiSafeString = btoa(jsonAsString);
+            localStorage.setItem('saveFile', jsonAsAsciiSafeString);
+            return jsonAsAsciiSafeString;
+        },
+        parseLoadFile:function(loadFile)
+        {
+            let jsonAsString = atob(loadFile), json = JSON.parse(jsonAsString);
+            return json;
         },
         load:function()
         {
-            let jsonAsBinary = localStorage.getItem('saveFile');
-            if(jsonAsBinary)
+            let jsonAsAsciiSafeString = localStorage.getItem('saveFile');
+            if(jsonAsAsciiSafeString)
             {
-                let jsonAsString = atob(jsonAsBinary), json = JSON.parse(jsonAsString);
-                return json;
+                return this.parseLoadFile(jsonAsAsciiSafeString);
             }
             return null;
         },
@@ -5294,18 +5634,104 @@ module.exports = EventListener;
         {
             this.takingMissions = true;
             this.getNextMission();
+        },
+        getRunTime:function()
+        {
+            return this.downlink.secondsRunning;
+        },
+        showSettingsModal:function()
+        {
+            this.$settingsModal.modal({keyboard:false, backdrop:"static"});
+        },
+        showComputerBuildModal:function()
+        {
+            this.$computerBuildModal.modal({keyboard:false, backdrop:"static"});
+        },
+        buildComputerPartsUI:function()
+        {
+            this.$computerPartsCPURow.empty();
+
+            for(let cpu of CPU.getCPUs())
+            {
+                let cost = CPU.getPriceFor(cpu),
+                    affordable = this.downlink.canAfford(cost);
+                let $node = $(`<div data-part-cost="${cost.toString()}" class="col-4 cpu part ${affordable?"":"un"}affordable-part"><div class="row"><i class="fas fa-microchip"></i></div><div class="row">${cpu.name}</div><div class="row">${cpu.speed} MHz</div><div class="row">${cost.toString()}</div></div>`);
+                $node.click(() => {
+                    this.setChosenPart(cpu, 'CPU', cost, $node);
+                });
+
+                this.$computerPartsCPURow.append($node);
+            }
+        },
+        setChosenPart(part, type, cost, $node)
+        {
+            if(!this.downlink.canAfford(cost))
+            {
+                return;
+            }
+            $('.chosenPart').removeClass('chosenPart');
+            if(part === this.chosenPart)
+            {
+                this.chosenPart = null;
+                return;
+            }
+            this.chosenPart = part;
+            $node.addClass('chosenPart');
+        },
+        updateComputerPartsUI:function()
+        {
+            let downlink = this.downlink
+            $('.part').each(function(index){
+                let $node = $(this),
+                    cost = new Decimal($node.data('partCost')),
+                    canAfford = downlink.canAfford(cost);
+                $node.removeClass('affordable-part unaffordable-part').addClass(
+                    (canAfford?'':'un')+'affordable-part'
+                );
+            });
+        },
+        buildComputerGrid:function()
+        {
+            this.$computerBuild.empty();
+
+            let pc = this.downlink.playerComputer,
+                gridSize = Math.floor(Math.sqrt(pc.maxCPUs)),
+                html = '',
+                cpuCount = 0;
+
+            for(let i = 0; i < gridSize; i++)
+            {
+                html += '<div class="row cpuRow">'
+                for(let j = 0; j < gridSize; j++)
+                {
+                    html += `<div class="col cpuHolder">${pc.cpus[cpuCount]?'<i class="fas fa-microchip"></i>':''}</div>`;
+                    cpuCount++;
+                }
+                html += '</div>';
+            }
+            this.$computerBuild.html(html);
+            $('.cpuHolder').click(()=> {
+                this.buyCPU()
+            });
+            $('.cpuRow').css('width', gridSize * 30);
+        },
+        buyCPU:function()
+        {
+            if(!this.chosenPart)
+            {
+                return;
+            }
+            this.downlink.buyCPU(this.chosenPart);
+            this.buildComputerGrid();
         }
     };
-
-    $('#connectionModalLink').click(()=>{game.showConnectionManager()});
-
 
     game.start();
 
     window.game = game;
 })})(window.jQuery);
 
-},{"./Downlink":14}],17:[function(require,module,exports){
+},{"./Computers/CPU":9,"./Downlink":17,"break_infinity.js":1}],20:[function(require,module,exports){
 const   Company = require('../Companies/Company'),
     MissionComputer = require('./MissionComputer'),
     Password = require('../Challenges/Password'),
@@ -5442,7 +5868,7 @@ class Mission extends EventListener
 }
 module.exports = Mission;
 
-},{"../Challenges/Encryption":4,"../Challenges/Password":5,"../Companies/Company":7,"../EventListener":15,"./MissionComputer":18,"./MissionDifficulty":19}],18:[function(require,module,exports){
+},{"../Challenges/Encryption":4,"../Challenges/Password":5,"../Companies/Company":7,"../EventListener":18,"./MissionComputer":21,"./MissionDifficulty":22}],21:[function(require,module,exports){
 const   Computer = require('../Computers/Computer'),
         Decimal = require('break_infinity.js');
 class MissionComputer extends Computer
@@ -5604,7 +6030,7 @@ class MissionComputer extends Computer
 
 module.exports = MissionComputer;
 
-},{"../Computers/Computer":10,"break_infinity.js":1}],19:[function(require,module,exports){
+},{"../Computers/Computer":11,"break_infinity.js":1}],22:[function(require,module,exports){
 const Decimal = require('break_infinity.js');
 
 /**
@@ -5640,7 +6066,7 @@ MissionDifficulty.DIFFICULTIES = {
 
 module.exports = MissionDifficulty;
 
-},{"break_infinity.js":1}],20:[function(require,module,exports){
+},{"break_infinity.js":1}],23:[function(require,module,exports){
 const   Mission = require('./Mission'),
         MINIMUM_MISSIONS = 10;
 let availableMissions = [];
@@ -5674,146 +6100,9 @@ class MissionGenerator
 
 module.exports = MissionGenerator;
 
-},{"./Mission":17}],21:[function(require,module,exports){
-   Password = require('./Challenges/Password'),
-        {DictionaryCracker, PasswordCracker} = require('./Tasks/PasswordCracker'),
-        Encryption = require('./Challenges/Encryption'),
-        EncryptionCracker = require('./Tasks/EncryptionCracker'),
-        Computer = require('./Computers/Computer'),
-        CPU = require('./Computers/CPU.js');
-
-class InvalidTaskError extends Error{};
-class NoFreeCPUCyclesError extends Error{};
-
-class PlayerComputer extends Computer
-{
-    constructor(cpus)
-    {
-        super('Home', null, '127.0.0.1');
-        /**
-         * @type {Array.<CPU>}
-         */
-        this.cpus = cpus;
-        this.queuedTasks = [];
-    }
-
-    getTaskForChallenge(challenge)
-    {
-        let task = null;
-        if(challenge instanceof Password)
-        {
-            task = new DictionaryCracker(challenge);
-        }
-        if(challenge instanceof  Encryption)
-        {
-            task = new EncryptionCracker(challenge);
-        }
-
-        if(!task)
-        {
-            throw new InvalidTaskError(`No task found for challenge ${challenge.constructor.name}`);
-        }
-        return task;
-    }
-
-    addTaskForChallenge(challenge)
-    {
-        let task = this.getTaskForChallenge(challenge),
-            i= 0, searching = true, found = false;
-        while(searching)
-        {
-            try
-            {
-                let cpu = this.cpus[i];
-                cpu.addTask(task);
-                searching = false;
-                found = true;
-            }
-            catch(e)
-            {
-                i++;
-                if(i > this.cpus.length)
-                {
-                    searching = false;
-                }
-            }
-        }
-        if(!found)
-        {
-            throw new NoFreeCPUCyclesError(`Cannot find the cycles for ${challenge.name} on any of the CPUs. Requires ${task.minimumRequiredCycles}.`);
-        }
-    }
-
-    tick()
-    {
-        for(let cpu of this.cpus)
-        {
-            cpu.tick();
-        }
-    }
-
-
-    get tasks()
-    {
-        let tasks = {};
-        for(let cpu of this.cpus)
-        {
-            for(let task of cpu.tasks)
-            {
-                tasks[task.name] = task;
-            }
-        }
-        return tasks;
-    }
-
-    get missionTasks()
-    {
-        let allTasks = Object.values(this.tasks),
-            missionTasks = {crackers:{}};
-        for(let task of allTasks)
-        {
-            if(task instanceof PasswordCracker)
-            {
-                missionTasks.crackers.password = task;
-            }
-            if(task instanceof EncryptionCracker)
-            {
-                missionTasks.crackers.encryption = task;
-            }
-        }
-        return missionTasks;
-
-    }
-
-    toJSON()
-    {
-        let json = super.toJSON();
-        json.cpus = [];
-        for(let cpu of this.cpus)
-        {
-            json.cpus.push(cpu.toJSON());
-        }
-        return json;
-    }
-
-    static fromJSON(json)
-    {
-        let cpus = [];
-        for(let cpuJSON of json.cpus)
-        {
-            cpus.push(new CPU(cpuJSON.name, cpuJSON.speed))
-        }
-        let pc = new PlayerComputer(cpus);
-        pc.setLocation(json.location);
-        return pc;
-    }
-}
-
-module.exports = PlayerComputer;
-
-},{"./Challenges/Encryption":4,"./Challenges/Password":5,"./Computers/CPU.js":9,"./Computers/Computer":10,"./Tasks/EncryptionCracker":22,"./Tasks/PasswordCracker":23}],22:[function(require,module,exports){
+},{"./Mission":20}],24:[function(require,module,exports){
 const   Alphabet = require('../Alphabet'),
-    Task = require('./Task');
+        Task = require('./Task');
 
 class EncryptionCell
 {
@@ -5891,7 +6180,6 @@ class EncryptionCracker extends Task
     solveNCells(cellsToSolve)
     {
         this.trigger('start');
-
         for(let i = 0; i < cellsToSolve; i++)
         {
             let cell = this.unsolvedCells.randomElement();
@@ -5942,13 +6230,12 @@ class EncryptionCracker extends Task
         // figure out how many cells to solve
         // by determining how many cycles per tick we have divided by the difficulty of this task
         // this may lead to a number less than zero and so, this tick, nothing will happen
-
         this.currentTickPercentage += this.cyclesPerTick / this.encryptionDifficulty;
 
         // if the currentTickPercentage is bigger than one, we solve that many cells
         if(this.currentTickPercentage >= 1)
         {
-            let fullCells = parseInt(this.currentTickPercentage);
+            let fullCells = Math.floor(this.currentTickPercentage);
             this.currentTickPercentage -= fullCells;
             this.solveNCells(fullCells);
         }
@@ -5968,7 +6255,7 @@ class EncryptionCracker extends Task
 
 module.exports = EncryptionCracker;
 
-},{"../Alphabet":2,"./Task":24}],23:[function(require,module,exports){
+},{"../Alphabet":2,"./Task":26}],25:[function(require,module,exports){
 const   DICTIONARY_CRACKER_MINIMUM_CYCLES = 5,
         SEQUENTIAL_CRACKER_MINIMUM_CYCLES = 20,
         Task = require('./Task'),
@@ -6057,8 +6344,9 @@ module.exports = {
     SequentialAttacker:SequentialAttacker
 };
 
-},{"../Challenges/Password":5,"./Task":24}],24:[function(require,module,exports){
-const EventListener = require('../EventListener');
+},{"../Challenges/Password":5,"./Task":26}],26:[function(require,module,exports){
+const   EventListener = require('../EventListener'),
+        Decimal = require('break_infinity.js');
 
 class CPUOverloadError extends Error
 {
@@ -6103,24 +6391,28 @@ class Task extends EventListener
 
     /**
      * Try to release a number of ticks from the task and return the number actually released
-     * @param tickReduction
+     * @param {number} tickReduction
      * @returns {number|*}
      */
     freeCycles(tickReduction)
     {
-        if(this.cyclesPerTick <= (tickReduction + this.minimumRequiredCycles))
+        // figure out how many freeable ticks we have
+        const freeableTicks = this.cyclesPerTick-this.minimumRequiredCycles;
+        // if it's one or less, free none and return 0
+        let ticksToFree = 0;
+        if(freeableTicks > 1)
         {
-
-            if(this.cyclesPerTick > 1)
+            if(freeableTicks > tickReduction)
             {
-                let halfMyCyclesRoundedDown = Math.floor(this.cyclesPerTick / 2);
-                this.cyclesPerTick -= halfMyCyclesRoundedDown;
-                return halfMyCyclesRoundedDown;
+                ticksToFree = tickReduction;
             }
-            return 0;
+            else
+            {
+                ticksToFree = Math.floor(freeableTicks / 2);
+            }
         }
-        this.cyclesPerTick -= tickReduction;
-        return tickReduction;
+        this.cyclesPerTick -= ticksToFree;
+        return ticksToFree;
     }
 
     signalComplete()
@@ -6145,4 +6437,4 @@ class Task extends EventListener
 
 module.exports = Task;
 
-},{"../EventListener":15}]},{},[16]);
+},{"../EventListener":18,"break_infinity.js":1}]},{},[19]);

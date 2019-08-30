@@ -11,6 +11,10 @@
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js" integrity="sha384-xrRywqdh3PHs8keKZN+8zzc5TX0GRTLCcmivcbNJWm2rs5C8PRhcEn3czEjhAO9o" crossorigin="anonymous"></script>
+    <!-- Font-awesome -->
+    <script src="https://kit.fontawesome.com/834595109a.js"></script>
+    <!-- Material Design Iconic Font -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/material-design-iconic-font/2.2.0/css/material-design-iconic-font.min.css"/>
 
 
     <!-- main css -->
@@ -23,9 +27,9 @@
 
     <div class="container-fluid min-vh-100">
         <div class="row"><nav id="game-menu">
-            <a class="game-link" id="connectionModalLink" href="#">Connection Manager</a>
-            |
-            <span class="game-link">Shop</span>
+            <a class="game-link" id="connectionModalLink" href="#">Connection Manager</a> |
+            <a class="game-link" id="computerModalLink" href="#">Computer Build</a> |
+            <a class="game-link" id="settingsModalLink" href="#">Settings</a>
         </nav></div>
         <div class="row" id="missionInterface">
             <div class="col-6 col-lg-3" id="player-details">
@@ -94,8 +98,60 @@
                         <div class="world-map-div" id="canvas-container"></div>
                     </div>
                 </div>
-                <div class="modal-footer">
+            </div>
+        </div>
+    </div>
 
+    <div class="modal" tabindex="-1" id="settings-modal" role="dialog" aria-labelledby="settingsModalLink" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Settings</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <h4 class="row">About</h4>
+                        <div class="row">Downlink is roughly inspired by the 2000 Introversion hacking game. There's a more complete schpiel about it on the github's home page (link at bottom right of normal page).</div>
+                        <div class="row">You have been playing for <span id="settings-time-played"></span> seconds.</div>
+                        <h4 class="row">Import/export</h4>
+                        <div class="row"><textarea id="settings-import-export"></textarea></div>
+                        <div class="row">
+                            <button id="settings-import-button">Import</button>
+                            <button id="settings-export-button">Export</button>
+                            <button id="settings-save-button">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" tabindex="-1" id="computer-build-modal" role="dialog" aria-labelledby="computerModalLink" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Computer Build</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <div class="row">
+                            <div class="col">
+                                <h4 class="row">Computer Build</h4>
+                                <div class="row"><div class="container" id="computer-build-layout"></div></div>
+                            </div>
+                            <div class="col" id="computer-parts-layout">
+                                <h4 class="row">Parts</h4>
+                                <h5 class="row">CPUs</h5>
+                                <div class="row" id="computer-parts-cpu-row"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

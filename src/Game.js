@@ -1,7 +1,9 @@
-// namespace for the entire game;
+// This file is solely responsible for exposing the necessary parts of the game to the UI elements
 (($)=>{$(()=>{
 
     const   Downlink = require('./Downlink'),
+            CPU = require('./Computers/CPU'),
+            Decimal = require('break_infinity.js'),
             TICK_INTERVAL_LENGTH=100,
             MISSION_LIST_CLASS = 'mission-list-row',
             COMPANY_REP_CLASS = 'company-rep-row',
@@ -16,7 +18,7 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.1.7a",
+        version:"0.2.1a",
         /**
          * jquery entities that are needed for updating
          */
@@ -34,6 +36,12 @@
         $worldMapContainer:null,
         $worldMapCanvasContainer:null,
         $activeMissionServer:null,
+        $settingsTimePlayed:null,
+        $settingsModal:null,
+        $importExportTextarea:null,
+        $computerBuildModal:null,
+        $computerBuild:null,
+        $computerPartsCPURow:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -55,7 +63,22 @@
             this.$worldMapContainer = $('#world-map');
             this.$worldMapCanvasContainer = $('#canvas-container');
             this.$worldMapModal.on("hide.bs.modal", ()=>{this.afterHideConnectionManager()});
+            this.$settingsTimePlayed = $('#settings-time-played');
+            this.$settingsModal = $('#settings-modal');
+            this.$importExportTextarea = $('#settings-import-export');
+            this.$computerBuildModal = $('#computer-build-modal');
+            this.$computerBuild = $('#computer-build-layout');
+            this.$computerPartsCPURow = $('#computer-parts-cpu-row');
+
+            $('#settings-export-button').click(()=>{
+                this.$importExportTextarea.val(this.save());
+            });
+            $('#settings-import-button').click(()=>{this.importFile(this.$importExportTextarea.val())});
+            $('#settings-save-button').click(()=>{this.saveFile();});
+            $('#connectionModalLink').click(()=>{this.showConnectionManager();});
+            $('#settingsModalLink').click(()=>{this.showSettingsModal();});
             $('#game-version').html(this.version);
+            $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
         },
         buildWorldMap:function()
         {
@@ -70,7 +93,6 @@
 
                 image.onload =()=>{
                     this.buildCanvas();
-
                     resolve();
                 };
                 image.src = './img/osm-world-map.png';
@@ -116,6 +138,26 @@
         {
             this.downlink = Downlink.fromJSON(json);
         },
+        saveFile:function()
+        {
+            let data = new Blob([this.save()], {type: 'text/plain'}),
+                urlParam = window.URL.createObjectURL(data),
+                a = document.createElement('a');
+            a.href = urlParam;
+            a.download = 'Downlink-Save.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        },
+        importFile:function(json)
+        {
+            this.stop();
+            this.initialised = false;
+            this.loadGame(json);
+            this.performPostLoadCleanup().then(()=>{
+                this.start();
+            });
+        },
         initialise:function()
         {
             this.bindUIElements();
@@ -130,6 +172,10 @@
                 this.newGame();
             }
 
+            return this.performPostLoadCleanup();
+        },
+        performPostLoadCleanup:function()
+        {
             this.updatePlayerDetails();
 
             this.initialised = true;
@@ -138,6 +184,8 @@
                 let pc = this.downlink.getPlayerComputer();
                 this.addComputerToWorldMap(pc);
                 this.updateComputerBuild();
+                this.buildComputerPartsUI();
+                this.buildComputerGrid();
 
                 this.addPublicComputersToWorldMap();
 
@@ -178,16 +226,17 @@
             }
         },
         start:function(){
-
             this.ticking = true;
             if(this.initialised)
             {
                 this.tick();
+                //this.showComputerBuildModal();
             }
             else
             {
                 this.initialise().then(() => {
-                    this.tick()
+                    this.tick();
+                  //  this.showComputerBuildModal();
                 });
             }
         },
@@ -203,6 +252,7 @@
                     this.downlink.tick();
                     this.animateTick();
                     this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
+                    this.$settingsTimePlayed.html(this.getRunTime());
                 }
             }
             catch(e)
@@ -277,6 +327,7 @@
             this.mission = this.downlink.getNextMission()
                 .on('complete', ()=>{
                     this.updatePlayerDetails();
+                    this.updateComputerPartsUI();
                     this.getNextMission();
                 });
             this.downlink
@@ -369,6 +420,11 @@
                 left:(computer.location.x - width / 2)+'px'
             })
         },
+        hardReset:function()
+        {
+            this.stop();
+            localStorage.clear();
+        },
         getJSON:function()
         {
             return this.downlink.toJSON();
@@ -377,16 +433,21 @@
         {
             let json = this.getJSON(),
                 jsonAsString = JSON.stringify(json),
-                jsonAsBinary = btoa(jsonAsString);
-            localStorage.setItem('saveFile', jsonAsBinary);
+                jsonAsAsciiSafeString = btoa(jsonAsString);
+            localStorage.setItem('saveFile', jsonAsAsciiSafeString);
+            return jsonAsAsciiSafeString;
+        },
+        parseLoadFile:function(loadFile)
+        {
+            let jsonAsString = atob(loadFile), json = JSON.parse(jsonAsString);
+            return json;
         },
         load:function()
         {
-            let jsonAsBinary = localStorage.getItem('saveFile');
-            if(jsonAsBinary)
+            let jsonAsAsciiSafeString = localStorage.getItem('saveFile');
+            if(jsonAsAsciiSafeString)
             {
-                let jsonAsString = atob(jsonAsBinary), json = JSON.parse(jsonAsString);
-                return json;
+                return this.parseLoadFile(jsonAsAsciiSafeString);
             }
             return null;
         },
@@ -399,11 +460,97 @@
         {
             this.takingMissions = true;
             this.getNextMission();
+        },
+        getRunTime:function()
+        {
+            return this.downlink.secondsRunning;
+        },
+        showSettingsModal:function()
+        {
+            this.$settingsModal.modal({keyboard:false, backdrop:"static"});
+        },
+        showComputerBuildModal:function()
+        {
+            this.$computerBuildModal.modal({keyboard:false, backdrop:"static"});
+        },
+        buildComputerPartsUI:function()
+        {
+            this.$computerPartsCPURow.empty();
+
+            for(let cpu of CPU.getCPUs())
+            {
+                let cost = CPU.getPriceFor(cpu),
+                    affordable = this.downlink.canAfford(cost);
+                let $node = $(`<div data-part-cost="${cost.toString()}" class="col-4 cpu part ${affordable?"":"un"}affordable-part"><div class="row"><i class="fas fa-microchip"></i></div><div class="row">${cpu.name}</div><div class="row">${cpu.speed} MHz</div><div class="row">${cost.toString()}</div></div>`);
+                $node.click(() => {
+                    this.setChosenPart(cpu, 'CPU', cost, $node);
+                });
+
+                this.$computerPartsCPURow.append($node);
+            }
+        },
+        setChosenPart(part, type, cost, $node)
+        {
+            if(!this.downlink.canAfford(cost))
+            {
+                return;
+            }
+            $('.chosenPart').removeClass('chosenPart');
+            if(part === this.chosenPart)
+            {
+                this.chosenPart = null;
+                return;
+            }
+            this.chosenPart = part;
+            $node.addClass('chosenPart');
+        },
+        updateComputerPartsUI:function()
+        {
+            let downlink = this.downlink
+            $('.part').each(function(index){
+                let $node = $(this),
+                    cost = new Decimal($node.data('partCost')),
+                    canAfford = downlink.canAfford(cost);
+                $node.removeClass('affordable-part unaffordable-part').addClass(
+                    (canAfford?'':'un')+'affordable-part'
+                );
+            });
+        },
+        buildComputerGrid:function()
+        {
+            this.$computerBuild.empty();
+
+            let pc = this.downlink.playerComputer,
+                gridSize = Math.floor(Math.sqrt(pc.maxCPUs)),
+                html = '',
+                cpuCount = 0;
+
+            for(let i = 0; i < gridSize; i++)
+            {
+                html += '<div class="row cpuRow">'
+                for(let j = 0; j < gridSize; j++)
+                {
+                    html += `<div class="col cpuHolder">${pc.cpus[cpuCount]?'<i class="fas fa-microchip"></i>':''}</div>`;
+                    cpuCount++;
+                }
+                html += '</div>';
+            }
+            this.$computerBuild.html(html);
+            $('.cpuHolder').click(()=> {
+                this.buyCPU()
+            });
+            $('.cpuRow').css('width', gridSize * 30);
+        },
+        buyCPU:function()
+        {
+            if(!this.chosenPart)
+            {
+                return;
+            }
+            this.downlink.buyCPU(this.chosenPart);
+            this.buildComputerGrid();
         }
     };
-
-    $('#connectionModalLink').click(()=>{game.showConnectionManager()});
-
 
     game.start();
 

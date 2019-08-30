@@ -1,4 +1,5 @@
-const EventListener = require('../EventListener');
+const   EventListener = require('../EventListener'),
+        Decimal = require('break_infinity.js');
 
 class CPUOverloadError extends Error
 {
@@ -43,24 +44,28 @@ class Task extends EventListener
 
     /**
      * Try to release a number of ticks from the task and return the number actually released
-     * @param tickReduction
+     * @param {number} tickReduction
      * @returns {number|*}
      */
     freeCycles(tickReduction)
     {
-        if(this.cyclesPerTick <= (tickReduction + this.minimumRequiredCycles))
+        // figure out how many freeable ticks we have
+        const freeableTicks = this.cyclesPerTick-this.minimumRequiredCycles;
+        // if it's one or less, free none and return 0
+        let ticksToFree = 0;
+        if(freeableTicks > 1)
         {
-
-            if(this.cyclesPerTick > 1)
+            if(freeableTicks > tickReduction)
             {
-                let halfMyCyclesRoundedDown = Math.floor(this.cyclesPerTick / 2);
-                this.cyclesPerTick -= halfMyCyclesRoundedDown;
-                return halfMyCyclesRoundedDown;
+                ticksToFree = tickReduction;
             }
-            return 0;
+            else
+            {
+                ticksToFree = Math.floor(freeableTicks / 2);
+            }
         }
-        this.cyclesPerTick -= tickReduction;
-        return tickReduction;
+        this.cyclesPerTick -= ticksToFree;
+        return ticksToFree;
     }
 
     signalComplete()

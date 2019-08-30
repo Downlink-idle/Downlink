@@ -1,4 +1,4 @@
-const   PlayerComputer = require('../PlayerComputer'),
+const   PlayerComputer = require('./PlayerComputer'),
         Computer = require('./Computer'),
         CPU = require('./CPU'),
         PublicComputer= require('./PublicComputer'),

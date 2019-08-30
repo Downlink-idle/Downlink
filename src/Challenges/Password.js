@@ -1,6 +1,5 @@
 const   dictionary = require('./dictionary'),
-        Challenge = require('./Challenge'),
-        Decimal = require('break_infinity.js');
+        Challenge = require('./Challenge');
 
 const PASSWORD_TYPES = {
     'DICTIONARY':'Dictionary',
@@ -16,7 +15,7 @@ class Password extends Challenge
 {
     constructor(text, type, difficulty)
     {
-        super(type + ' Password', new Decimal(difficulty));
+        super(type + ' Password', difficulty) ;
         this.text = text;
         this.type = type;
     }
