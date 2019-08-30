@@ -1,5 +1,4 @@
-const   Computer = require('../Computers/Computer'),
-        Decimal = require('break_infinity.js');
+const   Computer = require('../Computers/Computer');
 class MissionComputer extends Computer
 {
     constructor(company, serverType)
@@ -63,14 +62,29 @@ class MissionComputer extends Computer
      */
     connect(connection)
     {
-        connection.open();
         super.connect();
-        this.currentPlayerConnection = connection;
+        let clone = connection.clone();
+        clone
+            .once("connectionTraced", ()=>{
+                this.trigger('hackTracked');
+            }).on('stepTraced',(step)=>{
+                this.trigger('connectionStepTraced', step);
+            });
+        this.currentPlayerConnection = clone;
 
-        if(this.currentPlayerConnection.equals(this.previousPlayerConnection) && this.alerted === true)
+
+        if(this.alerted)
         {
-            this.resumeTraceBack();
+            if (this.currentPlayerConnection.equals(this.previousPlayerConnection))
+            {
+                this.resumeTraceBack();
+            }
+            else
+            {
+                this.startTraceBack();
+            }
         }
+
 
         return this;
     }
@@ -79,6 +93,7 @@ class MissionComputer extends Computer
     {
         super.disconnect();
         this.currentPlayerConnection.close();
+        this.previousPlayerConnection = this.currentPlayerConnection;
         this.stopTraceBack();
         return this;
     }
@@ -114,10 +129,10 @@ class MissionComputer extends Computer
 
     get difficultyModifier()
     {
-        let mod = new Decimal(1);
+        let mod = 0;
         for(let challenge of this.challenges)
         {
-            mod = mod.plus(challenge.difficulty);
+            mod += challenge.difficulty;
         }
         return mod;
     }
@@ -141,19 +156,29 @@ class MissionComputer extends Computer
         return this.accessible;
     }
 
+    tick()
+    {
+        if(this.tracingConnection)
+        {
+            this.currentPlayerConnection.traceStep(this.difficultyModifier);
+        }
+    }
+
     startTraceBack()
     {
-
+        this.currentPlayerConnection.connect();
+        this.tracingConnection = true;
     }
 
     resumeTraceBack()
     {
-
+        this.currentPlayerConnection.reconnect();
+        this.tracingConnection = true;
     }
 
     stopTraceBack()
     {
-
+        this.tracingConnection = false;
     }
 }
 

@@ -1,9 +1,15 @@
 const   Company = require('../Companies/Company'),
-    MissionComputer = require('./MissionComputer'),
-    Password = require('../Challenges/Password'),
-    Encryption = require('../Challenges/Encryption'),
-    EventListener = require('../EventListener'),
-    MissionDifficulty = require('./MissionDifficulty');
+        MissionComputer = require('./MissionComputer'),
+        Password = require('../Challenges/Password'),
+        Encryption = require('../Challenges/Encryption'),
+        EventListener = require('../EventListener'),
+        MissionDifficulty = require('./MissionDifficulty');
+
+const MISSION_STATUSES = {
+    UNDERWAY:'underway',
+    AVAILABLE:'available',
+    COMPLETE:'complete'
+};
 
 
 class Mission extends EventListener
@@ -37,7 +43,10 @@ class Mission extends EventListener
          */
         this.computer = null;
 
-        this.status = "Available";
+        /**
+         * @type {string} A constant enum value used for state checking
+         */
+        this.status = MISSION_STATUSES.AVAILABLE;
 
     }
 
@@ -73,6 +82,10 @@ class Mission extends EventListener
         this.computer = new MissionComputer(this.target, this.difficulty.serverType);
         this.computer.on('accessed', ()=>{
             this.signalComplete();
+        }).on('connectionStepTraced', (step)=>{
+            this.trigger("connectionStepTraced", step);
+        }).on('hackTracked', ()=>{
+            this.target.detectHacking();
         });
 
         let password = null, encryption = null;
@@ -88,23 +101,22 @@ class Mission extends EventListener
 
         this.computer.setPassword(password).setEncryption(encryption);
 
-
         this.target.addComputer(this.computer);
-        this.status = "Underway";
+        this.status = MISSION_STATUSES.UNDERWAY;
         return this;
     }
 
     /**
-     * @returns {Decimal}
+     * @returns {number}
      */
     get reward()
     {
-        return this.difficulty.modifier.times(this.computer.difficultyModifier.sqrt()).times(this.sponsor.playerRespectModifier);
+        return this.difficulty.modifier * this.computer.difficultyModifier * this.sponsor.playerRespectModifier;
     }
 
     signalComplete()
     {
-        this.status="Complete";
+        this.status = MISSION_STATUSES.COMPLETE;
         this.sponsor.finishMission(this);
         this.trigger('complete');
     }
@@ -117,6 +129,10 @@ class Mission extends EventListener
 
     tick()
     {
+        if(this.status == MISSION_STATUSES.COMPLETE)
+        {
+            return;
+        }
         this.build();
         this.computer.tick();
     }

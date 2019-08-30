@@ -7,7 +7,7 @@ class MissionDifficulty
 {
     /**
      * @param {string} name         The name of the difficulty
-     * @param {Decimal} modifier     The modifier of the difficulty
+     * @param {number} modifier     The modifier of the difficulty
      * @param {string} serverType   The server type this difficulty faces
      */
     constructor(name, modifier, serverType)
@@ -26,9 +26,9 @@ class MissionDifficulty
 }
 
 MissionDifficulty.DIFFICULTIES = {
-    EASY:new MissionDifficulty("Easy", new Decimal(1), "Server"),
-    MEDIUM:new MissionDifficulty("Medium", new Decimal(5), "Cluster"),
-    HARD:new MissionDifficulty("Hard", new Decimal(10), "Farm"),
+    EASY:new MissionDifficulty("Easy", 1, "Server"),
+    MEDIUM:new MissionDifficulty("Medium", 5, "Cluster"),
+    HARD:new MissionDifficulty("Hard", 10, "Farm"),
 };
 
 module.exports = MissionDifficulty;

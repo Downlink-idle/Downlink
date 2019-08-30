@@ -1,5 +1,4 @@
 const   ComputerGenerator = require('../Computers/ComputerGenerator'),
-        Decimal = require('break_infinity.js'),
         companyNames = require('./companies');
 
 /**
@@ -19,16 +18,16 @@ class Company
         this.computers = [];
 
         /**
-         * @type {Decimal} the reward modifier this company offers the player
+         * @type {number} the reward modifier this company offers the player
          * this is based on the accrued successful missions and the number of times the company has detected you hacking
          * one of their servers
          */
-        this.playerRespectModifier = new Decimal(1);
+        this.playerRespectModifier = 1;
         /**
-         * @type {Decimal} the reward modifier this company offers the player
+         * @type {number} the reward modifier this company offers the player
          * this is the increase exponent for successfully achieved missions
          */
-        this.missionSuccessIncreaseExponent = new Decimal(1.001);
+        this.missionSuccessIncreaseExponent = 1.001;
     }
 
     setPublicServer(publicServer)
@@ -44,7 +43,12 @@ class Company
 
     finishMission(mission)
     {
-        this.playerRespectModifier = this.playerRespectModifier.times(this.missionSuccessIncreaseExponent);
+        this.playerRespectModifier *= this.missionSuccessIncreaseExponent;
+    }
+
+    detectHacking()
+    {
+        this.playerRespectModifier /= (this.missionSuccessIncreaseExponent * 2);
     }
 
     static getRandomCompany()
@@ -103,8 +107,8 @@ class Company
     {
         let company = new Company(companyJSON.name);
         company.setPublicServer(ComputerGenerator.fromJSON(companyJSON.publicServer));
-        company.playerRespectModifier = Decimal.fromString(companyJSON.playerRespectModifier);
-        company.missionSuccessIncreaseExponent = Decimal.fromString(companyJSON.missionSuccessIncreaseExponent);
+        company.playerRespectModifier = parseFloat(companyJSON.playerRespectModifier);
+        company.missionSuccessIncreaseExponent = parseFloat(companyJSON.missionSuccessIncreaseExponent);
 
         for(let computerJSON of company.computers)
         {

@@ -1,8 +1,11 @@
 class Event
 {
-    constructor(name)
+    constructor(owner, name, once)
     {
+        this.owner = owner;
         this.name = name;
+        this.once = once;
+        this.triggered = false;
         this.callbacks = [];
     }
 
@@ -24,9 +27,13 @@ class Event
 
     trigger(args)
     {
-        this.callbacks.forEach(function(callback){
-            callback(...args);
-        });
+        if(!this.once || (this.once && !this.triggered))
+        {
+            this.callbacks.forEach(function (callback) {
+                callback(...args);
+            });
+        }
+        this.triggered = true;
     }
 }
 
@@ -40,12 +47,24 @@ class EventListener
         this.events = {};
     }
 
+    once(eventName, callback)
+    {
+        let e = eventName.toLowerCase();
+        if(!this.events[e])
+        {
+            this.events[e] = new Event(this, e, true);
+        }
+        this.events[e].triggered = false;
+        this.events[e].addListener(callback);
+        return this;
+    }
+
     on(eventName, callback)
     {
         let e = eventName.toLowerCase();
         if(!this.events[e])
         {
-            this.events[e] = new Event(e);
+            this.events[e] = new Event(this, e);
         }
         this.events[e].addListener(callback);
         return this;
@@ -76,7 +95,15 @@ class EventListener
         let e = eventName.toLowerCase();
         if(this.events[e])
         {
-            this.events[e].trigger(args);
+            try
+            {
+                let evt = this.events[e];
+                evt.trigger(args);
+            }
+            catch(e)
+            {
+                console.log(e);
+            }
         }
     }
 
