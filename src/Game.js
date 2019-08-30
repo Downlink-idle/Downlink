@@ -178,6 +178,10 @@
         },
         needsHardReset:function(saveFile)
         {
+            if(!saveFile.version)
+            {
+                return true;
+            }
             return (this.requiresHardReset && saveIsOlder(saveFile.version, this.version));
         },
         initialise:function()
@@ -379,7 +383,10 @@
             let html = '';
             for(let cpu of this.downlink.playerComputer.cpus)
             {
-                html += `<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}"><div class="col">${cpu.name}</div><div class="col">${cpu.speed}MHz</div></div>`;
+                if(cpu)
+                {
+                    html += `<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}"><div class="col">${cpu.name}</div><div class="col">${cpu.speed}MHz</div></div>`;
+                }
             }
 
             this.$playerComputerCPUListContainer.html(html);
@@ -453,8 +460,9 @@
         },
         save:function()
         {
-            let json = this.getJSON(),
-                jsonAsString = JSON.stringify(json),
+            let json = this.getJSON();
+            json.version = this.version;
+            let jsonAsString = JSON.stringify(json),
                 jsonAsAsciiSafeString = btoa(jsonAsString);
             localStorage.setItem('saveFile', jsonAsAsciiSafeString);
             return jsonAsAsciiSafeString;
@@ -559,14 +567,14 @@
             }
             this.$computerBuild.html(html);
             $('.cpuHolder').click((evt)=> {
-                let cpuSlot = (evt.currentTarget).data('cpuSlot');
+                let cpuSlot = $(evt.currentTarget).data('cpuSlot');
                 this.buyCPU(cpuSlot)
             });
             $('.cpuRow').css('width', gridSize * 30);
         },
         buyCPU:function(cpuSlot)
         {
-            if(!this.chosenPart)
+            if(!this.chosenPart || !this.downlink.canAfford(CPU.getPriceFor(this.chosenPart)))
             {
                 return;
             }

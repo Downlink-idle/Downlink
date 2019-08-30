@@ -31,7 +31,7 @@ class PlayerComputer extends Computer
 
     setCPUSlot(slot, cpu)
     {
-        this.cpuPool[slot] = cpu;
+        this.cpuPool.setCPUSlot(slot, cpu);
     }
 
     getTaskForChallenge(challenge)
@@ -95,7 +95,14 @@ class PlayerComputer extends Computer
         json.cpus = [];
         for(let cpu of this.cpus)
         {
-            json.cpus.push(cpu.toJSON());
+            if(cpu)
+            {
+                json.cpus.push(cpu.toJSON());
+            }
+            else
+            {
+                json.cpus.push(null);
+            }
         }
         return json;
     }
@@ -105,7 +112,14 @@ class PlayerComputer extends Computer
         let cpus = [];
         for(let cpuJSON of json.cpus)
         {
-            cpus.push(new CPU(cpuJSON.name, cpuJSON.speed))
+            if(cpuJSON)
+            {
+                cpus.push(new CPU(cpuJSON.name, cpuJSON.speed))
+            }
+            else
+            {
+                cpus.push(null);
+            }
         }
         let pc = new PlayerComputer(cpus);
         pc.setLocation(json.location);
