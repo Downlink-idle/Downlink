@@ -95,7 +95,8 @@ class Connection extends EventListener
         if(this.amountTraced >= this.connectionDistance)
         {
             this.computersTraced++;
-            this.trigger("stepTraced");
+            this.trigger("stepTraced", this.computersTraced);
+            this.amountTraced = 0;
             if(this.computersTraced >= this.connectionLength)
             {
                 this.trigger("connectionTraced");

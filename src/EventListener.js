@@ -27,7 +27,7 @@ class Event
 
     trigger(args)
     {
-        if(!this.once || this.once && !this.triggered)
+        if(!this.once || (this.once && !this.triggered))
         {
             this.callbacks.forEach(function (callback) {
                 callback(...args);

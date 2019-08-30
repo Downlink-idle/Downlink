@@ -8,6 +8,7 @@
             MISSION_LIST_CLASS = 'mission-list-row',
             COMPANY_REP_CLASS = 'company-rep-row',
             PLAYER_COMPUTER_CPU_ROW_CLASS = "cpu-row";
+
     function parseVersionNumber(versionNumberAsString)
     {
         let parts = versionNumberAsString.split('.'),
@@ -31,7 +32,7 @@
         interval:null,
         ticking:true,
         initialised:false,
-        takingMissions:true,
+        takingMissions:false,
         mission:false,
         computer:null,
         downlink:null,
@@ -60,6 +61,9 @@
         $computerBuildModal:null,
         $computerBuild:null,
         $computerPartsCPURow:null,
+        $connectionLength:null,
+        $connectionTraced:null,
+        $connectionWarningRow:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -87,6 +91,9 @@
             this.$computerBuildModal = $('#computer-build-modal');
             this.$computerBuild = $('#computer-build-layout');
             this.$computerPartsCPURow = $('#computer-parts-cpu-row');
+            this.$connectionLength = $('#connection-length');
+            this.$connectionTraced = $('#connection-traced');
+            this.$connectionWarningRow = $('#connection-warning-row');
 
             $('#settings-export-button').click(()=>{
                 this.$importExportTextarea.val(this.save());
@@ -97,6 +104,8 @@
             $('#settingsModalLink').click(()=>{this.showSettingsModal();});
             $('#game-version').html(this.version);
             $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
+            $('#start-missions-button').click(()=>{this.takingMissions = true; this.getNextMission();});
+            $('#stop-missions-button').click(()=>{this.takingMissions = false;});
         },
         buildWorldMap:function()
         {
@@ -214,11 +223,11 @@
                 this.buildComputerGrid();
 
                 this.addPublicComputersToWorldMap();
+                this.$connectionLength.html(this.downlink.playerConnection.connectionLength);
+                this.showOrHideConnectionWarning();
 
                 this.ticking = true;
                 this.updateConnectionMap();
-                this.getNextMission();
-
             });
         },
         addPublicComputersToWorldMap:function()
@@ -256,13 +265,11 @@
             if(this.initialised)
             {
                 this.tick();
-                //this.showComputerBuildModal();
             }
             else
             {
                 this.initialise().then(() => {
                     this.tick();
-                  //  this.showComputerBuildModal();
                 });
             }
         },
@@ -346,15 +353,17 @@
         getNextMission:function(){
             if(!this.takingMissions)
             {
-                this.$activeMissionServer.hide();
                 return false;
             }
             this.$activeMissionServer.show();
+            this.$connectionTraced.html(0);
             this.mission = this.downlink.getNextMission()
                 .on('complete', ()=>{
                     this.updatePlayerDetails();
                     this.updateComputerPartsUI();
                     this.getNextMission();
+                }).on("connectionStepTraced", (stepsTraced)=>{
+                    this.$connectionTraced.html(stepsTraced);
                 });
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
@@ -422,7 +431,7 @@
             let html = '';
             for(let mission of this.downlink.availableMissions)
             {
-                html += `<div class="row ${MISSION_LIST_CLASS}">${mission.name}</div>`;
+                html += `<div class="row ${MISSION_LIST_CLASS}"><div class="col">${mission.name}</div></div>`;
             }
             let $html = $(html);
             this.$missionContainer.append($html);
@@ -486,10 +495,23 @@
             this.takingMissions = false;
             this.$worldMapModal.modal({keyboard:false, backdrop:"static"});
         },
+        showOrHideConnectionWarning:function()
+        {
+            if(this.downlink.playerConnection.connectionLength < 4)
+            {
+                this.$connectionWarningRow.show();
+            }
+            else
+            {
+                this.$connectionWarningRow.hide();
+            }
+        },
         afterHideConnectionManager:function()
         {
+            this.$connectionTraced.html(0);
+            this.$connectionLength.html(this.downlink.playerConnection.connectionLength);
+            this.showOrHideConnectionWarning();
             this.takingMissions = true;
-            this.getNextMission();
         },
         getRunTime:function()
         {
@@ -510,7 +532,12 @@
             {
                 let cost = CPU.getPriceFor(cpu),
                     affordable = this.downlink.canAfford(cost);
-                let $node = $(`<div data-part-cost="${cost.toString()}" class="col-4 cpu part ${affordable?"":"un"}affordable-part"><div class="row"><i class="fas fa-microchip"></i></div><div class="row">${cpu.name}</div><div class="row">${cpu.speed} MHz</div><div class="row">${cost.toString()}</div></div>`);
+                let $node = $(`<div data-part-cost="${cost.toString()}" class="col-4 cpu part ${affordable?"":"un"}affordable-part">
+                        <div class="row"><div class="col"><i class="fas fa-microchip"></i></div></div>
+                        <div class="row"><div class="col">${cpu.name}</div></div>
+                        <div class="row"><div class="col">${cpu.speed} MHz</div></div>
+                        <div class="row"><div class="col">${cost.toString()}</div></div>
+                    </div>`);
                 $node.click(() => {
                     this.setChosenPart(cpu, 'CPU', cost, $node);
                 });
