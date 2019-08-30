@@ -8,7 +8,24 @@
             MISSION_LIST_CLASS = 'mission-list-row',
             COMPANY_REP_CLASS = 'company-rep-row',
             PLAYER_COMPUTER_CPU_ROW_CLASS = "cpu-row";
+    function parseVersionNumber(versionNumberAsString)
+    {
+        let parts = versionNumberAsString.split('.'),
+            partAsNumber = 0;
+        for(let partIndex in parts)
+        {
+            partAsNumber +=  parts[partIndex] * Math.pow(1000, parts.length - 1 - partIndex);
+        }
+        return partAsNumber
+    }
 
+    function saveIsOlder(oldVersionString, currentVersionString)
+    {
+        let oldVersion = parseVersionNumber(oldVersionString),
+            currentVersion = parseVersionNumber(currentVersionString);
+
+        return oldVersion < currentVersion;
+    }
 
     let game = {
         interval:null,
@@ -18,7 +35,8 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.2.1a",
+        version:"0.2.2a",
+        requiresHardReset:true,
         /**
          * jquery entities that are needed for updating
          */
@@ -158,12 +176,20 @@
                 this.start();
             });
         },
+        needsHardReset:function(saveFile)
+        {
+            if(!saveFile.version)
+            {
+                return true;
+            }
+            return (this.requiresHardReset && saveIsOlder(saveFile.version, this.version));
+        },
         initialise:function()
         {
             this.bindUIElements();
 
             let saveFile = this.load();
-            if (saveFile)
+            if (saveFile && !this.needsHardReset(saveFile))
             {
                 this.loadGame(saveFile);
             }
@@ -357,7 +383,10 @@
             let html = '';
             for(let cpu of this.downlink.playerComputer.cpus)
             {
-                html += `<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}"><div class="col">${cpu.name}</div><div class="col">${cpu.speed}MHz</div></div>`;
+                if(cpu)
+                {
+                    html += `<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}"><div class="col">${cpu.name}</div><div class="col">${cpu.speed}MHz</div></div>`;
+                }
             }
 
             this.$playerComputerCPUListContainer.html(html);
@@ -431,8 +460,9 @@
         },
         save:function()
         {
-            let json = this.getJSON(),
-                jsonAsString = JSON.stringify(json),
+            let json = this.getJSON();
+            json.version = this.version;
+            let jsonAsString = JSON.stringify(json),
                 jsonAsAsciiSafeString = btoa(jsonAsString);
             localStorage.setItem('saveFile', jsonAsAsciiSafeString);
             return jsonAsAsciiSafeString;
@@ -476,7 +506,6 @@
         buildComputerPartsUI:function()
         {
             this.$computerPartsCPURow.empty();
-
             for(let cpu of CPU.getCPUs())
             {
                 let cost = CPU.getPriceFor(cpu),
@@ -524,31 +553,32 @@
                 gridSize = Math.floor(Math.sqrt(pc.maxCPUs)),
                 html = '',
                 cpuCount = 0;
-
             for(let i = 0; i < gridSize; i++)
             {
                 html += '<div class="row cpuRow">'
                 for(let j = 0; j < gridSize; j++)
                 {
-                    html += `<div class="col cpuHolder">${pc.cpus[cpuCount]?'<i class="fas fa-microchip"></i>':''}</div>`;
+                    html += `<div data-cpu-slot="${cpuCount}" class="col cpuHolder">${pc.cpus[cpuCount]?'<i class="fas fa-microchip"></i>':''}</div>`;
                     cpuCount++;
                 }
                 html += '</div>';
             }
             this.$computerBuild.html(html);
-            $('.cpuHolder').click(()=> {
-                this.buyCPU()
+            $('.cpuHolder').click((evt)=> {
+                let cpuSlot = $(evt.currentTarget).data('cpuSlot');
+                this.buyCPU(cpuSlot)
             });
             $('.cpuRow').css('width', gridSize * 30);
         },
-        buyCPU:function()
+        buyCPU:function(cpuSlot)
         {
-            if(!this.chosenPart)
+            if(!this.chosenPart || !this.downlink.canAfford(CPU.getPriceFor(this.chosenPart)))
             {
                 return;
             }
-            this.downlink.buyCPU(this.chosenPart);
+            this.downlink.buyCPU(this.chosenPart, cpuSlot);
             this.buildComputerGrid();
+            this.updateComputerBuild();
         }
     };
 

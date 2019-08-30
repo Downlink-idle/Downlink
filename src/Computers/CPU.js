@@ -54,9 +54,13 @@ class CPU extends EventListener
         return cpus;
     }
 
-    tick()
+    tick(load)
     {
-
+        this.lifeCycleUsed += Math.round(load);
+        if(this.lifeCycleUsed >= this.lifeCycle)
+        {
+            this.trigger('CPUDied');
+        }
     }
 
     /**

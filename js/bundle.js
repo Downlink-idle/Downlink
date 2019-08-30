@@ -4198,9 +4198,13 @@ class CPU extends EventListener
         return cpus;
     }
 
-    tick()
+    tick(load)
     {
-
+        this.lifeCycleUsed += Math.round(load);
+        if(this.lifeCycleUsed >= this.lifeCycle)
+        {
+            this.trigger('CPUDied');
+        }
     }
 
     /**
@@ -4251,6 +4255,10 @@ class CPUPool extends EventListener
          * * @type {Array.<Task>}
          */
         this.tasks = [];
+        /**
+         * @type {number} The number of CPUs. Because entries can be null, this needs to be counted
+         */
+        this.cpuCount = 0;
 
         for(let cpu of cpus)
         {
@@ -4263,9 +4271,22 @@ class CPUPool extends EventListener
      */
     addCPU(cpu)
     {
-        this.cpus.push(cpu);
-        this.totalSpeed += cpu.speed;
-        this.averageSpeed =  this.totalSpeed/this.cpus.length;
+        this.setCPUSlot(this.cpus.length, cpu);
+    }
+
+    setCPUSlot(slot, cpu)
+    {
+        if(cpu)
+        {
+            this.cpus[slot] = cpu;
+            this.cpuCount ++;
+            this.totalSpeed += cpu.speed;
+            this.averageSpeed = this.totalSpeed / this.cpuCount;
+        }
+        else
+        {
+            this.cpus[slot] = null;
+        }
     }
 
     /**
@@ -4376,6 +4397,11 @@ class CPUPool extends EventListener
         return this.totalSpeed - this.load;
     }
 
+    get averageLoad()
+    {
+        return this.load / this.cpuCount;
+    }
+
     tick()
     {
         for(let task of this.tasks)
@@ -4384,7 +4410,10 @@ class CPUPool extends EventListener
         }
         for(let cpu of this.cpus)
         {
-            cpu.tick();
+            if(cpu)
+            {
+                cpu.tick(this.averageLoad);
+            }
         }
     }
 }
@@ -4646,6 +4675,11 @@ class PlayerComputer extends Computer
         this.cpuPool.addCPU(cpu);
     }
 
+    setCPUSlot(slot, cpu)
+    {
+        this.cpuPool.setCPUSlot(slot, cpu);
+    }
+
     getTaskForChallenge(challenge)
     {
         let task = null;
@@ -4707,7 +4741,14 @@ class PlayerComputer extends Computer
         json.cpus = [];
         for(let cpu of this.cpus)
         {
-            json.cpus.push(cpu.toJSON());
+            if(cpu)
+            {
+                json.cpus.push(cpu.toJSON());
+            }
+            else
+            {
+                json.cpus.push(null);
+            }
         }
         return json;
     }
@@ -4717,7 +4758,14 @@ class PlayerComputer extends Computer
         let cpus = [];
         for(let cpuJSON of json.cpus)
         {
-            cpus.push(new CPU(cpuJSON.name, cpuJSON.speed))
+            if(cpuJSON)
+            {
+                cpus.push(new CPU(cpuJSON.name, cpuJSON.speed))
+            }
+            else
+            {
+                cpus.push(null);
+            }
         }
         let pc = new PlayerComputer(cpus);
         pc.setLocation(json.location);
@@ -5064,11 +5112,11 @@ class Downlink extends EventListener
         return this.currency.greaterThan(cost);
     }
 
-    buyCPU(cpuData)
+    buyCPU(cpuData, slot)
     {
         let cpu = CPU.fromJSON(cpuData);
         this.currency = this.currency.minus(CPU.getPriceFor(cpuData));
-        this.playerComputer.addCPU(cpu);
+        this.playerComputer.setCPUSlot(slot, cpu);
 
     }
 }
@@ -5182,7 +5230,24 @@ module.exports = EventListener;
             MISSION_LIST_CLASS = 'mission-list-row',
             COMPANY_REP_CLASS = 'company-rep-row',
             PLAYER_COMPUTER_CPU_ROW_CLASS = "cpu-row";
+    function parseVersionNumber(versionNumberAsString)
+    {
+        let parts = versionNumberAsString.split('.'),
+            partAsNumber = 0;
+        for(let partIndex in parts)
+        {
+            partAsNumber +=  parts[partIndex] * Math.pow(1000, parts.length - 1 - partIndex);
+        }
+        return partAsNumber
+    }
 
+    function saveIsOlder(oldVersionString, currentVersionString)
+    {
+        let oldVersion = parseVersionNumber(oldVersionString),
+            currentVersion = parseVersionNumber(currentVersionString);
+
+        return oldVersion < currentVersion;
+    }
 
     let game = {
         interval:null,
@@ -5192,7 +5257,8 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.2.1a",
+        version:"0.2.2a",
+        requiresHardReset:true,
         /**
          * jquery entities that are needed for updating
          */
@@ -5332,12 +5398,20 @@ module.exports = EventListener;
                 this.start();
             });
         },
+        needsHardReset:function(saveFile)
+        {
+            if(!saveFile.version)
+            {
+                return true;
+            }
+            return (this.requiresHardReset && saveIsOlder(saveFile.version, this.version));
+        },
         initialise:function()
         {
             this.bindUIElements();
 
             let saveFile = this.load();
-            if (saveFile)
+            if (saveFile && !this.needsHardReset(saveFile))
             {
                 this.loadGame(saveFile);
             }
@@ -5531,7 +5605,10 @@ module.exports = EventListener;
             let html = '';
             for(let cpu of this.downlink.playerComputer.cpus)
             {
-                html += `<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}"><div class="col">${cpu.name}</div><div class="col">${cpu.speed}MHz</div></div>`;
+                if(cpu)
+                {
+                    html += `<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}"><div class="col">${cpu.name}</div><div class="col">${cpu.speed}MHz</div></div>`;
+                }
             }
 
             this.$playerComputerCPUListContainer.html(html);
@@ -5605,8 +5682,9 @@ module.exports = EventListener;
         },
         save:function()
         {
-            let json = this.getJSON(),
-                jsonAsString = JSON.stringify(json),
+            let json = this.getJSON();
+            json.version = this.version;
+            let jsonAsString = JSON.stringify(json),
                 jsonAsAsciiSafeString = btoa(jsonAsString);
             localStorage.setItem('saveFile', jsonAsAsciiSafeString);
             return jsonAsAsciiSafeString;
@@ -5650,7 +5728,6 @@ module.exports = EventListener;
         buildComputerPartsUI:function()
         {
             this.$computerPartsCPURow.empty();
-
             for(let cpu of CPU.getCPUs())
             {
                 let cost = CPU.getPriceFor(cpu),
@@ -5698,31 +5775,32 @@ module.exports = EventListener;
                 gridSize = Math.floor(Math.sqrt(pc.maxCPUs)),
                 html = '',
                 cpuCount = 0;
-
             for(let i = 0; i < gridSize; i++)
             {
                 html += '<div class="row cpuRow">'
                 for(let j = 0; j < gridSize; j++)
                 {
-                    html += `<div class="col cpuHolder">${pc.cpus[cpuCount]?'<i class="fas fa-microchip"></i>':''}</div>`;
+                    html += `<div data-cpu-slot="${cpuCount}" class="col cpuHolder">${pc.cpus[cpuCount]?'<i class="fas fa-microchip"></i>':''}</div>`;
                     cpuCount++;
                 }
                 html += '</div>';
             }
             this.$computerBuild.html(html);
-            $('.cpuHolder').click(()=> {
-                this.buyCPU()
+            $('.cpuHolder').click((evt)=> {
+                let cpuSlot = $(evt.currentTarget).data('cpuSlot');
+                this.buyCPU(cpuSlot)
             });
             $('.cpuRow').css('width', gridSize * 30);
         },
-        buyCPU:function()
+        buyCPU:function(cpuSlot)
         {
-            if(!this.chosenPart)
+            if(!this.chosenPart || !this.downlink.canAfford(CPU.getPriceFor(this.chosenPart)))
             {
                 return;
             }
-            this.downlink.buyCPU(this.chosenPart);
+            this.downlink.buyCPU(this.chosenPart, cpuSlot);
             this.buildComputerGrid();
+            this.updateComputerBuild();
         }
     };
 

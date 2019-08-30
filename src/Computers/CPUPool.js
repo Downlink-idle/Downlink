@@ -34,6 +34,10 @@ class CPUPool extends EventListener
          * * @type {Array.<Task>}
          */
         this.tasks = [];
+        /**
+         * @type {number} The number of CPUs. Because entries can be null, this needs to be counted
+         */
+        this.cpuCount = 0;
 
         for(let cpu of cpus)
         {
@@ -46,9 +50,22 @@ class CPUPool extends EventListener
      */
     addCPU(cpu)
     {
-        this.cpus.push(cpu);
-        this.totalSpeed += cpu.speed;
-        this.averageSpeed =  this.totalSpeed/this.cpus.length;
+        this.setCPUSlot(this.cpus.length, cpu);
+    }
+
+    setCPUSlot(slot, cpu)
+    {
+        if(cpu)
+        {
+            this.cpus[slot] = cpu;
+            this.cpuCount ++;
+            this.totalSpeed += cpu.speed;
+            this.averageSpeed = this.totalSpeed / this.cpuCount;
+        }
+        else
+        {
+            this.cpus[slot] = null;
+        }
     }
 
     /**
@@ -159,6 +176,11 @@ class CPUPool extends EventListener
         return this.totalSpeed - this.load;
     }
 
+    get averageLoad()
+    {
+        return this.load / this.cpuCount;
+    }
+
     tick()
     {
         for(let task of this.tasks)
@@ -167,7 +189,10 @@ class CPUPool extends EventListener
         }
         for(let cpu of this.cpus)
         {
-            cpu.tick();
+            if(cpu)
+            {
+                cpu.tick(this.averageLoad);
+            }
         }
     }
 }
