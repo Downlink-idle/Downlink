@@ -17,7 +17,7 @@ class Task extends EventListener
     {
         super();
         this.name= name;
-        this.minimumRequiredCycles = new Decimal(minimumRequiredCycles?minimumRequiredCycles:10);
+        this.minimumRequiredCycles = minimumRequiredCycles?minimumRequiredCycles:10;
         this.cyclesPerTick = 0;
         this.weight = 1;
         this.difficultyRatio = 0;
@@ -29,7 +29,7 @@ class Task extends EventListener
 
     setCyclesPerTick(cyclesPerTick)
     {
-        if(cyclesPerTick.lessThan(this.minimumRequiredCycles))
+        if(cyclesPerTick < this.minimumRequiredCycles)
         {
             throw new CPUOverloadError(this, cyclesPerTick);
         }
@@ -39,32 +39,32 @@ class Task extends EventListener
 
     addCycles(tickIncrease)
     {
-        this.cyclesPerTick = this.cyclesPerTick.plus(tickIncrease);
+        this.cyclesPerTick += tickIncrease;
     }
 
     /**
      * Try to release a number of ticks from the task and return the number actually released
-     * @param {Decimal} tickReduction
+     * @param {number} tickReduction
      * @returns {number|*}
      */
     freeCycles(tickReduction)
     {
         // figure out how many freeable ticks we have
-        const freeableTicks = this.cyclesPerTick.minus(this.minimumRequiredCycles);
+        const freeableTicks = this.cyclesPerTick-this.minimumRequiredCycles;
         // if it's one or less, free none and return 0
-        let ticksToFree = new Decimal(0);
-        if(freeableTicks.greaterThan(1))
+        let ticksToFree = 0;
+        if(freeableTicks > 1)
         {
-            if(freeableTicks.greaterThan(tickReduction))
+            if(freeableTicks > tickReduction)
             {
                 ticksToFree = tickReduction;
             }
             else
             {
-                ticksToFree = freeableTicks.dividedBy(2).floor();
+                ticksToFree = Math.floor(freeableTicks / 2);
             }
         }
-        this.cyclesPerTick = this.cyclesPerTick.minus(ticksToFree);
+        this.cyclesPerTick -= ticksToFree;
         return ticksToFree;
     }
 

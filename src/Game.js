@@ -18,7 +18,7 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.1.7a",
+        version:"0.2.0a",
         /**
          * jquery entities that are needed for updating
          */

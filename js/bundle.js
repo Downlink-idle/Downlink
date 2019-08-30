@@ -1596,7 +1596,6 @@ class Challenge extends EventListener
 module.exports = Challenge;
 
 },{"../EventListener":18}],4:[function(require,module,exports){
-const   Decimal = require('break_infinity.js'),
 /**
  * @type {{}}
  */
@@ -1620,7 +1619,7 @@ class Encryption extends Challenge
             cols = getRandomIntBetween(difficulty.size.min, difficulty.size.max),
             difficultyRatio = Math.floor(Math.pow(rows * cols, DIFFICULTY_EXPONENT));
 
-        super(difficulty.name + ' Encryption', new Decimal(difficultyRatio));
+        super(difficulty.name + ' Encryption', difficultyRatio);
         this.rows = rows;
         this.cols = cols;
     }
@@ -1644,10 +1643,9 @@ class Encryption extends Challenge
 
 module.exports = Encryption;
 
-},{"./Challenge":3,"break_infinity.js":1}],5:[function(require,module,exports){
+},{"./Challenge":3}],5:[function(require,module,exports){
 const   dictionary = require('./dictionary'),
-        Challenge = require('./Challenge'),
-        Decimal = require('break_infinity.js');
+        Challenge = require('./Challenge');
 
 const PASSWORD_TYPES = {
     'DICTIONARY':'Dictionary',
@@ -1663,7 +1661,7 @@ class Password extends Challenge
 {
     constructor(text, type, difficulty)
     {
-        super(type + ' Password', new Decimal(difficulty));
+        super(type + ' Password', difficulty) ;
         this.text = text;
         this.type = type;
     }
@@ -1723,7 +1721,7 @@ class Password extends Challenge
 
 module.exports = Password;
 
-},{"./Challenge":3,"./dictionary":6,"break_infinity.js":1}],6:[function(require,module,exports){
+},{"./Challenge":3,"./dictionary":6}],6:[function(require,module,exports){
 // stolen from Bart Busschot's xkpasswd JS github repo
 // See https://github.com/bbusschots/hsxkpasswd.js
 
@@ -4146,7 +4144,6 @@ module.exports = companyNames;
 },{}],9:[function(require,module,exports){
 const   Task = require('../Tasks/Task'),
         EventListener = require('../EventListener'),
-        Decimal = require('break_infinity.js'),
         cpus = require('./cpus');
 
 class CPUFullError extends Error{};
@@ -4167,7 +4164,7 @@ class CPU extends EventListener
         /**
          * @type {Decimal}
          */
-        this.speed = speed?new Decimal(speed):new Decimal(DEFAULT_PROCESSOR_SPEED);
+        this.speed = parseInt(speed?speed:DEFAULT_PROCESSOR_SPEED);
         /**
          * @type {Array.<Task>}
          */
@@ -4175,8 +4172,8 @@ class CPU extends EventListener
         /**
          * @type {Decimal}
          */
-        this.lifeCycle = new Decimal(lifeCycle?lifeCycle:1000);
-        this.lifeCycleUsed = new Decimal(lifeCycleUsed?lifeCycleUsed:0);
+        this.lifeCycle = lifeCycle?lifeCycle:1000;
+        this.lifeCycleUsed = lifeCycleUsed?lifeCycleUsed:0;
         this.living = living !== null?living:true;
     }
 
@@ -4211,16 +4208,15 @@ class CPU extends EventListener
      */
     static getPriceFor(cpuData)
     {
-        return new Decimal(cpuData.lifeCycle * cpuData.speed / 20);
+        return cpuData.lifeCycle * cpuData.speed / 20;
     }
 }
 
 module.exports = CPU;
 
-},{"../EventListener":18,"../Tasks/Task":26,"./cpus":15,"break_infinity.js":1}],10:[function(require,module,exports){
+},{"../EventListener":18,"../Tasks/Task":26,"./cpus":15}],10:[function(require,module,exports){
 const   CPU = require('./CPU'),
         Task = require('../Tasks/Task'),
-        Decimal = require('break_infinity.js'),
         EventListener = require('../EventListener');
 
 /*
@@ -4240,17 +4236,17 @@ class CPUPool extends EventListener
          */
         this.cpus = [];
         /**
-         * @type {Decimal} The average speed of all cpus in the pool
+         * @type {number} The average speed of all cpus in the pool
          */
-        this.averageSpeed = new Decimal(0);
+        this.averageSpeed = 0;
         /**
          * @type {Decimal} The average speed of all cpus in the pool
          */
-        this.totalSpeed = new Decimal(0);
+        this.totalSpeed = 0;
         /**
          * @type {Decimal} The total cycles used by all tasks
          */
-        this.load = new Decimal(0);
+        this.load = 0;
         /**
          * * @type {Array.<Task>}
          */
@@ -4268,8 +4264,8 @@ class CPUPool extends EventListener
     addCPU(cpu)
     {
         this.cpus.push(cpu);
-        this.totalSpeed = this.totalSpeed.plus(cpu.speed);
-        this.averageSpeed = this.totalSpeed.dividedBy(this.cpus.length);
+        this.totalSpeed += cpu.speed;
+        this.averageSpeed =  this.totalSpeed/this.cpus.length;
     }
 
     /**
@@ -4277,11 +4273,11 @@ class CPUPool extends EventListener
      * and 1/nth of the total cycles available to the pool (where n is the number of total tasks being run, including
      * this task).
      * @param {Task} task   The task to figure out the cycles for
-     * @returns {Decimal}   The number of cycles to assign the task
+     * @returns {number}   The number of cycles to assign the task
      */
     getCyclesForTask(task)
     {
-        return Decimal.max(task.minimumRequiredCycles, Decimal.floor(this.totalSpeed.div(this.tasks.length + 1)));
+        return Math.max(task.minimumRequiredCycles, Math.floor(this.totalSpeed / (this.tasks.length + 1)));
     }
 
     /**
@@ -4289,7 +4285,7 @@ class CPUPool extends EventListener
      * This method will keep a tally of the freed cycles, as no task will lower its assigned cycles below the minimum
      * required amount.
      * @param task
-     * @returns {Decimal}
+     * @returns {number}
      */
     balanceTaskLoadForNewTask(task)
     {
@@ -4304,13 +4300,13 @@ class CPUPool extends EventListener
         if(this.tasks.length > 0)
         {
             // average that out
-            let cyclesToTryToTakeAwayFromEachProcess = idealCyclesToAssign.dividedBy(this.tasks.length).ceil(),
-                cyclesFreedUp = new Decimal(0);
+            let cyclesToTryToTakeAwayFromEachProcess = Math.ceil(idealCyclesToAssign /this.tasks.length),
+                cyclesFreedUp = 0;
 
             for(let task of this.tasks)
             {
                 // add the actual amount freed up to the total freed
-                cyclesFreedUp = cyclesFreedUp.plus(task.freeCycles(cyclesToTryToTakeAwayFromEachProcess));
+                cyclesFreedUp += task.freeCycles(cyclesToTryToTakeAwayFromEachProcess);
             }
             cyclesToAssign = cyclesFreedUp;
         }
@@ -4333,9 +4329,9 @@ class CPUPool extends EventListener
         {
             throw new CPUDuplicateTaskError('This task is already on the CPU');
         }
-        let freeCycles = this.freeCycles;
+        let freeCycles = this.availableCycles;
         // if you don't have the free oomph, complain
-        if(task.minimumRequiredCycles.greaterThan(freeCycles))
+        if(task.minimumRequiredCycles > freeCycles)
         {
             throw new NoFreeCPUCyclesError(`CPU pool does not have the required cycles for ${task.name}. Need ${task.minimumRequiredCycles.toString()} but only have ${freeCycles}.`);
         }
@@ -4346,7 +4342,7 @@ class CPUPool extends EventListener
         task.setCyclesPerTick(cyclesToAssign);
         task.on('complete', ()=>{ this.completeTask(task); });
 
-        this.load = this.load.plus(task.minimumRequiredCycles);
+        this.load += task.minimumRequiredCycles;
         this.tasks.push(task);
     }
 
@@ -4358,16 +4354,16 @@ class CPUPool extends EventListener
     {
         let freedCycles = task.cyclesPerTick;
         this.tasks.removeElement(task);
-        this.load = this.load.minus(task.minimumRequiredCycles);
+        this.load -= task.minimumRequiredCycles;
 
         if(this.tasks.length >= 1)
         {
-            let freedCyclesPerTick = freedCycles.dividedBy(this.tasks.length).floor();
+            let freedCyclesPerTick = Math.floor(freedCycles / this.tasks.length);
             let i = 0;
-            while(i < this.tasks.length && freedCycles.greaterThan(0))
+            while(i < this.tasks.length && freedCycles > (0))
             {
                 let task = this.tasks[i];
-                freedCycles = freedCycles.minus(freedCyclesPerTick);
+                freedCycles -= freedCyclesPerTick;
                 task.addCycles(freedCyclesPerTick);
                 i++;
             }
@@ -4375,9 +4371,9 @@ class CPUPool extends EventListener
         this.trigger('taskComplete');
     }
 
-    get freeCycles()
+    get availableCycles()
     {
-        return this.totalSpeed.minus(this.load);
+        return this.totalSpeed - this.load;
     }
 
     tick()
@@ -4395,7 +4391,7 @@ class CPUPool extends EventListener
 
 module.exports = CPUPool;
 
-},{"../EventListener":18,"../Tasks/Task":26,"./CPU":9,"break_infinity.js":1}],11:[function(require,module,exports){
+},{"../EventListener":18,"../Tasks/Task":26,"./CPU":9}],11:[function(require,module,exports){
 const EventListener = require('../EventListener');
 
 function randomIPAddress()
@@ -5065,7 +5061,7 @@ class Downlink extends EventListener
 
     canAfford(cost)
     {
-        return cost.lessThanOrEqualTo(this.currency);
+        return this.currency.greaterThan(cost);
     }
 
     buyCPU(cpuData)
@@ -5196,7 +5192,7 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.1.7a",
+        version:"0.2.0a",
         /**
          * jquery entities that are needed for updating
          */
@@ -6106,7 +6102,6 @@ module.exports = MissionGenerator;
 
 },{"./Mission":20}],24:[function(require,module,exports){
 const   Alphabet = require('../Alphabet'),
-        Decimal = require('break_infinity.js'),
         Task = require('./Task');
 
 class EncryptionCell
@@ -6155,7 +6150,7 @@ class EncryptionCracker extends Task
         /**
          * The amount of progress you have made on the current tick
          */
-        this.currentTickPercentage = new Decimal(0);
+        this.currentTickPercentage = 0;
 
         /**
          * @type {Array.<Array.<EncryptionCell>>}
@@ -6235,14 +6230,13 @@ class EncryptionCracker extends Task
         // figure out how many cells to solve
         // by determining how many cycles per tick we have divided by the difficulty of this task
         // this may lead to a number less than zero and so, this tick, nothing will happen
-        const increase = this.cyclesPerTick.dividedBy(this.encryptionDifficulty);
-        this.currentTickPercentage = this.currentTickPercentage.plus(increase);
+        this.currentTickPercentage += this.cyclesPerTick / this.encryptionDifficulty;
 
         // if the currentTickPercentage is bigger than one, we solve that many cells
-        if(this.currentTickPercentage.greaterThanOrEqualTo(1))
+        if(this.currentTickPercentage >= 1)
         {
-            let fullCells = this.currentTickPercentage.floor().toNumber();
-            this.currentTickPercentage = this.currentTickPercentage.minus(fullCells);
+            let fullCells = Math.floor(this.currentTickPercentage);
+            this.currentTickPercentage -= fullCells;
             this.solveNCells(fullCells);
         }
     }
@@ -6261,7 +6255,7 @@ class EncryptionCracker extends Task
 
 module.exports = EncryptionCracker;
 
-},{"../Alphabet":2,"./Task":26,"break_infinity.js":1}],25:[function(require,module,exports){
+},{"../Alphabet":2,"./Task":26}],25:[function(require,module,exports){
 const   DICTIONARY_CRACKER_MINIMUM_CYCLES = 5,
         SEQUENTIAL_CRACKER_MINIMUM_CYCLES = 20,
         Task = require('./Task'),
@@ -6370,7 +6364,7 @@ class Task extends EventListener
     {
         super();
         this.name= name;
-        this.minimumRequiredCycles = new Decimal(minimumRequiredCycles?minimumRequiredCycles:10);
+        this.minimumRequiredCycles = minimumRequiredCycles?minimumRequiredCycles:10;
         this.cyclesPerTick = 0;
         this.weight = 1;
         this.difficultyRatio = 0;
@@ -6382,7 +6376,7 @@ class Task extends EventListener
 
     setCyclesPerTick(cyclesPerTick)
     {
-        if(cyclesPerTick.lessThan(this.minimumRequiredCycles))
+        if(cyclesPerTick < this.minimumRequiredCycles)
         {
             throw new CPUOverloadError(this, cyclesPerTick);
         }
@@ -6392,32 +6386,32 @@ class Task extends EventListener
 
     addCycles(tickIncrease)
     {
-        this.cyclesPerTick = this.cyclesPerTick.plus(tickIncrease);
+        this.cyclesPerTick += tickIncrease;
     }
 
     /**
      * Try to release a number of ticks from the task and return the number actually released
-     * @param {Decimal} tickReduction
+     * @param {number} tickReduction
      * @returns {number|*}
      */
     freeCycles(tickReduction)
     {
         // figure out how many freeable ticks we have
-        const freeableTicks = this.cyclesPerTick.minus(this.minimumRequiredCycles);
+        const freeableTicks = this.cyclesPerTick-this.minimumRequiredCycles;
         // if it's one or less, free none and return 0
-        let ticksToFree = new Decimal(0);
-        if(freeableTicks.greaterThan(1))
+        let ticksToFree = 0;
+        if(freeableTicks > 1)
         {
-            if(freeableTicks.greaterThan(tickReduction))
+            if(freeableTicks > tickReduction)
             {
                 ticksToFree = tickReduction;
             }
             else
             {
-                ticksToFree = freeableTicks.dividedBy(2).floor();
+                ticksToFree = Math.floor(freeableTicks / 2);
             }
         }
-        this.cyclesPerTick = this.cyclesPerTick.minus(ticksToFree);
+        this.cyclesPerTick -= ticksToFree;
         return ticksToFree;
     }
 

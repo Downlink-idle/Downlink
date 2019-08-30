@@ -1,6 +1,5 @@
 const   Task = require('../Tasks/Task'),
         EventListener = require('../EventListener'),
-        Decimal = require('break_infinity.js'),
         cpus = require('./cpus');
 
 class CPUFullError extends Error{};
@@ -21,7 +20,7 @@ class CPU extends EventListener
         /**
          * @type {Decimal}
          */
-        this.speed = speed?new Decimal(speed):new Decimal(DEFAULT_PROCESSOR_SPEED);
+        this.speed = parseInt(speed?speed:DEFAULT_PROCESSOR_SPEED);
         /**
          * @type {Array.<Task>}
          */
@@ -29,8 +28,8 @@ class CPU extends EventListener
         /**
          * @type {Decimal}
          */
-        this.lifeCycle = new Decimal(lifeCycle?lifeCycle:1000);
-        this.lifeCycleUsed = new Decimal(lifeCycleUsed?lifeCycleUsed:0);
+        this.lifeCycle = lifeCycle?lifeCycle:1000;
+        this.lifeCycleUsed = lifeCycleUsed?lifeCycleUsed:0;
         this.living = living !== null?living:true;
     }
 
@@ -65,7 +64,7 @@ class CPU extends EventListener
      */
     static getPriceFor(cpuData)
     {
-        return new Decimal(cpuData.lifeCycle * cpuData.speed / 20);
+        return cpuData.lifeCycle * cpuData.speed / 20;
     }
 }
 

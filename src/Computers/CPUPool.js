@@ -1,6 +1,5 @@
 const   CPU = require('./CPU'),
         Task = require('../Tasks/Task'),
-        Decimal = require('break_infinity.js'),
         EventListener = require('../EventListener');
 
 /*
@@ -20,17 +19,17 @@ class CPUPool extends EventListener
          */
         this.cpus = [];
         /**
-         * @type {Decimal} The average speed of all cpus in the pool
+         * @type {number} The average speed of all cpus in the pool
          */
-        this.averageSpeed = new Decimal(0);
+        this.averageSpeed = 0;
         /**
          * @type {Decimal} The average speed of all cpus in the pool
          */
-        this.totalSpeed = new Decimal(0);
+        this.totalSpeed = 0;
         /**
          * @type {Decimal} The total cycles used by all tasks
          */
-        this.load = new Decimal(0);
+        this.load = 0;
         /**
          * * @type {Array.<Task>}
          */
@@ -48,8 +47,8 @@ class CPUPool extends EventListener
     addCPU(cpu)
     {
         this.cpus.push(cpu);
-        this.totalSpeed = this.totalSpeed.plus(cpu.speed);
-        this.averageSpeed = this.totalSpeed.dividedBy(this.cpus.length);
+        this.totalSpeed += cpu.speed;
+        this.averageSpeed =  this.totalSpeed/this.cpus.length;
     }
 
     /**
@@ -57,11 +56,11 @@ class CPUPool extends EventListener
      * and 1/nth of the total cycles available to the pool (where n is the number of total tasks being run, including
      * this task).
      * @param {Task} task   The task to figure out the cycles for
-     * @returns {Decimal}   The number of cycles to assign the task
+     * @returns {number}   The number of cycles to assign the task
      */
     getCyclesForTask(task)
     {
-        return Decimal.max(task.minimumRequiredCycles, Decimal.floor(this.totalSpeed.div(this.tasks.length + 1)));
+        return Math.max(task.minimumRequiredCycles, Math.floor(this.totalSpeed / (this.tasks.length + 1)));
     }
 
     /**
@@ -69,7 +68,7 @@ class CPUPool extends EventListener
      * This method will keep a tally of the freed cycles, as no task will lower its assigned cycles below the minimum
      * required amount.
      * @param task
-     * @returns {Decimal}
+     * @returns {number}
      */
     balanceTaskLoadForNewTask(task)
     {
@@ -84,13 +83,13 @@ class CPUPool extends EventListener
         if(this.tasks.length > 0)
         {
             // average that out
-            let cyclesToTryToTakeAwayFromEachProcess = idealCyclesToAssign.dividedBy(this.tasks.length).ceil(),
-                cyclesFreedUp = new Decimal(0);
+            let cyclesToTryToTakeAwayFromEachProcess = Math.ceil(idealCyclesToAssign /this.tasks.length),
+                cyclesFreedUp = 0;
 
             for(let task of this.tasks)
             {
                 // add the actual amount freed up to the total freed
-                cyclesFreedUp = cyclesFreedUp.plus(task.freeCycles(cyclesToTryToTakeAwayFromEachProcess));
+                cyclesFreedUp += task.freeCycles(cyclesToTryToTakeAwayFromEachProcess);
             }
             cyclesToAssign = cyclesFreedUp;
         }
@@ -113,9 +112,9 @@ class CPUPool extends EventListener
         {
             throw new CPUDuplicateTaskError('This task is already on the CPU');
         }
-        let freeCycles = this.freeCycles;
+        let freeCycles = this.availableCycles;
         // if you don't have the free oomph, complain
-        if(task.minimumRequiredCycles.greaterThan(freeCycles))
+        if(task.minimumRequiredCycles > freeCycles)
         {
             throw new NoFreeCPUCyclesError(`CPU pool does not have the required cycles for ${task.name}. Need ${task.minimumRequiredCycles.toString()} but only have ${freeCycles}.`);
         }
@@ -126,7 +125,7 @@ class CPUPool extends EventListener
         task.setCyclesPerTick(cyclesToAssign);
         task.on('complete', ()=>{ this.completeTask(task); });
 
-        this.load = this.load.plus(task.minimumRequiredCycles);
+        this.load += task.minimumRequiredCycles;
         this.tasks.push(task);
     }
 
@@ -138,16 +137,16 @@ class CPUPool extends EventListener
     {
         let freedCycles = task.cyclesPerTick;
         this.tasks.removeElement(task);
-        this.load = this.load.minus(task.minimumRequiredCycles);
+        this.load -= task.minimumRequiredCycles;
 
         if(this.tasks.length >= 1)
         {
-            let freedCyclesPerTick = freedCycles.dividedBy(this.tasks.length).floor();
+            let freedCyclesPerTick = Math.floor(freedCycles / this.tasks.length);
             let i = 0;
-            while(i < this.tasks.length && freedCycles.greaterThan(0))
+            while(i < this.tasks.length && freedCycles > (0))
             {
                 let task = this.tasks[i];
-                freedCycles = freedCycles.minus(freedCyclesPerTick);
+                freedCycles -= freedCyclesPerTick;
                 task.addCycles(freedCyclesPerTick);
                 i++;
             }
@@ -155,9 +154,9 @@ class CPUPool extends EventListener
         this.trigger('taskComplete');
     }
 
-    get freeCycles()
+    get availableCycles()
     {
-        return this.totalSpeed.minus(this.load);
+        return this.totalSpeed - this.load;
     }
 
     tick()

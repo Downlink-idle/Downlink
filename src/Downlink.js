@@ -198,7 +198,7 @@ class Downlink extends EventListener
 
     canAfford(cost)
     {
-        return cost.lessThanOrEqualTo(this.currency);
+        return this.currency.greaterThan(cost);
     }
 
     buyCPU(cpuData)

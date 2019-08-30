@@ -1,4 +1,3 @@
-const   Decimal = require('break_infinity.js'),
 /**
  * @type {{}}
  */
@@ -22,7 +21,7 @@ class Encryption extends Challenge
             cols = getRandomIntBetween(difficulty.size.min, difficulty.size.max),
             difficultyRatio = Math.floor(Math.pow(rows * cols, DIFFICULTY_EXPONENT));
 
-        super(difficulty.name + ' Encryption', new Decimal(difficultyRatio));
+        super(difficulty.name + ' Encryption', difficultyRatio);
         this.rows = rows;
         this.cols = cols;
     }
