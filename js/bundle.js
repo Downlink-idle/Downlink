@@ -5728,7 +5728,6 @@ module.exports = EventListener;
         buildComputerPartsUI:function()
         {
             this.$computerPartsCPURow.empty();
-
             for(let cpu of CPU.getCPUs())
             {
                 let cost = CPU.getPriceFor(cpu),
@@ -5776,7 +5775,6 @@ module.exports = EventListener;
                 gridSize = Math.floor(Math.sqrt(pc.maxCPUs)),
                 html = '',
                 cpuCount = 0;
-
             for(let i = 0; i < gridSize; i++)
             {
                 html += '<div class="row cpuRow">'
@@ -5802,6 +5800,7 @@ module.exports = EventListener;
             }
             this.downlink.buyCPU(this.chosenPart, cpuSlot);
             this.buildComputerGrid();
+            this.updateComputerBuild();
         }
     };
 
