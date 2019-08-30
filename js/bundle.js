@@ -1506,6 +1506,324 @@
 }));
 
 },{}],2:[function(require,module,exports){
+var charenc = {
+  // UTF-8 encoding
+  utf8: {
+    // Convert a string to a byte array
+    stringToBytes: function(str) {
+      return charenc.bin.stringToBytes(unescape(encodeURIComponent(str)));
+    },
+
+    // Convert a byte array to a string
+    bytesToString: function(bytes) {
+      return decodeURIComponent(escape(charenc.bin.bytesToString(bytes)));
+    }
+  },
+
+  // Binary encoding
+  bin: {
+    // Convert a string to a byte array
+    stringToBytes: function(str) {
+      for (var bytes = [], i = 0; i < str.length; i++)
+        bytes.push(str.charCodeAt(i) & 0xFF);
+      return bytes;
+    },
+
+    // Convert a byte array to a string
+    bytesToString: function(bytes) {
+      for (var str = [], i = 0; i < bytes.length; i++)
+        str.push(String.fromCharCode(bytes[i]));
+      return str.join('');
+    }
+  }
+};
+
+module.exports = charenc;
+
+},{}],3:[function(require,module,exports){
+(function() {
+  var base64map
+      = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
+
+  crypt = {
+    // Bit-wise rotation left
+    rotl: function(n, b) {
+      return (n << b) | (n >>> (32 - b));
+    },
+
+    // Bit-wise rotation right
+    rotr: function(n, b) {
+      return (n << (32 - b)) | (n >>> b);
+    },
+
+    // Swap big-endian to little-endian and vice versa
+    endian: function(n) {
+      // If number given, swap endian
+      if (n.constructor == Number) {
+        return crypt.rotl(n, 8) & 0x00FF00FF | crypt.rotl(n, 24) & 0xFF00FF00;
+      }
+
+      // Else, assume array and swap all items
+      for (var i = 0; i < n.length; i++)
+        n[i] = crypt.endian(n[i]);
+      return n;
+    },
+
+    // Generate an array of any length of random bytes
+    randomBytes: function(n) {
+      for (var bytes = []; n > 0; n--)
+        bytes.push(Math.floor(Math.random() * 256));
+      return bytes;
+    },
+
+    // Convert a byte array to big-endian 32-bit words
+    bytesToWords: function(bytes) {
+      for (var words = [], i = 0, b = 0; i < bytes.length; i++, b += 8)
+        words[b >>> 5] |= bytes[i] << (24 - b % 32);
+      return words;
+    },
+
+    // Convert big-endian 32-bit words to a byte array
+    wordsToBytes: function(words) {
+      for (var bytes = [], b = 0; b < words.length * 32; b += 8)
+        bytes.push((words[b >>> 5] >>> (24 - b % 32)) & 0xFF);
+      return bytes;
+    },
+
+    // Convert a byte array to a hex string
+    bytesToHex: function(bytes) {
+      for (var hex = [], i = 0; i < bytes.length; i++) {
+        hex.push((bytes[i] >>> 4).toString(16));
+        hex.push((bytes[i] & 0xF).toString(16));
+      }
+      return hex.join('');
+    },
+
+    // Convert a hex string to a byte array
+    hexToBytes: function(hex) {
+      for (var bytes = [], c = 0; c < hex.length; c += 2)
+        bytes.push(parseInt(hex.substr(c, 2), 16));
+      return bytes;
+    },
+
+    // Convert a byte array to a base-64 string
+    bytesToBase64: function(bytes) {
+      for (var base64 = [], i = 0; i < bytes.length; i += 3) {
+        var triplet = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];
+        for (var j = 0; j < 4; j++)
+          if (i * 8 + j * 6 <= bytes.length * 8)
+            base64.push(base64map.charAt((triplet >>> 6 * (3 - j)) & 0x3F));
+          else
+            base64.push('=');
+      }
+      return base64.join('');
+    },
+
+    // Convert a base-64 string to a byte array
+    base64ToBytes: function(base64) {
+      // Remove non-base-64 characters
+      base64 = base64.replace(/[^A-Z0-9+\/]/ig, '');
+
+      for (var bytes = [], i = 0, imod4 = 0; i < base64.length;
+          imod4 = ++i % 4) {
+        if (imod4 == 0) continue;
+        bytes.push(((base64map.indexOf(base64.charAt(i - 1))
+            & (Math.pow(2, -2 * imod4 + 8) - 1)) << (imod4 * 2))
+            | (base64map.indexOf(base64.charAt(i)) >>> (6 - imod4 * 2)));
+      }
+      return bytes;
+    }
+  };
+
+  module.exports = crypt;
+})();
+
+},{}],4:[function(require,module,exports){
+/*!
+ * Determine if an object is a Buffer
+ *
+ * @author   Feross Aboukhadijeh <https://feross.org>
+ * @license  MIT
+ */
+
+// The _isBuffer check is for Safari 5-7 support, because it's missing
+// Object.prototype.constructor. Remove this eventually
+module.exports = function (obj) {
+  return obj != null && (isBuffer(obj) || isSlowBuffer(obj) || !!obj._isBuffer)
+}
+
+function isBuffer (obj) {
+  return !!obj.constructor && typeof obj.constructor.isBuffer === 'function' && obj.constructor.isBuffer(obj)
+}
+
+// For Node v0.10 support. Remove this eventually.
+function isSlowBuffer (obj) {
+  return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
+}
+
+},{}],5:[function(require,module,exports){
+(function(){
+  var crypt = require('crypt'),
+      utf8 = require('charenc').utf8,
+      isBuffer = require('is-buffer'),
+      bin = require('charenc').bin,
+
+  // The core
+  md5 = function (message, options) {
+    // Convert to byte array
+    if (message.constructor == String)
+      if (options && options.encoding === 'binary')
+        message = bin.stringToBytes(message);
+      else
+        message = utf8.stringToBytes(message);
+    else if (isBuffer(message))
+      message = Array.prototype.slice.call(message, 0);
+    else if (!Array.isArray(message))
+      message = message.toString();
+    // else, assume byte array already
+
+    var m = crypt.bytesToWords(message),
+        l = message.length * 8,
+        a =  1732584193,
+        b = -271733879,
+        c = -1732584194,
+        d =  271733878;
+
+    // Swap endian
+    for (var i = 0; i < m.length; i++) {
+      m[i] = ((m[i] <<  8) | (m[i] >>> 24)) & 0x00FF00FF |
+             ((m[i] << 24) | (m[i] >>>  8)) & 0xFF00FF00;
+    }
+
+    // Padding
+    m[l >>> 5] |= 0x80 << (l % 32);
+    m[(((l + 64) >>> 9) << 4) + 14] = l;
+
+    // Method shortcuts
+    var FF = md5._ff,
+        GG = md5._gg,
+        HH = md5._hh,
+        II = md5._ii;
+
+    for (var i = 0; i < m.length; i += 16) {
+
+      var aa = a,
+          bb = b,
+          cc = c,
+          dd = d;
+
+      a = FF(a, b, c, d, m[i+ 0],  7, -680876936);
+      d = FF(d, a, b, c, m[i+ 1], 12, -389564586);
+      c = FF(c, d, a, b, m[i+ 2], 17,  606105819);
+      b = FF(b, c, d, a, m[i+ 3], 22, -1044525330);
+      a = FF(a, b, c, d, m[i+ 4],  7, -176418897);
+      d = FF(d, a, b, c, m[i+ 5], 12,  1200080426);
+      c = FF(c, d, a, b, m[i+ 6], 17, -1473231341);
+      b = FF(b, c, d, a, m[i+ 7], 22, -45705983);
+      a = FF(a, b, c, d, m[i+ 8],  7,  1770035416);
+      d = FF(d, a, b, c, m[i+ 9], 12, -1958414417);
+      c = FF(c, d, a, b, m[i+10], 17, -42063);
+      b = FF(b, c, d, a, m[i+11], 22, -1990404162);
+      a = FF(a, b, c, d, m[i+12],  7,  1804603682);
+      d = FF(d, a, b, c, m[i+13], 12, -40341101);
+      c = FF(c, d, a, b, m[i+14], 17, -1502002290);
+      b = FF(b, c, d, a, m[i+15], 22,  1236535329);
+
+      a = GG(a, b, c, d, m[i+ 1],  5, -165796510);
+      d = GG(d, a, b, c, m[i+ 6],  9, -1069501632);
+      c = GG(c, d, a, b, m[i+11], 14,  643717713);
+      b = GG(b, c, d, a, m[i+ 0], 20, -373897302);
+      a = GG(a, b, c, d, m[i+ 5],  5, -701558691);
+      d = GG(d, a, b, c, m[i+10],  9,  38016083);
+      c = GG(c, d, a, b, m[i+15], 14, -660478335);
+      b = GG(b, c, d, a, m[i+ 4], 20, -405537848);
+      a = GG(a, b, c, d, m[i+ 9],  5,  568446438);
+      d = GG(d, a, b, c, m[i+14],  9, -1019803690);
+      c = GG(c, d, a, b, m[i+ 3], 14, -187363961);
+      b = GG(b, c, d, a, m[i+ 8], 20,  1163531501);
+      a = GG(a, b, c, d, m[i+13],  5, -1444681467);
+      d = GG(d, a, b, c, m[i+ 2],  9, -51403784);
+      c = GG(c, d, a, b, m[i+ 7], 14,  1735328473);
+      b = GG(b, c, d, a, m[i+12], 20, -1926607734);
+
+      a = HH(a, b, c, d, m[i+ 5],  4, -378558);
+      d = HH(d, a, b, c, m[i+ 8], 11, -2022574463);
+      c = HH(c, d, a, b, m[i+11], 16,  1839030562);
+      b = HH(b, c, d, a, m[i+14], 23, -35309556);
+      a = HH(a, b, c, d, m[i+ 1],  4, -1530992060);
+      d = HH(d, a, b, c, m[i+ 4], 11,  1272893353);
+      c = HH(c, d, a, b, m[i+ 7], 16, -155497632);
+      b = HH(b, c, d, a, m[i+10], 23, -1094730640);
+      a = HH(a, b, c, d, m[i+13],  4,  681279174);
+      d = HH(d, a, b, c, m[i+ 0], 11, -358537222);
+      c = HH(c, d, a, b, m[i+ 3], 16, -722521979);
+      b = HH(b, c, d, a, m[i+ 6], 23,  76029189);
+      a = HH(a, b, c, d, m[i+ 9],  4, -640364487);
+      d = HH(d, a, b, c, m[i+12], 11, -421815835);
+      c = HH(c, d, a, b, m[i+15], 16,  530742520);
+      b = HH(b, c, d, a, m[i+ 2], 23, -995338651);
+
+      a = II(a, b, c, d, m[i+ 0],  6, -198630844);
+      d = II(d, a, b, c, m[i+ 7], 10,  1126891415);
+      c = II(c, d, a, b, m[i+14], 15, -1416354905);
+      b = II(b, c, d, a, m[i+ 5], 21, -57434055);
+      a = II(a, b, c, d, m[i+12],  6,  1700485571);
+      d = II(d, a, b, c, m[i+ 3], 10, -1894986606);
+      c = II(c, d, a, b, m[i+10], 15, -1051523);
+      b = II(b, c, d, a, m[i+ 1], 21, -2054922799);
+      a = II(a, b, c, d, m[i+ 8],  6,  1873313359);
+      d = II(d, a, b, c, m[i+15], 10, -30611744);
+      c = II(c, d, a, b, m[i+ 6], 15, -1560198380);
+      b = II(b, c, d, a, m[i+13], 21,  1309151649);
+      a = II(a, b, c, d, m[i+ 4],  6, -145523070);
+      d = II(d, a, b, c, m[i+11], 10, -1120210379);
+      c = II(c, d, a, b, m[i+ 2], 15,  718787259);
+      b = II(b, c, d, a, m[i+ 9], 21, -343485551);
+
+      a = (a + aa) >>> 0;
+      b = (b + bb) >>> 0;
+      c = (c + cc) >>> 0;
+      d = (d + dd) >>> 0;
+    }
+
+    return crypt.endian([a, b, c, d]);
+  };
+
+  // Auxiliary functions
+  md5._ff  = function (a, b, c, d, x, s, t) {
+    var n = a + (b & c | ~b & d) + (x >>> 0) + t;
+    return ((n << s) | (n >>> (32 - s))) + b;
+  };
+  md5._gg  = function (a, b, c, d, x, s, t) {
+    var n = a + (b & d | c & ~d) + (x >>> 0) + t;
+    return ((n << s) | (n >>> (32 - s))) + b;
+  };
+  md5._hh  = function (a, b, c, d, x, s, t) {
+    var n = a + (b ^ c ^ d) + (x >>> 0) + t;
+    return ((n << s) | (n >>> (32 - s))) + b;
+  };
+  md5._ii  = function (a, b, c, d, x, s, t) {
+    var n = a + (c ^ (b | ~d)) + (x >>> 0) + t;
+    return ((n << s) | (n >>> (32 - s))) + b;
+  };
+
+  // Package private blocksize
+  md5._blocksize = 16;
+  md5._digestsize = 16;
+
+  module.exports = function (message, options) {
+    if (message === undefined || message === null)
+      throw new Error('Illegal argument ' + message);
+
+    var digestbytes = crypt.wordsToBytes(md5(message, options));
+    return options && options.asBytes ? digestbytes :
+        options && options.asString ? bin.bytesToString(digestbytes) :
+        crypt.bytesToHex(digestbytes);
+  };
+
+})();
+
+},{"charenc":2,"crypt":3,"is-buffer":4}],6:[function(require,module,exports){
 let alphabetGrid = [];
 
 class Alphabet
@@ -1548,7 +1866,7 @@ Alphabet.build();
 
 module.exports = Alphabet;
 
-},{}],3:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 const EventListener = require('../EventListener');
 
 class Challenge extends EventListener
@@ -1595,7 +1913,7 @@ class Challenge extends EventListener
 
 module.exports = Challenge;
 
-},{"../EventListener":18}],4:[function(require,module,exports){
+},{"../EventListener":22}],8:[function(require,module,exports){
 /**
  * @type {{}}
  */
@@ -1643,7 +1961,7 @@ class Encryption extends Challenge
 
 module.exports = Encryption;
 
-},{"./Challenge":3}],5:[function(require,module,exports){
+},{"./Challenge":7}],9:[function(require,module,exports){
 const   dictionary = require('./dictionary'),
         Challenge = require('./Challenge');
 
@@ -1721,7 +2039,7 @@ class Password extends Challenge
 
 module.exports = Password;
 
-},{"./Challenge":3,"./dictionary":6}],6:[function(require,module,exports){
+},{"./Challenge":7,"./dictionary":10}],10:[function(require,module,exports){
 // stolen from Bart Busschot's xkpasswd JS github repo
 // See https://github.com/bbusschots/hsxkpasswd.js
 
@@ -3990,9 +4308,8 @@ let dictionary = [
 
 module.exports = dictionary;
 
-},{}],7:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 const   ComputerGenerator = require('../Computers/ComputerGenerator'),
-        Decimal = require('break_infinity.js'),
         companyNames = require('./companies');
 
 /**
@@ -4012,16 +4329,16 @@ class Company
         this.computers = [];
 
         /**
-         * @type {Decimal} the reward modifier this company offers the player
+         * @type {number} the reward modifier this company offers the player
          * this is based on the accrued successful missions and the number of times the company has detected you hacking
          * one of their servers
          */
-        this.playerRespectModifier = new Decimal(1);
+        this.playerRespectModifier = 1;
         /**
-         * @type {Decimal} the reward modifier this company offers the player
+         * @type {number} the reward modifier this company offers the player
          * this is the increase exponent for successfully achieved missions
          */
-        this.missionSuccessIncreaseExponent = new Decimal(1.001);
+        this.missionSuccessIncreaseExponent = 1.001;
     }
 
     setPublicServer(publicServer)
@@ -4037,7 +4354,12 @@ class Company
 
     finishMission(mission)
     {
-        this.playerRespectModifier = this.playerRespectModifier.times(this.missionSuccessIncreaseExponent);
+        this.playerRespectModifier *= this.missionSuccessIncreaseExponent;
+    }
+
+    detectHacking()
+    {
+        this.playerRespectModifier /= (this.missionSuccessIncreaseExponent * 2);
     }
 
     static getRandomCompany()
@@ -4096,8 +4418,8 @@ class Company
     {
         let company = new Company(companyJSON.name);
         company.setPublicServer(ComputerGenerator.fromJSON(companyJSON.publicServer));
-        company.playerRespectModifier = Decimal.fromString(companyJSON.playerRespectModifier);
-        company.missionSuccessIncreaseExponent = Decimal.fromString(companyJSON.missionSuccessIncreaseExponent);
+        company.playerRespectModifier = parseFloat(companyJSON.playerRespectModifier);
+        company.missionSuccessIncreaseExponent = parseFloat(companyJSON.missionSuccessIncreaseExponent);
 
         for(let computerJSON of company.computers)
         {
@@ -4122,7 +4444,7 @@ class Company
 
 module.exports = Company;
 
-},{"../Computers/ComputerGenerator":12,"./companies":8,"break_infinity.js":1}],8:[function(require,module,exports){
+},{"../Computers/ComputerGenerator":16,"./companies":12}],12:[function(require,module,exports){
 let companyNames = [
     "Mike Rowe soft",
     "Pear",
@@ -4141,7 +4463,7 @@ let companyNames = [
 
 module.exports = companyNames;
 
-},{}],9:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 const   Task = require('../Tasks/Task'),
         EventListener = require('../EventListener'),
         cpus = require('./cpus');
@@ -4218,7 +4540,7 @@ class CPU extends EventListener
 
 module.exports = CPU;
 
-},{"../EventListener":18,"../Tasks/Task":26,"./cpus":15}],10:[function(require,module,exports){
+},{"../EventListener":22,"../Tasks/Task":30,"./cpus":19}],14:[function(require,module,exports){
 const   CPU = require('./CPU'),
         Task = require('../Tasks/Task'),
         EventListener = require('../EventListener');
@@ -4420,7 +4742,7 @@ class CPUPool extends EventListener
 
 module.exports = CPUPool;
 
-},{"../EventListener":18,"../Tasks/Task":26,"./CPU":9}],11:[function(require,module,exports){
+},{"../EventListener":22,"../Tasks/Task":30,"./CPU":13}],15:[function(require,module,exports){
 const EventListener = require('../EventListener');
 
 function randomIPAddress()
@@ -4533,7 +4855,7 @@ class Computer extends EventListener
 
 module.exports = Computer;
 
-},{"../EventListener":18}],12:[function(require,module,exports){
+},{"../EventListener":22}],16:[function(require,module,exports){
 const   PlayerComputer = require('./PlayerComputer'),
         Computer = require('./Computer'),
         CPU = require('./CPU'),
@@ -4643,7 +4965,7 @@ class ComputerGenerator
 
 module.exports = new ComputerGenerator();
 
-},{"../Missions/MissionComputer":21,"./CPU":9,"./Computer":11,"./PlayerComputer":13,"./PublicComputer":14}],13:[function(require,module,exports){
+},{"../Missions/MissionComputer":25,"./CPU":13,"./Computer":15,"./PlayerComputer":17,"./PublicComputer":18}],17:[function(require,module,exports){
 const   Password = require('../Challenges/Password'),
         {DictionaryCracker, PasswordCracker} = require('../Tasks/PasswordCracker'),
         Encryption = require('../Challenges/Encryption'),
@@ -4775,7 +5097,7 @@ class PlayerComputer extends Computer
 
 module.exports = PlayerComputer;
 
-},{"../Challenges/Encryption":4,"../Challenges/Password":5,"../Tasks/EncryptionCracker":24,"../Tasks/PasswordCracker":25,"./CPU.js":9,"./CPUPool":10,"./Computer":11}],14:[function(require,module,exports){
+},{"../Challenges/Encryption":8,"../Challenges/Password":9,"../Tasks/EncryptionCracker":28,"../Tasks/PasswordCracker":29,"./CPU.js":13,"./CPUPool":14,"./Computer":15}],18:[function(require,module,exports){
 let Computer = require('./Computer');
 
 class PublicComputer extends Computer
@@ -4788,7 +5110,7 @@ class PublicComputer extends Computer
 
 module.exports = PublicComputer;
 
-},{"./Computer":11}],15:[function(require,module,exports){
+},{"./Computer":15}],19:[function(require,module,exports){
 let cpus = [
     {name:"Garbo Processor", speed:20, lifeCycle:100},
     {name:"Garbo Processor II", speed:40, lifeCycle:1000},
@@ -4797,118 +5119,195 @@ let cpus = [
 ];
 module.exports = cpus;
 
-},{}],16:[function(require,module,exports){
-const Computer = require('./Computers/Computer');
+},{}],20:[function(require,module,exports){
+const   Computer = require('./Computers/Computer'),
+        EventListener = require('./EventListener'),
+        md5 = require('md5');
 
-    class InvalidTypeError extends Error{}
-    class InvalidComputerError extends Error{}
-    class DuplicateComputerError extends Error{}
+class InvalidTypeError extends Error{}
+class InvalidComputerError extends Error{}
+class DuplicateComputerError extends Error{}
 
-    let connections = 0;
+let connections = 0;
+const DEFAULT_CONNECTION_DISTANCE = 10;
 
-    /**
-     * A class to encapsulate the points in between you and the target computer, excluding both
-     */
-    class Connection
+
+/**
+ * A class to encapsulate the points in between you and the target computer, excluding both
+ */
+class Connection extends EventListener
+{
+    constructor(name)
     {
-        constructor(name)
+        super();
+        if(!name)
         {
             connections++;
-            this.startingPoint = null;
-            this.name = name?name:`Connection ${connections}`;
-            this.computers=[];
-            this.connectionLength = 0;
-            this.computersTraced = 0;
         }
+        this.hash = '';
+        this.startingPoint = null;
+        this.name = name?name:`Connection ${connections}`;
+        this.computers=[];
+        this.connectionLength = 0;
+        this.connectionDistance = DEFAULT_CONNECTION_DISTANCE;
+        this.computersTraced = 0;
+        this.amountTraced = 0;
+    }
 
-        setStartingPoint(playerComputer)
+    improveConnectionDistance(amount)
+    {
+        this.connectionDistance += amount;
+    }
+
+    setStartingPoint(playerComputer)
+    {
+        this.startingPoint = playerComputer;
+        return this;
+    }
+
+    connect()
+    {
+        this.computersTraced = 0;
+        this.amountTraced = 0;
+        return this.open();
+    }
+
+    reconnect()
+    {
+        this.open();
+    }
+
+    open()
+    {
+        for(let computer of this.computers)
         {
-            this.startingPoint = playerComputer;
-            return this;
+            computer.connect();
         }
+        return this;
+    }
 
-        open()
+    /**
+     * this is needed so that mission computers retain the state of the connection's tracedness
+     */
+    clone()
+    {
+        let clone = new Connection(this.name);
+        for(let computer of this.computers)
         {
-            for(let computer of this.computers)
-            {
-                computer.connect();
-            }
-            return this;
+            clone.addComputer(computer);
         }
+        return clone;
+    }
 
-        close()
+    /**
+     * @param {Connection} otherConnection
+     * @returns {boolean}
+     */
+    equals(otherConnection)
+    {
+        return (this.hash === otherConnection.hash);
+    }
+
+    /**
+     * @param stepTraceAmount the amount of the current step in the connection to trace by
+     */
+    traceStep(stepTraceAmount)
+    {
+        this.amountTraced += stepTraceAmount;
+        if(this.amountTraced >= this.connectionDistance)
         {
-            let reverseComputers = this.computers.reverse();
-            for(let computer of reverseComputers)
+            this.computersTraced++;
+            this.trigger("stepTraced");
+            if(this.computersTraced >= this.connectionLength)
             {
-                computer.disconnect();
+                this.trigger("connectionTraced");
             }
-            return this;
-        }
-
-        addComputer(computer)
-        {
-            if(!(computer instanceof Computer))
-            {
-                throw new InvalidTypeError("Incorrect object type added");
-            }
-            if(this.computers.indexOf(computer) >= 0)
-            {
-                this.removeComputer(computer);
-                return this;
-            }
-            computer.connect(this);
-            this.computers.push(computer);
-            this.connectionLength ++;
-            return this;
-        }
-
-        removeComputer(computer)
-        {
-            if(this.computers.indexOf(computer) < 0)
-            {
-                throw new InvalidComputerError("Computers not found in connection");
-            }
-            computer.disconnect();
-            this.computers.removeElement(computer);
-            this.connectionLength --;
-        }
-
-        equals(otherConnection)
-        {
-            if(!otherConnection || !(otherConnection instanceof this))
-            {
-                return false;
-            }
-
-            return JSON.stringify(this.computers) === JSON.stringify(otherConnection.computers);
-        }
-
-        toJSON()
-        {
-            let json= {name:this.name, computerHashes:[]};
-            for(let computer of this.computers)
-            {
-                json.computerHashes.push(computer.simpleHash);
-            }
-            return json;
-        }
-
-        static fromJSON(json, startingPoint)
-        {
-            let connection = new Connection(json.name);
-            connection.startingPoint = startingPoint;
-            for(let computerHash of json.computerHashes)
-            {
-                connection.addComputer(Computer.getComputerByHash(computerHash));
-            }
-            return connection;
         }
     }
 
+    close()
+    {
+        let reverseComputers = this.computers.reverse();
+        for(let computer of reverseComputers)
+        {
+            computer.disconnect();
+        }
+        return this;
+    }
+
+    addComputer(computer)
+    {
+        if(!(computer instanceof Computer))
+        {
+            throw new InvalidTypeError("Incorrect object type added");
+        }
+        if(this.computers.indexOf(computer) >= 0)
+        {
+            this.removeComputer(computer);
+            return this;
+        }
+        this.computers.push(computer);
+        this.connectionLength ++;
+        this.buildHash();
+        return this;
+    }
+
+    removeComputer(computer)
+    {
+        if(this.computers.indexOf(computer) < 0)
+        {
+            throw new InvalidComputerError("Computers not found in connection");
+        }
+        this.buildHash();
+        this.computers.removeElement(computer);
+        this.connectionLength --;
+    }
+
+    buildHash()
+    {
+        let strToHash = '';
+        for(let computer of this.computers)
+        {
+            strToHash += computer.simpleHash;
+        }
+        this.hash = md5(strToHash);
+    }
+
+    equals(otherConnection)
+    {
+        if(!otherConnection || !(otherConnection instanceof this))
+        {
+            return false;
+        }
+
+        return JSON.stringify(this.computers) === JSON.stringify(otherConnection.computers);
+    }
+
+    toJSON()
+    {
+        let json= {name:this.name, computerHashes:[]};
+        for(let computer of this.computers)
+        {
+            json.computerHashes.push(computer.simpleHash);
+        }
+        return json;
+    }
+
+    static fromJSON(json, startingPoint)
+    {
+        let connection = new Connection(json.name);
+        connection.startingPoint = startingPoint;
+        for(let computerHash of json.computerHashes)
+        {
+            connection.addComputer(Computer.getComputerByHash(computerHash));
+        }
+        return connection;
+    }
+}
+
 module.exports = Connection;
 
-},{"./Computers/Computer":11}],17:[function(require,module,exports){
+},{"./Computers/Computer":15,"./EventListener":22,"md5":5}],21:[function(require,module,exports){
 const   MissionGenerator = require('./Missions/MissionGenerator'),
         EventListener = require('./EventListener'),
         Connection = require('./Connection'),
@@ -5123,12 +5522,15 @@ class Downlink extends EventListener
 
 module.exports = Downlink;
 
-},{"./Companies/Company":7,"./Computers/CPU":9,"./Computers/ComputerGenerator":12,"./Connection":16,"./EventListener":18,"./Missions/MissionGenerator":23,"break_infinity.js":1}],18:[function(require,module,exports){
+},{"./Companies/Company":11,"./Computers/CPU":13,"./Computers/ComputerGenerator":16,"./Connection":20,"./EventListener":22,"./Missions/MissionGenerator":27,"break_infinity.js":1}],22:[function(require,module,exports){
 class Event
 {
-    constructor(name)
+    constructor(owner, name, once)
     {
+        this.owner = owner;
         this.name = name;
+        this.once = once;
+        this.triggered = false;
         this.callbacks = [];
     }
 
@@ -5150,9 +5552,13 @@ class Event
 
     trigger(args)
     {
-        this.callbacks.forEach(function(callback){
-            callback(...args);
-        });
+        if(!this.once || this.once && !this.triggered)
+        {
+            this.callbacks.forEach(function (callback) {
+                callback(...args);
+            });
+        }
+        this.triggered = true;
     }
 }
 
@@ -5166,12 +5572,24 @@ class EventListener
         this.events = {};
     }
 
+    once(eventName, callback)
+    {
+        let e = eventName.toLowerCase();
+        if(!this.events[e])
+        {
+            this.events[e] = new Event(this, e, true);
+        }
+        this.events[e].triggered = false;
+        this.events[e].addListener(callback);
+        return this;
+    }
+
     on(eventName, callback)
     {
         let e = eventName.toLowerCase();
         if(!this.events[e])
         {
-            this.events[e] = new Event(e);
+            this.events[e] = new Event(this, e);
         }
         this.events[e].addListener(callback);
         return this;
@@ -5202,7 +5620,15 @@ class EventListener
         let e = eventName.toLowerCase();
         if(this.events[e])
         {
-            this.events[e].trigger(args);
+            try
+            {
+                let evt = this.events[e];
+                evt.trigger(args);
+            }
+            catch(e)
+            {
+                console.log(e);
+            }
         }
     }
 
@@ -5219,7 +5645,7 @@ class EventListener
 
 module.exports = EventListener;
 
-},{}],19:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 // This file is solely responsible for exposing the necessary parts of the game to the UI elements
 (($)=>{$(()=>{
 
@@ -5809,7 +6235,7 @@ module.exports = EventListener;
     window.game = game;
 })})(window.jQuery);
 
-},{"./Computers/CPU":9,"./Downlink":17,"break_infinity.js":1}],20:[function(require,module,exports){
+},{"./Computers/CPU":13,"./Downlink":21,"break_infinity.js":1}],24:[function(require,module,exports){
 const   Company = require('../Companies/Company'),
     MissionComputer = require('./MissionComputer'),
     Password = require('../Challenges/Password'),
@@ -5899,7 +6325,9 @@ class Mission extends EventListener
         }
 
         this.computer.setPassword(password).setEncryption(encryption);
-
+        this.computer.on('hackTracked', ()=>{
+            this.target.detectHacking();
+        });
 
         this.target.addComputer(this.computer);
         this.status = "Underway";
@@ -5907,11 +6335,11 @@ class Mission extends EventListener
     }
 
     /**
-     * @returns {Decimal}
+     * @returns {number}
      */
     get reward()
     {
-        return this.difficulty.modifier.times(this.computer.difficultyModifier.sqrt()).times(this.sponsor.playerRespectModifier);
+        return this.difficulty.modifier * this.computer.difficultyModifier * this.sponsor.playerRespectModifier;
     }
 
     signalComplete()
@@ -5946,9 +6374,8 @@ class Mission extends EventListener
 }
 module.exports = Mission;
 
-},{"../Challenges/Encryption":4,"../Challenges/Password":5,"../Companies/Company":7,"../EventListener":18,"./MissionComputer":21,"./MissionDifficulty":22}],21:[function(require,module,exports){
-const   Computer = require('../Computers/Computer'),
-        Decimal = require('break_infinity.js');
+},{"../Challenges/Encryption":8,"../Challenges/Password":9,"../Companies/Company":11,"../EventListener":22,"./MissionComputer":25,"./MissionDifficulty":26}],25:[function(require,module,exports){
+const   Computer = require('../Computers/Computer');
 class MissionComputer extends Computer
 {
     constructor(company, serverType)
@@ -6012,14 +6439,26 @@ class MissionComputer extends Computer
      */
     connect(connection)
     {
-        connection.open();
         super.connect();
-        this.currentPlayerConnection = connection;
+        let clone = connection.clone();
+        clone.once("connectionTraced", ()=>{
+            this.trigger('hackTracked');
+        });
+        this.currentPlayerConnection = clone;
 
-        if(this.currentPlayerConnection.equals(this.previousPlayerConnection) && this.alerted === true)
+
+        if(this.alerted)
         {
-            this.resumeTraceBack();
+            if (this.currentPlayerConnection.equals(this.previousPlayerConnection))
+            {
+                this.resumeTraceBack();
+            }
+            else
+            {
+                this.startTraceBack();
+            }
         }
+
 
         return this;
     }
@@ -6028,6 +6467,7 @@ class MissionComputer extends Computer
     {
         super.disconnect();
         this.currentPlayerConnection.close();
+        this.previousPlayerConnection = this.currentPlayerConnection;
         this.stopTraceBack();
         return this;
     }
@@ -6063,10 +6503,10 @@ class MissionComputer extends Computer
 
     get difficultyModifier()
     {
-        let mod = new Decimal(1);
+        let mod = 0;
         for(let challenge of this.challenges)
         {
-            mod = mod.plus(challenge.difficulty);
+            mod += challenge.difficulty;
         }
         return mod;
     }
@@ -6090,25 +6530,35 @@ class MissionComputer extends Computer
         return this.accessible;
     }
 
+    tick()
+    {
+        if(this.tracingConnection)
+        {
+            this.currentPlayerConnection.traceStep(this.difficultyModifier);
+        }
+    }
+
     startTraceBack()
     {
-
+        this.currentPlayerConnection.connect();
+        this.tracingConnection = true;
     }
 
     resumeTraceBack()
     {
-
+        this.currentPlayerConnection.reconnect();
+        this.tracingConnection = true;
     }
 
     stopTraceBack()
     {
-
+        this.tracingConnection = false;
     }
 }
 
 module.exports = MissionComputer;
 
-},{"../Computers/Computer":11,"break_infinity.js":1}],22:[function(require,module,exports){
+},{"../Computers/Computer":15}],26:[function(require,module,exports){
 const Decimal = require('break_infinity.js');
 
 /**
@@ -6118,7 +6568,7 @@ class MissionDifficulty
 {
     /**
      * @param {string} name         The name of the difficulty
-     * @param {Decimal} modifier     The modifier of the difficulty
+     * @param {number} modifier     The modifier of the difficulty
      * @param {string} serverType   The server type this difficulty faces
      */
     constructor(name, modifier, serverType)
@@ -6137,14 +6587,14 @@ class MissionDifficulty
 }
 
 MissionDifficulty.DIFFICULTIES = {
-    EASY:new MissionDifficulty("Easy", new Decimal(1), "Server"),
-    MEDIUM:new MissionDifficulty("Medium", new Decimal(5), "Cluster"),
-    HARD:new MissionDifficulty("Hard", new Decimal(10), "Farm"),
+    EASY:new MissionDifficulty("Easy", 1, "Server"),
+    MEDIUM:new MissionDifficulty("Medium", 5, "Cluster"),
+    HARD:new MissionDifficulty("Hard", 10, "Farm"),
 };
 
 module.exports = MissionDifficulty;
 
-},{"break_infinity.js":1}],23:[function(require,module,exports){
+},{"break_infinity.js":1}],27:[function(require,module,exports){
 const   Mission = require('./Mission'),
         MINIMUM_MISSIONS = 10;
 let availableMissions = [];
@@ -6178,7 +6628,7 @@ class MissionGenerator
 
 module.exports = MissionGenerator;
 
-},{"./Mission":20}],24:[function(require,module,exports){
+},{"./Mission":24}],28:[function(require,module,exports){
 const   Alphabet = require('../Alphabet'),
         Task = require('./Task');
 
@@ -6333,7 +6783,7 @@ class EncryptionCracker extends Task
 
 module.exports = EncryptionCracker;
 
-},{"../Alphabet":2,"./Task":26}],25:[function(require,module,exports){
+},{"../Alphabet":6,"./Task":30}],29:[function(require,module,exports){
 const   DICTIONARY_CRACKER_MINIMUM_CYCLES = 5,
         SEQUENTIAL_CRACKER_MINIMUM_CYCLES = 20,
         Task = require('./Task'),
@@ -6422,7 +6872,7 @@ module.exports = {
     SequentialAttacker:SequentialAttacker
 };
 
-},{"../Challenges/Password":5,"./Task":26}],26:[function(require,module,exports){
+},{"../Challenges/Password":9,"./Task":30}],30:[function(require,module,exports){
 const   EventListener = require('../EventListener'),
         Decimal = require('break_infinity.js');
 
@@ -6515,4 +6965,4 @@ class Task extends EventListener
 
 module.exports = Task;
 
-},{"../EventListener":18,"break_infinity.js":1}]},{},[19]);
+},{"../EventListener":22,"break_infinity.js":1}]},{},[23]);

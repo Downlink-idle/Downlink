@@ -9,7 +9,9 @@
     "cheerio": "^1.0.0-rc.3",
     "jquery": "^3.4.1",
     "jsdom": "^15.1.1",
-    "save": "^2.4.0"
+    "md5": "^2.2.1",
+    "save": "^2.4.0",
+    "uglify-js": "^3.6.0"
   },
   "devDependencies": {},
   "scripts": {

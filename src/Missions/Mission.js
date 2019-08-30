@@ -87,7 +87,9 @@ class Mission extends EventListener
         }
 
         this.computer.setPassword(password).setEncryption(encryption);
-
+        this.computer.on('hackTracked', ()=>{
+            this.target.detectHacking();
+        });
 
         this.target.addComputer(this.computer);
         this.status = "Underway";
@@ -95,11 +97,11 @@ class Mission extends EventListener
     }
 
     /**
-     * @returns {Decimal}
+     * @returns {number}
      */
     get reward()
     {
-        return this.difficulty.modifier.times(this.computer.difficultyModifier.sqrt()).times(this.sponsor.playerRespectModifier);
+        return this.difficulty.modifier * this.computer.difficultyModifier * this.sponsor.playerRespectModifier;
     }
 
     signalComplete()
