@@ -185,6 +185,7 @@
                 this.addComputerToWorldMap(pc);
                 this.updateComputerBuild();
                 this.buildComputerPartsUI();
+                this.buildComputerGrid();
 
                 this.addPublicComputersToWorldMap();
 
@@ -470,7 +471,6 @@
         },
         showComputerBuildModal:function()
         {
-            this.buildComputerGrid();
             this.$computerBuildModal.modal({keyboard:false, backdrop:"static"});
         },
         buildComputerPartsUI:function()
@@ -536,7 +536,19 @@
                 html += '</div>';
             }
             this.$computerBuild.html(html);
+            $('.cpuHolder').click(()=> {
+                this.buyCPU()
+            });
             $('.cpuRow').css('width', gridSize * 30);
+        },
+        buyCPU:function()
+        {
+            if(!this.chosenPart)
+            {
+                return;
+            }
+            this.downlink.buyCPU(this.chosenPart);
+            this.buildComputerGrid();
         }
     };
 

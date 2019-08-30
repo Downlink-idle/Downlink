@@ -1595,7 +1595,7 @@ class Challenge extends EventListener
 
 module.exports = Challenge;
 
-},{"../EventListener":16}],4:[function(require,module,exports){
+},{"../EventListener":17}],4:[function(require,module,exports){
 const   Decimal = require('break_infinity.js'),
 /**
  * @type {{}}
@@ -4299,7 +4299,7 @@ class CPU extends EventListener
 
 module.exports = CPU;
 
-},{"../EventListener":16,"../Tasks/Task":25,"./cpus":13,"break_infinity.js":1}],10:[function(require,module,exports){
+},{"../EventListener":17,"../Tasks/Task":25,"./cpus":14,"break_infinity.js":1}],10:[function(require,module,exports){
 const EventListener = require('../EventListener');
 
 function randomIPAddress()
@@ -4412,8 +4412,8 @@ class Computer extends EventListener
 
 module.exports = Computer;
 
-},{"../EventListener":16}],11:[function(require,module,exports){
-const   PlayerComputer = require('../PlayerComputer'),
+},{"../EventListener":17}],11:[function(require,module,exports){
+const   PlayerComputer = require('./PlayerComputer'),
         Computer = require('./Computer'),
         CPU = require('./CPU'),
         PublicComputer= require('./PublicComputer'),
@@ -4522,7 +4522,152 @@ class ComputerGenerator
 
 module.exports = new ComputerGenerator();
 
-},{"../Missions/MissionComputer":19,"../PlayerComputer":22,"./CPU":9,"./Computer":10,"./PublicComputer":12}],12:[function(require,module,exports){
+},{"../Missions/MissionComputer":20,"./CPU":9,"./Computer":10,"./PlayerComputer":12,"./PublicComputer":13}],12:[function(require,module,exports){
+const   Password = require('../Challenges/Password'),
+        {DictionaryCracker, PasswordCracker} = require('../Tasks/PasswordCracker'),
+        Encryption = require('../Challenges/Encryption'),
+        EncryptionCracker = require('../Tasks/EncryptionCracker'),
+        Computer = require('./Computer'),
+        CPU = require('./CPU.js');
+
+class InvalidTaskError extends Error{};
+class NoFreeCPUCyclesError extends Error{};
+const DEFAULT_MAX_CPUS = 4;
+
+class PlayerComputer extends Computer
+{
+    constructor(cpus, maxCPUs)
+    {
+        super('Home', null, '127.0.0.1');
+        /**
+         * @type {Array.<CPU>}
+         */
+        this.cpus = cpus;
+        this.queuedTasks = [];
+        this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
+
+    }
+
+    addCPU(cpu)
+    {
+        this.cpus.push(cpu);
+    }
+
+    getTaskForChallenge(challenge)
+    {
+        let task = null;
+        if(challenge instanceof Password)
+        {
+            task = new DictionaryCracker(challenge);
+        }
+        if(challenge instanceof  Encryption)
+        {
+            task = new EncryptionCracker(challenge);
+        }
+
+        if(!task)
+        {
+            throw new InvalidTaskError(`No task found for challenge ${challenge.constructor.name}`);
+        }
+        return task;
+    }
+
+    addTaskForChallenge(challenge)
+    {
+        let task = this.getTaskForChallenge(challenge),
+            i= 0, searching = true, found = false;
+        while(searching)
+        {
+            try
+            {
+                let cpu = this.cpus[i];
+                cpu.addTask(task);
+                searching = false;
+                found = true;
+            }
+            catch(e)
+            {
+                i++;
+                if(i > this.cpus.length)
+                {
+                    searching = false;
+                }
+            }
+        }
+        if(!found)
+        {
+            throw new NoFreeCPUCyclesError(`Cannot find the cycles for ${challenge.name} on any of the CPUs. Requires ${task.minimumRequiredCycles}.`);
+        }
+    }
+
+    tick()
+    {
+        for(let cpu of this.cpus)
+        {
+            cpu.tick();
+        }
+    }
+
+
+    get tasks()
+    {
+        let tasks = {};
+        for(let cpu of this.cpus)
+        {
+            for(let task of cpu.tasks)
+            {
+                tasks[task.name] = task;
+            }
+        }
+        return tasks;
+    }
+
+    get missionTasks()
+    {
+        let allTasks = Object.values(this.tasks),
+            missionTasks = {crackers:{}};
+        for(let task of allTasks)
+        {
+            if(task instanceof PasswordCracker)
+            {
+                missionTasks.crackers.password = task;
+            }
+            if(task instanceof EncryptionCracker)
+            {
+                missionTasks.crackers.encryption = task;
+            }
+        }
+        return missionTasks;
+
+    }
+
+    toJSON()
+    {
+        let json = super.toJSON();
+        json.cpus = [];
+        for(let cpu of this.cpus)
+        {
+            json.cpus.push(cpu.toJSON());
+        }
+        return json;
+    }
+
+    static fromJSON(json)
+    {
+        let cpus = [];
+        for(let cpuJSON of json.cpus)
+        {
+            cpus.push(new CPU(cpuJSON.name, cpuJSON.speed))
+        }
+        let pc = new PlayerComputer(cpus);
+        pc.setLocation(json.location);
+        return pc;
+    }
+}
+
+module.exports = PlayerComputer;
+
+},{"../Challenges/Encryption":4,"../Challenges/Password":5,"../Tasks/EncryptionCracker":23,"../Tasks/PasswordCracker":24,"./CPU.js":9,"./Computer":10}],13:[function(require,module,exports){
 let Computer = require('./Computer');
 
 class PublicComputer extends Computer
@@ -4535,7 +4680,7 @@ class PublicComputer extends Computer
 
 module.exports = PublicComputer;
 
-},{"./Computer":10}],13:[function(require,module,exports){
+},{"./Computer":10}],14:[function(require,module,exports){
 let cpus = [
     {name:"Garbo Processor", speed:20, lifeCycle:100},
     {name:"Garbo Processor II", speed:40, lifeCycle:1000},
@@ -4544,7 +4689,7 @@ let cpus = [
 ];
 module.exports = cpus;
 
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 const Computer = require('./Computers/Computer');
 
     class InvalidTypeError extends Error{}
@@ -4655,7 +4800,7 @@ const Computer = require('./Computers/Computer');
 
 module.exports = Connection;
 
-},{"./Computers/Computer":10}],15:[function(require,module,exports){
+},{"./Computers/Computer":10}],16:[function(require,module,exports){
 const   MissionGenerator = require('./Missions/MissionGenerator'),
         EventListener = require('./EventListener'),
         Connection = require('./Connection'),
@@ -4674,6 +4819,9 @@ class Downlink extends EventListener
     constructor()
     {
         super();
+        /**
+         * @type {PlayerComputer}
+         */
         this.playerComputer = null;
         /**
          *
@@ -4855,11 +5003,19 @@ class Downlink extends EventListener
     {
         return cost.lessThanOrEqualTo(this.currency);
     }
+
+    buyCPU(cpuData)
+    {
+        let cpu = CPU.fromJSON(cpuData);
+        this.currency = this.currency.minus(CPU.getPriceFor(cpuData));
+        this.playerComputer.addCPU(cpu);
+
+    }
 }
 
 module.exports = Downlink;
 
-},{"./Companies/Company":7,"./Computers/CPU":9,"./Computers/ComputerGenerator":11,"./Connection":14,"./EventListener":16,"./Missions/MissionGenerator":21,"break_infinity.js":1}],16:[function(require,module,exports){
+},{"./Companies/Company":7,"./Computers/CPU":9,"./Computers/ComputerGenerator":11,"./Connection":15,"./EventListener":17,"./Missions/MissionGenerator":22,"break_infinity.js":1}],17:[function(require,module,exports){
 class Event
 {
     constructor(name)
@@ -4955,7 +5111,7 @@ class EventListener
 
 module.exports = EventListener;
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 // This file is solely responsible for exposing the necessary parts of the game to the UI elements
 (($)=>{$(()=>{
 
@@ -5143,6 +5299,7 @@ module.exports = EventListener;
                 this.addComputerToWorldMap(pc);
                 this.updateComputerBuild();
                 this.buildComputerPartsUI();
+                this.buildComputerGrid();
 
                 this.addPublicComputersToWorldMap();
 
@@ -5428,7 +5585,6 @@ module.exports = EventListener;
         },
         showComputerBuildModal:function()
         {
-            this.buildComputerGrid();
             this.$computerBuildModal.modal({keyboard:false, backdrop:"static"});
         },
         buildComputerPartsUI:function()
@@ -5494,7 +5650,19 @@ module.exports = EventListener;
                 html += '</div>';
             }
             this.$computerBuild.html(html);
+            $('.cpuHolder').click(()=> {
+                this.buyCPU()
+            });
             $('.cpuRow').css('width', gridSize * 30);
+        },
+        buyCPU:function()
+        {
+            if(!this.chosenPart)
+            {
+                return;
+            }
+            this.downlink.buyCPU(this.chosenPart);
+            this.buildComputerGrid();
         }
     };
 
@@ -5503,7 +5671,7 @@ module.exports = EventListener;
     window.game = game;
 })})(window.jQuery);
 
-},{"./Computers/CPU":9,"./Downlink":15,"break_infinity.js":1}],18:[function(require,module,exports){
+},{"./Computers/CPU":9,"./Downlink":16,"break_infinity.js":1}],19:[function(require,module,exports){
 const   Company = require('../Companies/Company'),
     MissionComputer = require('./MissionComputer'),
     Password = require('../Challenges/Password'),
@@ -5640,7 +5808,7 @@ class Mission extends EventListener
 }
 module.exports = Mission;
 
-},{"../Challenges/Encryption":4,"../Challenges/Password":5,"../Companies/Company":7,"../EventListener":16,"./MissionComputer":19,"./MissionDifficulty":20}],19:[function(require,module,exports){
+},{"../Challenges/Encryption":4,"../Challenges/Password":5,"../Companies/Company":7,"../EventListener":17,"./MissionComputer":20,"./MissionDifficulty":21}],20:[function(require,module,exports){
 const   Computer = require('../Computers/Computer'),
         Decimal = require('break_infinity.js');
 class MissionComputer extends Computer
@@ -5802,7 +5970,7 @@ class MissionComputer extends Computer
 
 module.exports = MissionComputer;
 
-},{"../Computers/Computer":10,"break_infinity.js":1}],20:[function(require,module,exports){
+},{"../Computers/Computer":10,"break_infinity.js":1}],21:[function(require,module,exports){
 const Decimal = require('break_infinity.js');
 
 /**
@@ -5838,7 +6006,7 @@ MissionDifficulty.DIFFICULTIES = {
 
 module.exports = MissionDifficulty;
 
-},{"break_infinity.js":1}],21:[function(require,module,exports){
+},{"break_infinity.js":1}],22:[function(require,module,exports){
 const   Mission = require('./Mission'),
         MINIMUM_MISSIONS = 10;
 let availableMissions = [];
@@ -5872,147 +6040,7 @@ class MissionGenerator
 
 module.exports = MissionGenerator;
 
-},{"./Mission":18}],22:[function(require,module,exports){
-   Password = require('./Challenges/Password'),
-        {DictionaryCracker, PasswordCracker} = require('./Tasks/PasswordCracker'),
-        Encryption = require('./Challenges/Encryption'),
-        EncryptionCracker = require('./Tasks/EncryptionCracker'),
-        Computer = require('./Computers/Computer'),
-        CPU = require('./Computers/CPU.js');
-
-class InvalidTaskError extends Error{};
-class NoFreeCPUCyclesError extends Error{};
-const DEFAULT_MAX_CPUS = 4;
-
-class PlayerComputer extends Computer
-{
-    constructor(cpus, maxCPUs)
-    {
-        super('Home', null, '127.0.0.1');
-        /**
-         * @type {Array.<CPU>}
-         */
-        this.cpus = cpus;
-        this.queuedTasks = [];
-        this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
-
-    }
-
-    getTaskForChallenge(challenge)
-    {
-        let task = null;
-        if(challenge instanceof Password)
-        {
-            task = new DictionaryCracker(challenge);
-        }
-        if(challenge instanceof  Encryption)
-        {
-            task = new EncryptionCracker(challenge);
-        }
-
-        if(!task)
-        {
-            throw new InvalidTaskError(`No task found for challenge ${challenge.constructor.name}`);
-        }
-        return task;
-    }
-
-    addTaskForChallenge(challenge)
-    {
-        let task = this.getTaskForChallenge(challenge),
-            i= 0, searching = true, found = false;
-        while(searching)
-        {
-            try
-            {
-                let cpu = this.cpus[i];
-                cpu.addTask(task);
-                searching = false;
-                found = true;
-            }
-            catch(e)
-            {
-                i++;
-                if(i > this.cpus.length)
-                {
-                    searching = false;
-                }
-            }
-        }
-        if(!found)
-        {
-            throw new NoFreeCPUCyclesError(`Cannot find the cycles for ${challenge.name} on any of the CPUs. Requires ${task.minimumRequiredCycles}.`);
-        }
-    }
-
-    tick()
-    {
-        for(let cpu of this.cpus)
-        {
-            cpu.tick();
-        }
-    }
-
-
-    get tasks()
-    {
-        let tasks = {};
-        for(let cpu of this.cpus)
-        {
-            for(let task of cpu.tasks)
-            {
-                tasks[task.name] = task;
-            }
-        }
-        return tasks;
-    }
-
-    get missionTasks()
-    {
-        let allTasks = Object.values(this.tasks),
-            missionTasks = {crackers:{}};
-        for(let task of allTasks)
-        {
-            if(task instanceof PasswordCracker)
-            {
-                missionTasks.crackers.password = task;
-            }
-            if(task instanceof EncryptionCracker)
-            {
-                missionTasks.crackers.encryption = task;
-            }
-        }
-        return missionTasks;
-
-    }
-
-    toJSON()
-    {
-        let json = super.toJSON();
-        json.cpus = [];
-        for(let cpu of this.cpus)
-        {
-            json.cpus.push(cpu.toJSON());
-        }
-        return json;
-    }
-
-    static fromJSON(json)
-    {
-        let cpus = [];
-        for(let cpuJSON of json.cpus)
-        {
-            cpus.push(new CPU(cpuJSON.name, cpuJSON.speed))
-        }
-        let pc = new PlayerComputer(cpus);
-        pc.setLocation(json.location);
-        return pc;
-    }
-}
-
-module.exports = PlayerComputer;
-
-},{"./Challenges/Encryption":4,"./Challenges/Password":5,"./Computers/CPU.js":9,"./Computers/Computer":10,"./Tasks/EncryptionCracker":23,"./Tasks/PasswordCracker":24}],23:[function(require,module,exports){
+},{"./Mission":19}],23:[function(require,module,exports){
 const   Alphabet = require('../Alphabet'),
     Task = require('./Task');
 
@@ -6346,4 +6374,4 @@ class Task extends EventListener
 
 module.exports = Task;
 
-},{"../EventListener":16}]},{},[17]);
+},{"../EventListener":17}]},{},[18]);

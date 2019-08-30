@@ -1,9 +1,9 @@
-   Password = require('./Challenges/Password'),
-        {DictionaryCracker, PasswordCracker} = require('./Tasks/PasswordCracker'),
-        Encryption = require('./Challenges/Encryption'),
-        EncryptionCracker = require('./Tasks/EncryptionCracker'),
-        Computer = require('./Computers/Computer'),
-        CPU = require('./Computers/CPU.js');
+const   Password = require('../Challenges/Password'),
+        {DictionaryCracker, PasswordCracker} = require('../Tasks/PasswordCracker'),
+        Encryption = require('../Challenges/Encryption'),
+        EncryptionCracker = require('../Tasks/EncryptionCracker'),
+        Computer = require('./Computer'),
+        CPU = require('./CPU.js');
 
 class InvalidTaskError extends Error{};
 class NoFreeCPUCyclesError extends Error{};
@@ -21,6 +21,11 @@ class PlayerComputer extends Computer
         this.queuedTasks = [];
         this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
 
+    }
+
+    addCPU(cpu)
+    {
+        this.cpus.push(cpu);
     }
 
     getTaskForChallenge(challenge)

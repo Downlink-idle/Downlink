@@ -16,6 +16,9 @@ class Downlink extends EventListener
     constructor()
     {
         super();
+        /**
+         * @type {PlayerComputer}
+         */
         this.playerComputer = null;
         /**
          *
@@ -196,6 +199,14 @@ class Downlink extends EventListener
     canAfford(cost)
     {
         return cost.lessThanOrEqualTo(this.currency);
+    }
+
+    buyCPU(cpuData)
+    {
+        let cpu = CPU.fromJSON(cpuData);
+        this.currency = this.currency.minus(CPU.getPriceFor(cpuData));
+        this.playerComputer.addCPU(cpu);
+
     }
 }
 
