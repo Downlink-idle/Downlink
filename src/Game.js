@@ -36,7 +36,7 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.8a",
+        version:"0.3.9a",
         requiresHardReset:true,
         canTakeMissions:true,
         /**
@@ -644,6 +644,7 @@
             {
                 return;
             }
+            this.canTakeMissions = true;
             this.downlink.buyCPU(this.chosenPart, cpuSlot);
             this.updateMissionToggleButton();
             this.buildComputerGrid();
