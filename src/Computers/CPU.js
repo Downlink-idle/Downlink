@@ -6,29 +6,32 @@ class CPUFullError extends Error{};
 class CPUDuplicateTaskError extends Error{};
 class InvalidTaskError extends Error{};
 
-const DEFAULT_PROCESSOR_SPEED = 20;
-
 class CPU extends EventListener
 {
-    constructor(name, speed, lifeCycle, lifeCycleUsed, living)
+    constructor(name, speed, color, lifeCycle, lifeCycleUsed, living)
     {
         super();
+        let defaultCPU = cpus[0];
         /**
          * @type {string}
          */
-        this.name = name?name:"Garbo Processor";
+        this.name = name?name:defaultCPU.name;
         /**
-         * @type {Decimal}
+         * @type {number}
          */
-        this.speed = parseInt(speed?speed:DEFAULT_PROCESSOR_SPEED);
+        this.speed = parseInt(speed?speed:defaultCPU.speed);
+        /**
+         * @type {string} the rgb() color for the cpu
+         */
+        this.color = color?color:defaultCPU.color;
         /**
          * @type {Array.<Task>}
          */
         this.tasks = [];
         /**
-         * @type {Decimal}
+         * @type {number}
          */
-        this.lifeCycle = lifeCycle?lifeCycle:1000;
+        this.lifeCycle = lifeCycle?lifeCycle:defaultCPU.lifeCycle;
         this.lifeCycleUsed = lifeCycleUsed?lifeCycleUsed:0;
         this.living = living !== null?living:true;
     }
@@ -38,6 +41,7 @@ class CPU extends EventListener
         return {
             name:this.name,
             speed:this.speed.toString(),
+            color:this.color,
             lifeCycle:this.lifeCycle.toString(),
             lifeCycleUsed:this.lifeCycleUsed.toString(),
             living:this.living
@@ -46,7 +50,7 @@ class CPU extends EventListener
 
     static fromJSON(json)
     {
-        return new CPU(json.name, json.speed, json.lifeCycle, json.lifeCycleUsed, json.living);
+        return new CPU(json.name, json.speed, json.color, json.lifeCycle, json.lifeCycleUsed, json.living);
     }
 
     static getCPUs()
