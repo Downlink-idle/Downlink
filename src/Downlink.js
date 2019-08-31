@@ -35,7 +35,7 @@ class Downlink extends EventListener
     getNewConnection()
     {
         this.playerConnection = new Connection("Player Connection");
-        return this.playerComputer;
+        return this.playerConnection;
     }
 
     setPlayerComputer()

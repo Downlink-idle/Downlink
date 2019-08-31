@@ -57,6 +57,9 @@ class CPUPool extends EventListener
     {
         if(cpu)
         {
+            cpu.once('burnOut', ()=>{
+                this.flagCPUDead(slot, cpu);
+            });
             this.cpus[slot] = cpu;
             this.cpuCount ++;
             this.totalSpeed += cpu.speed;
@@ -66,6 +69,14 @@ class CPUPool extends EventListener
         {
             this.cpus[slot] = null;
         }
+    }
+
+    flagCPUDead(slot, cpu)
+    {
+        this.trigger('cpuBurnedOut');
+        this.cpuCount --;
+        this.totalSpeed -= cpu.speed;
+        this.averageSpeed = this.totalSpeed / this.cpuCount;
     }
 
     /**

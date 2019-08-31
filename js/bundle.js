@@ -4474,7 +4474,7 @@ class InvalidTaskError extends Error{};
 
 class CPU extends EventListener
 {
-    constructor(name, speed, color, lifeCycle, lifeCycleUsed, living)
+    constructor(name, speed, color, lifeCycle, lifeCycleUsed)
     {
         super();
         let defaultCPU = cpus[0];
@@ -4497,26 +4497,45 @@ class CPU extends EventListener
         /**
          * @type {number}
          */
-        this.lifeCycle = lifeCycle?lifeCycle:defaultCPU.lifeCycle;
-        this.lifeCycleUsed = lifeCycleUsed?lifeCycleUsed:0;
-        this.living = living !== null?living:true;
+        this.lifeCycle = parseInt(lifeCycle?lifeCycle:defaultCPU.lifeCycle);
+        this.lifeCycleUsed = parseInt(lifeCycleUsed?lifeCycleUsed:0);
+        this.living = this.lifeCycleUsed < this.lifeCycle;
+    }
+
+    get remainingLifeCycle()
+    {
+        return this.lifeCycle - this.lifeCycleUsed;
+    }
+
+    get health()
+    {
+        let decimal = this.remainingLifeCycle / this.lifeCycle,
+            percentage = decimal * 100,
+            fixed = percentage.toFixed(2);
+
+        if(this.lifeCycleUsed >= this.lifeCycle)
+        {
+            return 0;
+        }
+
+        return fixed;
     }
 
     toJSON()
     {
-        return {
+        let json = {
             name:this.name,
             speed:this.speed.toString(),
             color:this.color,
             lifeCycle:this.lifeCycle.toString(),
-            lifeCycleUsed:this.lifeCycleUsed.toString(),
-            living:this.living
-        }
+            lifeCycleUsed:this.lifeCycleUsed.toString()
+        };
+        return json;
     }
 
     static fromJSON(json)
     {
-        return new CPU(json.name, json.speed, json.color, json.lifeCycle, json.lifeCycleUsed, json.living);
+        return new CPU(json.name, json.speed, json.color, json.lifeCycle, json.lifeCycleUsed);
     }
 
     static getCPUs()
@@ -4529,8 +4548,10 @@ class CPU extends EventListener
         this.lifeCycleUsed += Math.round(load);
         if(this.lifeCycleUsed >= this.lifeCycle)
         {
-            this.trigger('CPUDied');
+            this.living = false;
+            this.trigger('burnOut');
         }
+        this.trigger('lifeCycleUpdated');
     }
 
     /**
@@ -4539,6 +4560,11 @@ class CPU extends EventListener
     static getPriceFor(cpuData)
     {
         return cpuData.lifeCycle * cpuData.speed / 20;
+    }
+
+    static get deadCPUColor()
+    {
+        return 'rgb(255, 0, 0)';
     }
 }
 
@@ -4604,6 +4630,9 @@ class CPUPool extends EventListener
     {
         if(cpu)
         {
+            cpu.once('burnOut', ()=>{
+                this.flagCPUDead(slot, cpu);
+            });
             this.cpus[slot] = cpu;
             this.cpuCount ++;
             this.totalSpeed += cpu.speed;
@@ -4613,6 +4642,14 @@ class CPUPool extends EventListener
         {
             this.cpus[slot] = null;
         }
+    }
+
+    flagCPUDead(slot, cpu)
+    {
+        this.trigger('cpuBurnedOut');
+        this.cpuCount --;
+        this.totalSpeed -= cpu.speed;
+        this.averageSpeed = this.totalSpeed / this.cpuCount;
     }
 
     /**
@@ -4987,6 +5024,9 @@ class PlayerComputer extends Computer
     {
         super('Home', null, '127.0.0.1');
         this.cpuPool = new CPUPool(cpus);
+        this.cpuPool.on('cpuBurnedOut', ()=>{
+            this.trigger('cpuBurnedOut');
+        });
         this.queuedTasks = [];
         this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
     }
@@ -5086,7 +5126,7 @@ class PlayerComputer extends Computer
         {
             if(cpuJSON)
             {
-                cpus.push(new CPU(cpuJSON.name, cpuJSON.speed))
+                cpus.push(CPU.fromJSON(cpuJSON));
             }
             else
             {
@@ -5116,10 +5156,10 @@ module.exports = PublicComputer;
 
 },{"./Computer":15}],19:[function(require,module,exports){
 let cpus = [
-    {name:"Garbo Processor", speed:20, lifeCycle:100, color:'rgb(108, 140, 217)'},
-    {name:"Garbo Processor II", speed:40, lifeCycle:1000, color:'rgb(77, 98, 148)'},
-    {name:"Garbo Processor II.5", speed:80, lifeCycle:1500, color:'rgb(29, 45, 84)'},
-    {name:"Garbo Processor BLT", speed:133, lifeCycle: 2000, color:'rgb(1, 23, 74)'}
+    {name:"Garbo Processor", speed:20, lifeCycle:5000, color:'rgb(108, 140, 217)'},
+    {name:"Garbo Processor II", speed:40, lifeCycle:10000, color:'rgb(77, 98, 148)'},
+    {name:"Garbo Processor II.5", speed:80, lifeCycle:15000, color:'rgb(29, 45, 84)'},
+    {name:"Garbo Processor BLT", speed:133, lifeCycle: 20000, color:'rgb(1, 23, 74)'}
 ];
 module.exports = cpus;
 
@@ -5350,7 +5390,7 @@ class Downlink extends EventListener
     getNewConnection()
     {
         this.playerConnection = new Connection("Player Connection");
-        return this.playerComputer;
+        return this.playerConnection;
     }
 
     setPlayerComputer()
@@ -5757,6 +5797,20 @@ module.exports = EventListener;
             $('#settingsModalLink').click(()=>{this.showSettingsModal();});
             $('#game-version').html(this.version);
             $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
+
+            let $missionToggleButton = $('#missions-toggle-button');
+            $missionToggleButton.click(()=>{
+                this.takingMissions = !this.takingMissions;
+                if(this.takingMissions)
+                {
+                    this.getNextMission();
+                    $missionToggleButton.text("Stop Taking Missions");
+                }
+                else
+                {
+                    $missionToggleButton.text("Start Taking Missions");
+                }
+            });
             $('#start-missions-button').click(()=>{this.takingMissions = true; this.getNextMission();});
             $('#stop-missions-button').click(()=>{this.takingMissions = false;});
         },
@@ -5870,6 +5924,7 @@ module.exports = EventListener;
             return this.buildWorldMap().then(()=>{
 
                 let pc = this.downlink.getPlayerComputer();
+                pc.on('cpuBurnedOut', ()=>{this.buildComputerGrid();});
                 this.addComputerToWorldMap(pc);
                 this.updateComputerBuild();
                 this.buildComputerPartsUI();
@@ -5881,6 +5936,7 @@ module.exports = EventListener;
 
                 this.ticking = true;
                 this.updateConnectionMap();
+                this.save();
             });
         },
         addPublicComputersToWorldMap:function()
@@ -6014,6 +6070,7 @@ module.exports = EventListener;
                 .on('complete', ()=>{
                     this.updatePlayerDetails();
                     this.updateComputerPartsUI();
+                    this.save();
                     this.getNextMission();
                 }).on("connectionStepTraced", (stepsTraced)=>{
                     this.$connectionTraced.html(stepsTraced);
@@ -6021,7 +6078,6 @@ module.exports = EventListener;
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
             this.updateMissionInterface(this.mission);
-            this.save();
         },
         updatePlayerDetails:function()
         {
@@ -6042,16 +6098,20 @@ module.exports = EventListener;
         {
             $(`.${PLAYER_COMPUTER_CPU_ROW_CLASS}`).remove();
 
-            let html = '';
             for(let cpu of this.downlink.playerComputer.cpus)
             {
                 if(cpu)
                 {
-                    html += `<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}"><div class="col">${cpu.name}</div><div class="col">${cpu.speed}MHz</div></div>`;
+                    let $row = $(`<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}">
+                        <div class="col">${cpu.name}</div>
+                        <div class="col-2">${cpu.speed}MHz</div>
+                        <div class="col-5 cpu-remaining-cycle">${cpu.remainingLifeCycle}</div>
+                    </div>`).appendTo(this.$playerComputerCPUListContainer);
+                    cpu.on('lifeCycleUpdated', ()=>{
+                        $('.cpu-remaining-cycle', $row).html(cpu.health?cpu.health:"Dead");
+                    });
                 }
             }
-
-            this.$playerComputerCPUListContainer.html(html);
         },
         updateChallenge:function(challenge)
         {
@@ -6164,7 +6224,7 @@ module.exports = EventListener;
             this.$connectionTraced.html(0);
             this.$connectionLength.html(this.downlink.playerConnection.connectionLength);
             this.showOrHideConnectionWarning();
-            this.takingMissions = true;
+            this.save();
         },
         getRunTime:function()
         {
@@ -6241,7 +6301,19 @@ module.exports = EventListener;
                 for(let j = 0; j < gridSize; j++)
                 {
                     let cpu = cpus[cpuIndex];
-                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" style="color:${cpu?cpu.color:'black'}" title="${cpu?cpu.name:''}">${cpu?'<i class="fas fa-microchip"></i>':''}</div>`;
+                    let cpuColor = "black";
+                    if(cpu)
+                    {
+                        if(cpu.living)
+                        {
+                            cpuColor = cpu.color;
+                        }
+                        else
+                        {
+                            cpuColor = CPU.deadCPUColor;
+                        }
+                    }
+                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" style="color:${cpuColor}" title="${cpu?cpu.name:''}">${cpu?'<i class="fas fa-microchip"></i>':''}</div>`;
                     cpuIndex++;
                 }
                 html += '</div>';

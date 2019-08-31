@@ -8,7 +8,7 @@ class InvalidTaskError extends Error{};
 
 class CPU extends EventListener
 {
-    constructor(name, speed, color, lifeCycle, lifeCycleUsed, living)
+    constructor(name, speed, color, lifeCycle, lifeCycleUsed)
     {
         super();
         let defaultCPU = cpus[0];
@@ -31,26 +31,45 @@ class CPU extends EventListener
         /**
          * @type {number}
          */
-        this.lifeCycle = lifeCycle?lifeCycle:defaultCPU.lifeCycle;
-        this.lifeCycleUsed = lifeCycleUsed?lifeCycleUsed:0;
-        this.living = living !== null?living:true;
+        this.lifeCycle = parseInt(lifeCycle?lifeCycle:defaultCPU.lifeCycle);
+        this.lifeCycleUsed = parseInt(lifeCycleUsed?lifeCycleUsed:0);
+        this.living = this.lifeCycleUsed < this.lifeCycle;
+    }
+
+    get remainingLifeCycle()
+    {
+        return this.lifeCycle - this.lifeCycleUsed;
+    }
+
+    get health()
+    {
+        let decimal = this.remainingLifeCycle / this.lifeCycle,
+            percentage = decimal * 100,
+            fixed = percentage.toFixed(2);
+
+        if(this.lifeCycleUsed >= this.lifeCycle)
+        {
+            return 0;
+        }
+
+        return fixed;
     }
 
     toJSON()
     {
-        return {
+        let json = {
             name:this.name,
             speed:this.speed.toString(),
             color:this.color,
             lifeCycle:this.lifeCycle.toString(),
-            lifeCycleUsed:this.lifeCycleUsed.toString(),
-            living:this.living
-        }
+            lifeCycleUsed:this.lifeCycleUsed.toString()
+        };
+        return json;
     }
 
     static fromJSON(json)
     {
-        return new CPU(json.name, json.speed, json.color, json.lifeCycle, json.lifeCycleUsed, json.living);
+        return new CPU(json.name, json.speed, json.color, json.lifeCycle, json.lifeCycleUsed);
     }
 
     static getCPUs()
@@ -63,8 +82,10 @@ class CPU extends EventListener
         this.lifeCycleUsed += Math.round(load);
         if(this.lifeCycleUsed >= this.lifeCycle)
         {
-            this.trigger('CPUDied');
+            this.living = false;
+            this.trigger('burnOut');
         }
+        this.trigger('lifeCycleUpdated');
     }
 
     /**
@@ -73,6 +94,11 @@ class CPU extends EventListener
     static getPriceFor(cpuData)
     {
         return cpuData.lifeCycle * cpuData.speed / 20;
+    }
+
+    static get deadCPUColor()
+    {
+        return 'rgb(255, 0, 0)';
     }
 }
 

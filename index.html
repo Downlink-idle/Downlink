@@ -40,17 +40,19 @@
                 </div>
                 <h3 class="row" id="player-company-standings-title">Company Standings</h3>
                 <h3 class="row">Your PC</h3>
+
                 <div class="row">
-                    <div class="col-4"><strong>Processors:</strong></div>
-                    <div class="col" id="player-computer-processors"></div>
+                    <div class="col"><strong>Processor</strong></div>
+                    <div class="col-2"><strong>Speed</strong></div>
+                    <div class="col-5"><strong>CPU Health</strong></div>
                 </div>
+                <div id="player-computer-processors"></div>
             </div>
 
             <div class="col-6 col-lg-3" id="mission-list">
                 <div class="row"><h1>Missions</h1></div>
                 <div class="row" id="mission-controls">
-                    <button id="start-missions-button">Start Taking Missions</button>
-                    <button id="stop-missions-button">Stop Taking Missions</button>
+                    <button id="missions-toggle-button" class="btn btn-primary btn-sm">Start Taking Missions</button>
                 </div>
                 <div class="row">
                     <label for="mission-difficulty-slider">Mission difficulty</label>

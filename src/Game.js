@@ -104,6 +104,20 @@
             $('#settingsModalLink').click(()=>{this.showSettingsModal();});
             $('#game-version').html(this.version);
             $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
+
+            let $missionToggleButton = $('#missions-toggle-button');
+            $missionToggleButton.click(()=>{
+                this.takingMissions = !this.takingMissions;
+                if(this.takingMissions)
+                {
+                    this.getNextMission();
+                    $missionToggleButton.text("Stop Taking Missions");
+                }
+                else
+                {
+                    $missionToggleButton.text("Start Taking Missions");
+                }
+            });
             $('#start-missions-button').click(()=>{this.takingMissions = true; this.getNextMission();});
             $('#stop-missions-button').click(()=>{this.takingMissions = false;});
         },
@@ -217,6 +231,7 @@
             return this.buildWorldMap().then(()=>{
 
                 let pc = this.downlink.getPlayerComputer();
+                pc.on('cpuBurnedOut', ()=>{this.buildComputerGrid();});
                 this.addComputerToWorldMap(pc);
                 this.updateComputerBuild();
                 this.buildComputerPartsUI();
@@ -228,6 +243,7 @@
 
                 this.ticking = true;
                 this.updateConnectionMap();
+                this.save();
             });
         },
         addPublicComputersToWorldMap:function()
@@ -361,6 +377,7 @@
                 .on('complete', ()=>{
                     this.updatePlayerDetails();
                     this.updateComputerPartsUI();
+                    this.save();
                     this.getNextMission();
                 }).on("connectionStepTraced", (stepsTraced)=>{
                     this.$connectionTraced.html(stepsTraced);
@@ -368,7 +385,6 @@
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
             this.updateMissionInterface(this.mission);
-            this.save();
         },
         updatePlayerDetails:function()
         {
@@ -389,16 +405,20 @@
         {
             $(`.${PLAYER_COMPUTER_CPU_ROW_CLASS}`).remove();
 
-            let html = '';
             for(let cpu of this.downlink.playerComputer.cpus)
             {
                 if(cpu)
                 {
-                    html += `<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}"><div class="col">${cpu.name}</div><div class="col">${cpu.speed}MHz</div></div>`;
+                    let $row = $(`<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}">
+                        <div class="col">${cpu.name}</div>
+                        <div class="col-2">${cpu.speed}MHz</div>
+                        <div class="col-5 cpu-remaining-cycle">${cpu.remainingLifeCycle}</div>
+                    </div>`).appendTo(this.$playerComputerCPUListContainer);
+                    cpu.on('lifeCycleUpdated', ()=>{
+                        $('.cpu-remaining-cycle', $row).html(cpu.health?cpu.health:"Dead");
+                    });
                 }
             }
-
-            this.$playerComputerCPUListContainer.html(html);
         },
         updateChallenge:function(challenge)
         {
@@ -511,7 +531,7 @@
             this.$connectionTraced.html(0);
             this.$connectionLength.html(this.downlink.playerConnection.connectionLength);
             this.showOrHideConnectionWarning();
-            this.takingMissions = true;
+            this.save();
         },
         getRunTime:function()
         {
@@ -588,7 +608,19 @@
                 for(let j = 0; j < gridSize; j++)
                 {
                     let cpu = cpus[cpuIndex];
-                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" style="color:${cpu?cpu.color:'black'}" title="${cpu?cpu.name:''}">${cpu?'<i class="fas fa-microchip"></i>':''}</div>`;
+                    let cpuColor = "black";
+                    if(cpu)
+                    {
+                        if(cpu.living)
+                        {
+                            cpuColor = cpu.color;
+                        }
+                        else
+                        {
+                            cpuColor = CPU.deadCPUColor;
+                        }
+                    }
+                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" style="color:${cpuColor}" title="${cpu?cpu.name:''}">${cpu?'<i class="fas fa-microchip"></i>':''}</div>`;
                     cpuIndex++;
                 }
                 html += '</div>';
