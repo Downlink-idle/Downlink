@@ -77,6 +77,10 @@ class CPUPool extends EventListener
         this.cpuCount --;
         this.totalSpeed -= cpu.speed;
         this.averageSpeed = this.totalSpeed / this.cpuCount;
+        if(this.cpuCount === 0)
+        {
+            this.trigger('cpuPoolEmpty');
+        }
     }
 
     /**
@@ -200,7 +204,7 @@ class CPUPool extends EventListener
         }
         for(let cpu of this.cpus)
         {
-            if(cpu)
+            if(cpu && cpu.remainingLifeCycle > 0)
             {
                 cpu.tick(this.averageLoad);
             }

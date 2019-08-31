@@ -17,6 +17,8 @@ class PlayerComputer extends Computer
         this.cpuPool = new CPUPool(cpus);
         this.cpuPool.on('cpuBurnedOut', ()=>{
             this.trigger('cpuBurnedOut');
+        }).on("cpuPoolEmpty", ()=>{
+            this.trigger('cpuPoolEmpty');
         });
         this.queuedTasks = [];
         this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;

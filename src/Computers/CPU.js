@@ -46,7 +46,6 @@ class CPU extends EventListener
         let decimal = this.remainingLifeCycle / this.lifeCycle,
             percentage = decimal * 100,
             fixed = percentage.toFixed(2);
-
         if(this.lifeCycleUsed >= this.lifeCycle)
         {
             return 0;

@@ -38,6 +38,7 @@
         downlink:null,
         version:"0.3.5a",
         requiresHardReset:true,
+        canTakeMissions:true,
         /**
          * jquery entities that are needed for updating
          */
@@ -64,6 +65,7 @@
         $connectionLength:null,
         $connectionTraced:null,
         $connectionWarningRow:null,
+        $missionToggleButton:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -94,7 +96,6 @@
             this.$connectionLength = $('#connection-length');
             this.$connectionTraced = $('#connection-traced');
             this.$connectionWarningRow = $('#connection-warning-row');
-
             $('#settings-export-button').click(()=>{
                 this.$importExportTextarea.val(this.save());
             });
@@ -105,21 +106,19 @@
             $('#game-version').html(this.version);
             $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
 
-            let $missionToggleButton = $('#missions-toggle-button');
-            $missionToggleButton.click(()=>{
+            this.$missionToggleButton = $('#missions-toggle-button').click(()=>{
                 this.takingMissions = !this.takingMissions;
                 if(this.takingMissions)
                 {
                     this.getNextMission();
-                    $missionToggleButton.text("Stop Taking Missions");
+                    this.$missionToggleButton.text("Stop Taking Missions");
                 }
                 else
                 {
-                    $missionToggleButton.text("Start Taking Missions");
+                    this.$missionToggleButton.text("Start Taking Missions");
                 }
             });
-            $('#start-missions-button').click(()=>{this.takingMissions = true; this.getNextMission();});
-            $('#stop-missions-button').click(()=>{this.takingMissions = false;});
+
         },
         buildWorldMap:function()
         {
@@ -232,6 +231,7 @@
 
                 let pc = this.downlink.getPlayerComputer();
                 pc.on('cpuBurnedOut', ()=>{this.buildComputerGrid();});
+                pc.on('cpuPoolEmpty', ()=>{this.handleEmptyCPUPool();});
                 this.addComputerToWorldMap(pc);
                 this.updateComputerBuild();
                 this.buildComputerPartsUI();
@@ -638,9 +638,19 @@
             {
                 return;
             }
+
             this.downlink.buyCPU(this.chosenPart, cpuSlot);
+            this.canTakeMissions = true;
+            this.$missionToggleButton.removeAttr('disabled');
             this.buildComputerGrid();
             this.updateComputerBuild();
+        },
+        handleEmptyCPUPool:function()
+        {
+            this.takingMissions = false;
+            this.canTakeMissions = false;
+            this.$missionToggleButton.attr('disabled', 'disabled').text("Start taking missions");
+
         }
     };
 

@@ -51,6 +51,7 @@ class Downlink extends EventListener
         {
             this.setPlayerComputer();
         }
+        this.playerComputer.on('cpuPoolEmpty', ()=>{this.trigger('cpuPoolEmpty')});
         return this.playerComputer;
     }
 
@@ -69,6 +70,11 @@ class Downlink extends EventListener
 
     getNextMission()
     {
+        if(this.playerComputer.cpuPool.cpuCount === 0)
+        {
+            return null;
+        }
+
         this.activeMission = MissionGenerator.getFirstAvailableMission().on("complete", ()=>{
             this.finishCurrentMission(this.activeMission);
             this.trigger('missionComplete');
