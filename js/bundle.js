@@ -4472,29 +4472,32 @@ class CPUFullError extends Error{};
 class CPUDuplicateTaskError extends Error{};
 class InvalidTaskError extends Error{};
 
-const DEFAULT_PROCESSOR_SPEED = 20;
-
 class CPU extends EventListener
 {
-    constructor(name, speed, lifeCycle, lifeCycleUsed, living)
+    constructor(name, speed, color, lifeCycle, lifeCycleUsed, living)
     {
         super();
+        let defaultCPU = cpus[0];
         /**
          * @type {string}
          */
-        this.name = name?name:"Garbo Processor";
+        this.name = name?name:defaultCPU.name;
         /**
-         * @type {Decimal}
+         * @type {number}
          */
-        this.speed = parseInt(speed?speed:DEFAULT_PROCESSOR_SPEED);
+        this.speed = parseInt(speed?speed:defaultCPU.speed);
+        /**
+         * @type {string} the rgb() color for the cpu
+         */
+        this.color = color?color:defaultCPU.color;
         /**
          * @type {Array.<Task>}
          */
         this.tasks = [];
         /**
-         * @type {Decimal}
+         * @type {number}
          */
-        this.lifeCycle = lifeCycle?lifeCycle:1000;
+        this.lifeCycle = lifeCycle?lifeCycle:defaultCPU.lifeCycle;
         this.lifeCycleUsed = lifeCycleUsed?lifeCycleUsed:0;
         this.living = living !== null?living:true;
     }
@@ -4504,6 +4507,7 @@ class CPU extends EventListener
         return {
             name:this.name,
             speed:this.speed.toString(),
+            color:this.color,
             lifeCycle:this.lifeCycle.toString(),
             lifeCycleUsed:this.lifeCycleUsed.toString(),
             living:this.living
@@ -4512,7 +4516,7 @@ class CPU extends EventListener
 
     static fromJSON(json)
     {
-        return new CPU(json.name, json.speed, json.lifeCycle, json.lifeCycleUsed, json.living);
+        return new CPU(json.name, json.speed, json.color, json.lifeCycle, json.lifeCycleUsed, json.living);
     }
 
     static getCPUs()
@@ -5112,10 +5116,10 @@ module.exports = PublicComputer;
 
 },{"./Computer":15}],19:[function(require,module,exports){
 let cpus = [
-    {name:"Garbo Processor", speed:20, lifeCycle:100},
-    {name:"Garbo Processor II", speed:40, lifeCycle:1000},
-    {name:"Garbo Processor II.5", speed:80, lifeCycle:1500},
-    {name:"Garbo Processor BLT", speed:133, lifeCycle: 2000}
+    {name:"Garbo Processor", speed:20, lifeCycle:100, color:'rgb(108, 140, 217)'},
+    {name:"Garbo Processor II", speed:40, lifeCycle:1000, color:'rgb(77, 98, 148)'},
+    {name:"Garbo Processor II.5", speed:80, lifeCycle:1500, color:'rgb(29, 45, 84)'},
+    {name:"Garbo Processor BLT", speed:133, lifeCycle: 2000, color:'rgb(1, 23, 74)'}
 ];
 module.exports = cpus;
 
@@ -6182,7 +6186,7 @@ module.exports = EventListener;
                 let cost = CPU.getPriceFor(cpu),
                     affordable = this.downlink.canAfford(cost);
                 let $node = $(`<div data-part-cost="${cost.toString()}" class="col-4 cpu part ${affordable?"":"un"}affordable-part">
-                        <div class="row"><div class="col"><i class="fas fa-microchip"></i></div></div>
+                        <div class="row"><div class="col" style="color:${cpu?cpu.color:'black'}"><i class="fas fa-microchip"></i></div></div>
                         <div class="row"><div class="col">${cpu.name}</div></div>
                         <div class="row"><div class="col">${cpu.speed} MHz</div></div>
                         <div class="row"><div class="col">${cost.toString()}</div></div>
@@ -6226,16 +6230,19 @@ module.exports = EventListener;
             this.$computerBuild.empty();
 
             let pc = this.downlink.playerComputer,
+                cpus = pc.cpuPool.cpus,
                 gridSize = Math.floor(Math.sqrt(pc.maxCPUs)),
                 html = '',
-                cpuCount = 0;
+                cpuIndex = 0;
+
             for(let i = 0; i < gridSize; i++)
             {
                 html += '<div class="row cpuRow">'
                 for(let j = 0; j < gridSize; j++)
                 {
-                    html += `<div data-cpu-slot="${cpuCount}" class="col cpuHolder">${pc.cpus[cpuCount]?'<i class="fas fa-microchip"></i>':''}</div>`;
-                    cpuCount++;
+                    let cpu = cpus[cpuIndex];
+                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" style="color:${cpu?cpu.color:'black'}" title="${cpu?cpu.name:''}">${cpu?'<i class="fas fa-microchip"></i>':''}</div>`;
+                    cpuIndex++;
                 }
                 html += '</div>';
             }

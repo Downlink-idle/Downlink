@@ -533,7 +533,7 @@
                 let cost = CPU.getPriceFor(cpu),
                     affordable = this.downlink.canAfford(cost);
                 let $node = $(`<div data-part-cost="${cost.toString()}" class="col-4 cpu part ${affordable?"":"un"}affordable-part">
-                        <div class="row"><div class="col"><i class="fas fa-microchip"></i></div></div>
+                        <div class="row"><div class="col" style="color:${cpu?cpu.color:'black'}"><i class="fas fa-microchip"></i></div></div>
                         <div class="row"><div class="col">${cpu.name}</div></div>
                         <div class="row"><div class="col">${cpu.speed} MHz</div></div>
                         <div class="row"><div class="col">${cost.toString()}</div></div>
@@ -577,16 +577,19 @@
             this.$computerBuild.empty();
 
             let pc = this.downlink.playerComputer,
+                cpus = pc.cpuPool.cpus,
                 gridSize = Math.floor(Math.sqrt(pc.maxCPUs)),
                 html = '',
-                cpuCount = 0;
+                cpuIndex = 0;
+
             for(let i = 0; i < gridSize; i++)
             {
                 html += '<div class="row cpuRow">'
                 for(let j = 0; j < gridSize; j++)
                 {
-                    html += `<div data-cpu-slot="${cpuCount}" class="col cpuHolder">${pc.cpus[cpuCount]?'<i class="fas fa-microchip"></i>':''}</div>`;
-                    cpuCount++;
+                    let cpu = cpus[cpuIndex];
+                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" style="color:${cpu?cpu.color:'black'}" title="${cpu?cpu.name:''}">${cpu?'<i class="fas fa-microchip"></i>':''}</div>`;
+                    cpuIndex++;
                 }
                 html += '</div>';
             }
