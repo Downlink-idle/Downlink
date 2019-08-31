@@ -36,8 +36,9 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.5a",
+        version:"0.3.9a",
         requiresHardReset:true,
+        canTakeMissions:true,
         /**
          * jquery entities that are needed for updating
          */
@@ -64,6 +65,8 @@
         $connectionLength:null,
         $connectionTraced:null,
         $connectionWarningRow:null,
+        $missionToggleButton:null,
+        $connectionTracePercentage:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -93,8 +96,8 @@
             this.$computerPartsCPURow = $('#computer-parts-cpu-row');
             this.$connectionLength = $('#connection-length');
             this.$connectionTraced = $('#connection-traced');
+            this.$connectionTracePercentage = $('#connection-trace-percentage');
             this.$connectionWarningRow = $('#connection-warning-row');
-
             $('#settings-export-button').click(()=>{
                 this.$importExportTextarea.val(this.save());
             });
@@ -104,8 +107,20 @@
             $('#settingsModalLink').click(()=>{this.showSettingsModal();});
             $('#game-version').html(this.version);
             $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
-            $('#start-missions-button').click(()=>{this.takingMissions = true; this.getNextMission();});
-            $('#stop-missions-button').click(()=>{this.takingMissions = false;});
+
+            this.$missionToggleButton = $('#missions-toggle-button').click(()=>{
+                this.takingMissions = !this.takingMissions;
+                if(this.takingMissions)
+                {
+                    this.getNextMission();
+                    this.$missionToggleButton.text("Stop Taking Missions");
+                }
+                else
+                {
+                    this.$missionToggleButton.text("Start Taking Missions");
+                }
+            });
+
         },
         buildWorldMap:function()
         {
@@ -215,12 +230,16 @@
 
             this.initialised = true;
             return this.buildWorldMap().then(()=>{
-
                 let pc = this.downlink.getPlayerComputer();
+                pc.on('cpuBurnedOut', ()=>{this.buildComputerGrid();});
+                pc.on('cpuPoolEmpty', ()=>{this.handleEmptyCPUPool();});
                 this.addComputerToWorldMap(pc);
                 this.updateComputerBuild();
                 this.buildComputerPartsUI();
                 this.buildComputerGrid();
+
+                this.canTakeMissions = pc.cpuPool.cpuCount > 0;
+                this.updateMissionToggleButton();
 
                 this.addPublicComputersToWorldMap();
                 this.$connectionLength.html(this.downlink.playerConnection.connectionLength);
@@ -228,6 +247,7 @@
 
                 this.ticking = true;
                 this.updateConnectionMap();
+                this.save();
             });
         },
         addPublicComputersToWorldMap:function()
@@ -357,18 +377,20 @@
             }
             this.$activeMissionServer.show();
             this.$connectionTraced.html(0);
+            this.$connectionTracePercentage.html(0);
             this.mission = this.downlink.getNextMission()
                 .on('complete', ()=>{
                     this.updatePlayerDetails();
                     this.updateComputerPartsUI();
+                    this.save();
                     this.getNextMission();
-                }).on("connectionStepTraced", (stepsTraced)=>{
+                }).on("connectionStepTraced", (stepsTraced, percentageTraced)=>{
                     this.$connectionTraced.html(stepsTraced);
+                    this.$connectionTracePercentage.html(percentageTraced);
                 });
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
             this.updateMissionInterface(this.mission);
-            this.save();
         },
         updatePlayerDetails:function()
         {
@@ -389,16 +411,20 @@
         {
             $(`.${PLAYER_COMPUTER_CPU_ROW_CLASS}`).remove();
 
-            let html = '';
             for(let cpu of this.downlink.playerComputer.cpus)
             {
                 if(cpu)
                 {
-                    html += `<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}"><div class="col">${cpu.name}</div><div class="col">${cpu.speed}MHz</div></div>`;
+                    let $row = $(`<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}">
+                        <div class="col">${cpu.name}</div>
+                        <div class="col-2">${cpu.speed}MHz</div>
+                        <div class="col-5 cpu-remaining-cycle">${cpu.remainingLifeCycle}</div>
+                    </div>`).appendTo(this.$playerComputerCPUListContainer);
+                    cpu.on('lifeCycleUpdated', ()=>{
+                        $('.cpu-remaining-cycle', $row).html(cpu.health?cpu.health:"Dead");
+                    });
                 }
             }
-
-            this.$playerComputerCPUListContainer.html(html);
         },
         updateChallenge:function(challenge)
         {
@@ -511,7 +537,7 @@
             this.$connectionTraced.html(0);
             this.$connectionLength.html(this.downlink.playerConnection.connectionLength);
             this.showOrHideConnectionWarning();
-            this.takingMissions = true;
+            this.save();
         },
         getRunTime:function()
         {
@@ -588,7 +614,19 @@
                 for(let j = 0; j < gridSize; j++)
                 {
                     let cpu = cpus[cpuIndex];
-                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" style="color:${cpu?cpu.color:'black'}" title="${cpu?cpu.name:''}">${cpu?'<i class="fas fa-microchip"></i>':''}</div>`;
+                    let cpuColor = "black";
+                    if(cpu)
+                    {
+                        if(cpu.living)
+                        {
+                            cpuColor = cpu.color;
+                        }
+                        else
+                        {
+                            cpuColor = CPU.deadCPUColor;
+                        }
+                    }
+                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" style="color:${cpuColor}" title="${cpu?cpu.name:''}">${cpu?'<i class="fas fa-microchip"></i>':''}</div>`;
                     cpuIndex++;
                 }
                 html += '</div>';
@@ -606,9 +644,30 @@
             {
                 return;
             }
+            this.canTakeMissions = true;
             this.downlink.buyCPU(this.chosenPart, cpuSlot);
+            this.updateMissionToggleButton();
             this.buildComputerGrid();
             this.updateComputerBuild();
+            this.updatePlayerDetails();
+            this.save();
+        },
+        handleEmptyCPUPool:function()
+        {
+            this.takingMissions = false;
+            this.canTakeMissions = false;
+            this.updateMissionToggleButton();
+        },
+        updateMissionToggleButton()
+        {
+            if(this.canTakeMissions)
+            {
+                this.$missionToggleButton.removeAttr('disabled');
+            }
+            else
+            {
+                this.$missionToggleButton.attr('disabled', 'disabled').text("Start taking missions");
+            }
         }
     };
 

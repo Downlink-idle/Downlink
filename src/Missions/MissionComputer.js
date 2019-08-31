@@ -64,25 +64,19 @@ class MissionComputer extends Computer
     {
         super.connect();
         let clone = connection.clone();
+
         clone
             .once("connectionTraced", ()=>{
                 this.trigger('hackTracked');
-            }).on('stepTraced',(step)=>{
-                this.trigger('connectionStepTraced', step);
+            }).on('stepTraced',(step, percentage)=>{
+                this.trigger('connectionStepTraced', step, percentage);
             });
         this.currentPlayerConnection = clone;
 
 
         if(this.alerted)
         {
-            if (this.currentPlayerConnection.equals(this.previousPlayerConnection))
-            {
-                this.resumeTraceBack();
-            }
-            else
-            {
-                this.startTraceBack();
-            }
+            this.startTraceBack();
         }
 
 

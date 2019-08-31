@@ -15,6 +15,11 @@ class PlayerComputer extends Computer
     {
         super('Home', null, '127.0.0.1');
         this.cpuPool = new CPUPool(cpus);
+        this.cpuPool.on('cpuBurnedOut', ()=>{
+            this.trigger('cpuBurnedOut');
+        }).on("cpuPoolEmpty", ()=>{
+            this.trigger('cpuPoolEmpty');
+        });
         this.queuedTasks = [];
         this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
     }
@@ -114,7 +119,7 @@ class PlayerComputer extends Computer
         {
             if(cpuJSON)
             {
-                cpus.push(new CPU(cpuJSON.name, cpuJSON.speed))
+                cpus.push(CPU.fromJSON(cpuJSON));
             }
             else
             {

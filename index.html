@@ -40,28 +40,40 @@
                 </div>
                 <h3 class="row" id="player-company-standings-title">Company Standings</h3>
                 <h3 class="row">Your PC</h3>
+
                 <div class="row">
-                    <div class="col-4"><strong>Processors:</strong></div>
-                    <div class="col" id="player-computer-processors"></div>
+                    <div class="col"><strong>Processor</strong></div>
+                    <div class="col-2"><strong>Speed</strong></div>
+                    <div class="col-5"><strong>CPU Health</strong></div>
                 </div>
+                <div id="player-computer-processors"></div>
             </div>
 
             <div class="col-6 col-lg-3" id="mission-list">
                 <div class="row"><h1>Missions</h1></div>
                 <div class="row" id="mission-controls">
-                    <button id="start-missions-button">Start Taking Missions</button>
-                    <button id="stop-missions-button">Stop Taking Missions</button>
+                    <button id="missions-toggle-button" class="btn btn-primary btn-sm">Start Taking Missions</button>
                 </div>
-                <div class="row">
+                <!--<div class="row">
                     <label for="mission-difficulty-slider">Mission difficulty</label>
                     <input type="range" id="mission-difficulty-slider" min="1" max="100" step="1" value="1"/>
                     <span id="mission-difficulty-value">1</span>
-                </div>
+                </div>-->
                 <div class="row" id="connection-warning-row">
                     <div class="col alert alert-warning" role="alert">Your connection is dangerously short. Starting missions without increasing it is ill advised.</div>
                 </div>
-                <div class="row"><div class="col"><b>Connection Length: </b> <span id="connection-length">0</span> redirects.</div></div>
-                <div class="row"><div class="col"><b>Connection Traced: </b> <span id="connection-traced">0</span> redirects.</div></div>
+                <div class="row">
+                    <div class="col"><b>Connection Length:</b></div>
+                    <div class="col"><span id="connection-length">0</span> redirects.</div>
+                </div>
+                <div class="row">
+                    <div class="col"><b>Connection Trace:</b></div>
+                    <div class="col"><span id="connection-traced">0</span> redirects.</div>
+                </div>
+                <div class="row">
+                    <div class="col"></div>
+                    <div class="col"><span id="connection-trace-percentage">0</span>% traced</div>
+                </div>
                 <div class="row"><div class="col"><b>Active Mission: </b><span id="active-mission"></span></div></div>
             </div>
 
@@ -103,14 +115,14 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Connection Builder</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
                 </div>
                 <div class="modal-body">
                     <div id="world-map" class="container-fluid">
                         <div class="world-map-div" id="canvas-container"></div>
                     </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal" aria-label="Close">Save</button>
                 </div>
             </div>
         </div>

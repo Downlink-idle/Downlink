@@ -4339,6 +4339,8 @@ class Company
          * this is the increase exponent for successfully achieved missions
          */
         this.missionSuccessIncreaseExponent = 1.001;
+
+        this.hackDetectedExponent = 1.002;
     }
 
     setPublicServer(publicServer)
@@ -4359,7 +4361,7 @@ class Company
 
     detectHacking()
     {
-        this.playerRespectModifier /= (this.missionSuccessIncreaseExponent * 2);
+        this.playerRespectModifier /= this.hackDetectedExponent;
     }
 
     static getRandomCompany()
@@ -4474,7 +4476,7 @@ class InvalidTaskError extends Error{};
 
 class CPU extends EventListener
 {
-    constructor(name, speed, color, lifeCycle, lifeCycleUsed, living)
+    constructor(name, speed, color, lifeCycle, lifeCycleUsed)
     {
         super();
         let defaultCPU = cpus[0];
@@ -4497,26 +4499,44 @@ class CPU extends EventListener
         /**
          * @type {number}
          */
-        this.lifeCycle = lifeCycle?lifeCycle:defaultCPU.lifeCycle;
-        this.lifeCycleUsed = lifeCycleUsed?lifeCycleUsed:0;
-        this.living = living !== null?living:true;
+        this.lifeCycle = parseInt(lifeCycle?lifeCycle:defaultCPU.lifeCycle);
+        this.lifeCycleUsed = parseInt(lifeCycleUsed?lifeCycleUsed:0);
+        this.living = this.lifeCycleUsed < this.lifeCycle;
+    }
+
+    get remainingLifeCycle()
+    {
+        return Math.max(this.lifeCycle - this.lifeCycleUsed, 0);
+    }
+
+    get health()
+    {
+        let decimal = this.remainingLifeCycle / this.lifeCycle,
+            percentage = decimal * 100,
+            fixed = percentage.toFixed(2);
+        if(this.lifeCycleUsed >= this.lifeCycle)
+        {
+            return 0;
+        }
+
+        return fixed;
     }
 
     toJSON()
     {
-        return {
+        let json = {
             name:this.name,
             speed:this.speed.toString(),
             color:this.color,
             lifeCycle:this.lifeCycle.toString(),
-            lifeCycleUsed:this.lifeCycleUsed.toString(),
-            living:this.living
-        }
+            lifeCycleUsed:this.lifeCycleUsed.toString()
+        };
+        return json;
     }
 
     static fromJSON(json)
     {
-        return new CPU(json.name, json.speed, json.color, json.lifeCycle, json.lifeCycleUsed, json.living);
+        return new CPU(json.name, json.speed, json.color, json.lifeCycle, json.lifeCycleUsed);
     }
 
     static getCPUs()
@@ -4529,8 +4549,10 @@ class CPU extends EventListener
         this.lifeCycleUsed += Math.round(load);
         if(this.lifeCycleUsed >= this.lifeCycle)
         {
-            this.trigger('CPUDied');
+            this.living = false;
+            this.trigger('burnOut');
         }
+        this.trigger('lifeCycleUpdated');
     }
 
     /**
@@ -4538,7 +4560,12 @@ class CPU extends EventListener
      */
     static getPriceFor(cpuData)
     {
-        return cpuData.lifeCycle * cpuData.speed / 20;
+        return cpuData.lifeCycle * cpuData.speed / 1000;
+    }
+
+    static get deadCPUColor()
+    {
+        return 'rgb(255, 0, 0)';
     }
 }
 
@@ -4570,11 +4597,11 @@ class CPUPool extends EventListener
          */
         this.averageSpeed = 0;
         /**
-         * @type {Decimal} The average speed of all cpus in the pool
+         * @type {number} The average speed of all cpus in the pool
          */
         this.totalSpeed = 0;
         /**
-         * @type {Decimal} The total cycles used by all tasks
+         * @type {number} The total cycles used by all tasks
          */
         this.load = 0;
         /**
@@ -4604,15 +4631,42 @@ class CPUPool extends EventListener
     {
         if(cpu)
         {
+            cpu.once('burnOut', () => {
+                this.flagCPUDead(slot, cpu);
+            });
             this.cpus[slot] = cpu;
-            this.cpuCount ++;
-            this.totalSpeed += cpu.speed;
-            this.averageSpeed = this.totalSpeed / this.cpuCount;
+            this.update();
         }
         else
         {
             this.cpus[slot] = null;
         }
+    }
+
+    flagCPUDead(slot, cpu)
+    {
+        this.trigger('cpuBurnedOut');
+        this.update();
+        if(this.cpuCount === 0)
+        {
+            this.trigger('cpuPoolEmpty');
+        }
+    }
+
+    update()
+    {
+        this.averageSpeed = 0;
+        this.totalSpeed = 0;
+        this.cpuCount = 0;
+        for(let cpu of this.cpus)
+        {
+            if(cpu && cpu.living)
+            {
+                this.totalSpeed += cpu.speed;
+                this.cpuCount ++;
+            }
+        }
+        this.averageSpeed = this.totalSpeed / this.cpuCount;
     }
 
     /**
@@ -4736,7 +4790,7 @@ class CPUPool extends EventListener
         }
         for(let cpu of this.cpus)
         {
-            if(cpu)
+            if(cpu && cpu.remainingLifeCycle > 0)
             {
                 cpu.tick(this.averageLoad);
             }
@@ -4987,6 +5041,11 @@ class PlayerComputer extends Computer
     {
         super('Home', null, '127.0.0.1');
         this.cpuPool = new CPUPool(cpus);
+        this.cpuPool.on('cpuBurnedOut', ()=>{
+            this.trigger('cpuBurnedOut');
+        }).on("cpuPoolEmpty", ()=>{
+            this.trigger('cpuPoolEmpty');
+        });
         this.queuedTasks = [];
         this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
     }
@@ -5086,7 +5145,7 @@ class PlayerComputer extends Computer
         {
             if(cpuJSON)
             {
-                cpus.push(new CPU(cpuJSON.name, cpuJSON.speed))
+                cpus.push(CPU.fromJSON(cpuJSON));
             }
             else
             {
@@ -5116,10 +5175,10 @@ module.exports = PublicComputer;
 
 },{"./Computer":15}],19:[function(require,module,exports){
 let cpus = [
-    {name:"Garbo Processor", speed:20, lifeCycle:100, color:'rgb(108, 140, 217)'},
-    {name:"Garbo Processor II", speed:40, lifeCycle:1000, color:'rgb(77, 98, 148)'},
-    {name:"Garbo Processor II.5", speed:80, lifeCycle:1500, color:'rgb(29, 45, 84)'},
-    {name:"Garbo Processor BLT", speed:133, lifeCycle: 2000, color:'rgb(1, 23, 74)'}
+    {name:"Garbo Processor", speed:20, lifeCycle:5000, color:'rgb(108, 140, 217)'},
+    {name:"Garbo Processor II", speed:40, lifeCycle:10000, color:'rgb(77, 98, 148)'},
+    {name:"Garbo Processor II.5", speed:80, lifeCycle:15000, color:'rgb(29, 45, 84)'},
+    {name:"Garbo Processor BLT", speed:133, lifeCycle: 20000, color:'rgb(1, 23, 74)'}
 ];
 module.exports = cpus;
 
@@ -5156,6 +5215,7 @@ class Connection extends EventListener
         this.connectionDistance = DEFAULT_CONNECTION_DISTANCE;
         this.computersTraced = 0;
         this.amountTraced = 0;
+        this.totalConnectionLength = 0;
     }
 
     improveConnectionDistance(amount)
@@ -5221,13 +5281,18 @@ class Connection extends EventListener
         if(this.amountTraced >= this.connectionDistance)
         {
             this.computersTraced++;
-            this.trigger("stepTraced", this.computersTraced);
+            this.trigger("stepTraced", this.computersTraced, this.tracePercent);
             this.amountTraced = 0;
             if(this.computersTraced >= this.connectionLength)
             {
                 this.trigger("connectionTraced");
             }
         }
+    }
+
+    get totalAmountTraced()
+    {
+        return this.computersTraced * this.connectionDistance + this.amountTraced;
     }
 
     close()
@@ -5253,8 +5318,14 @@ class Connection extends EventListener
         }
         this.computers.push(computer);
         this.connectionLength ++;
+        this.totalConnectionLength += this.connectionLength;
         this.buildHash();
         return this;
+    }
+
+    get tracePercent()
+    {
+        return (this.totalAmountTraced / this.totalConnectionLength * 100).toFixed(2);
     }
 
     removeComputer(computer)
@@ -5350,7 +5421,7 @@ class Downlink extends EventListener
     getNewConnection()
     {
         this.playerConnection = new Connection("Player Connection");
-        return this.playerComputer;
+        return this.playerConnection;
     }
 
     setPlayerComputer()
@@ -5366,6 +5437,7 @@ class Downlink extends EventListener
         {
             this.setPlayerComputer();
         }
+        this.playerComputer.on('cpuPoolEmpty', ()=>{this.trigger('cpuPoolEmpty')});
         return this.playerComputer;
     }
 
@@ -5384,6 +5456,11 @@ class Downlink extends EventListener
 
     getNextMission()
     {
+        if(this.playerComputer.cpuPool.cpuCount === 0)
+        {
+            return null;
+        }
+
         this.activeMission = MissionGenerator.getFirstAvailableMission().on("complete", ()=>{
             this.finishCurrentMission(this.activeMission);
             this.trigger('missionComplete');
@@ -5689,8 +5766,9 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.5a",
+        version:"0.3.9a",
         requiresHardReset:true,
+        canTakeMissions:true,
         /**
          * jquery entities that are needed for updating
          */
@@ -5717,6 +5795,8 @@ module.exports = EventListener;
         $connectionLength:null,
         $connectionTraced:null,
         $connectionWarningRow:null,
+        $missionToggleButton:null,
+        $connectionTracePercentage:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -5746,8 +5826,8 @@ module.exports = EventListener;
             this.$computerPartsCPURow = $('#computer-parts-cpu-row');
             this.$connectionLength = $('#connection-length');
             this.$connectionTraced = $('#connection-traced');
+            this.$connectionTracePercentage = $('#connection-trace-percentage');
             this.$connectionWarningRow = $('#connection-warning-row');
-
             $('#settings-export-button').click(()=>{
                 this.$importExportTextarea.val(this.save());
             });
@@ -5757,8 +5837,20 @@ module.exports = EventListener;
             $('#settingsModalLink').click(()=>{this.showSettingsModal();});
             $('#game-version').html(this.version);
             $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
-            $('#start-missions-button').click(()=>{this.takingMissions = true; this.getNextMission();});
-            $('#stop-missions-button').click(()=>{this.takingMissions = false;});
+
+            this.$missionToggleButton = $('#missions-toggle-button').click(()=>{
+                this.takingMissions = !this.takingMissions;
+                if(this.takingMissions)
+                {
+                    this.getNextMission();
+                    this.$missionToggleButton.text("Stop Taking Missions");
+                }
+                else
+                {
+                    this.$missionToggleButton.text("Start Taking Missions");
+                }
+            });
+
         },
         buildWorldMap:function()
         {
@@ -5868,12 +5960,16 @@ module.exports = EventListener;
 
             this.initialised = true;
             return this.buildWorldMap().then(()=>{
-
                 let pc = this.downlink.getPlayerComputer();
+                pc.on('cpuBurnedOut', ()=>{this.buildComputerGrid();});
+                pc.on('cpuPoolEmpty', ()=>{this.handleEmptyCPUPool();});
                 this.addComputerToWorldMap(pc);
                 this.updateComputerBuild();
                 this.buildComputerPartsUI();
                 this.buildComputerGrid();
+
+                this.canTakeMissions = pc.cpuPool.cpuCount > 0;
+                this.updateMissionToggleButton();
 
                 this.addPublicComputersToWorldMap();
                 this.$connectionLength.html(this.downlink.playerConnection.connectionLength);
@@ -5881,6 +5977,7 @@ module.exports = EventListener;
 
                 this.ticking = true;
                 this.updateConnectionMap();
+                this.save();
             });
         },
         addPublicComputersToWorldMap:function()
@@ -6010,18 +6107,20 @@ module.exports = EventListener;
             }
             this.$activeMissionServer.show();
             this.$connectionTraced.html(0);
+            this.$connectionTracePercentage.html(0);
             this.mission = this.downlink.getNextMission()
                 .on('complete', ()=>{
                     this.updatePlayerDetails();
                     this.updateComputerPartsUI();
+                    this.save();
                     this.getNextMission();
-                }).on("connectionStepTraced", (stepsTraced)=>{
+                }).on("connectionStepTraced", (stepsTraced, percentageTraced)=>{
                     this.$connectionTraced.html(stepsTraced);
+                    this.$connectionTracePercentage.html(percentageTraced);
                 });
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
             this.updateMissionInterface(this.mission);
-            this.save();
         },
         updatePlayerDetails:function()
         {
@@ -6042,16 +6141,20 @@ module.exports = EventListener;
         {
             $(`.${PLAYER_COMPUTER_CPU_ROW_CLASS}`).remove();
 
-            let html = '';
             for(let cpu of this.downlink.playerComputer.cpus)
             {
                 if(cpu)
                 {
-                    html += `<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}"><div class="col">${cpu.name}</div><div class="col">${cpu.speed}MHz</div></div>`;
+                    let $row = $(`<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}">
+                        <div class="col">${cpu.name}</div>
+                        <div class="col-2">${cpu.speed}MHz</div>
+                        <div class="col-5 cpu-remaining-cycle">${cpu.remainingLifeCycle}</div>
+                    </div>`).appendTo(this.$playerComputerCPUListContainer);
+                    cpu.on('lifeCycleUpdated', ()=>{
+                        $('.cpu-remaining-cycle', $row).html(cpu.health?cpu.health:"Dead");
+                    });
                 }
             }
-
-            this.$playerComputerCPUListContainer.html(html);
         },
         updateChallenge:function(challenge)
         {
@@ -6164,7 +6267,7 @@ module.exports = EventListener;
             this.$connectionTraced.html(0);
             this.$connectionLength.html(this.downlink.playerConnection.connectionLength);
             this.showOrHideConnectionWarning();
-            this.takingMissions = true;
+            this.save();
         },
         getRunTime:function()
         {
@@ -6241,7 +6344,19 @@ module.exports = EventListener;
                 for(let j = 0; j < gridSize; j++)
                 {
                     let cpu = cpus[cpuIndex];
-                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" style="color:${cpu?cpu.color:'black'}" title="${cpu?cpu.name:''}">${cpu?'<i class="fas fa-microchip"></i>':''}</div>`;
+                    let cpuColor = "black";
+                    if(cpu)
+                    {
+                        if(cpu.living)
+                        {
+                            cpuColor = cpu.color;
+                        }
+                        else
+                        {
+                            cpuColor = CPU.deadCPUColor;
+                        }
+                    }
+                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" style="color:${cpuColor}" title="${cpu?cpu.name:''}">${cpu?'<i class="fas fa-microchip"></i>':''}</div>`;
                     cpuIndex++;
                 }
                 html += '</div>';
@@ -6259,9 +6374,30 @@ module.exports = EventListener;
             {
                 return;
             }
+            this.canTakeMissions = true;
             this.downlink.buyCPU(this.chosenPart, cpuSlot);
+            this.updateMissionToggleButton();
             this.buildComputerGrid();
             this.updateComputerBuild();
+            this.updatePlayerDetails();
+            this.save();
+        },
+        handleEmptyCPUPool:function()
+        {
+            this.takingMissions = false;
+            this.canTakeMissions = false;
+            this.updateMissionToggleButton();
+        },
+        updateMissionToggleButton()
+        {
+            if(this.canTakeMissions)
+            {
+                this.$missionToggleButton.removeAttr('disabled');
+            }
+            else
+            {
+                this.$missionToggleButton.attr('disabled', 'disabled').text("Start taking missions");
+            }
         }
     };
 
@@ -6355,8 +6491,8 @@ class Mission extends EventListener
         this.computer = new MissionComputer(this.target, this.difficulty.serverType);
         this.computer.on('accessed', ()=>{
             this.signalComplete();
-        }).on('connectionStepTraced', (step)=>{
-            this.trigger("connectionStepTraced", step);
+        }).on('connectionStepTraced', (step, percentage)=>{
+            this.trigger("connectionStepTraced", step, percentage);
         }).on('hackTracked', ()=>{
             this.target.detectHacking();
         });
@@ -6490,25 +6626,19 @@ class MissionComputer extends Computer
     {
         super.connect();
         let clone = connection.clone();
+
         clone
             .once("connectionTraced", ()=>{
                 this.trigger('hackTracked');
-            }).on('stepTraced',(step)=>{
-                this.trigger('connectionStepTraced', step);
+            }).on('stepTraced',(step, percentage)=>{
+                this.trigger('connectionStepTraced', step, percentage);
             });
         this.currentPlayerConnection = clone;
 
 
         if(this.alerted)
         {
-            if (this.currentPlayerConnection.equals(this.previousPlayerConnection))
-            {
-                this.resumeTraceBack();
-            }
-            else
-            {
-                this.startTraceBack();
-            }
+            this.startTraceBack();
         }
 
 
