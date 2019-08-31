@@ -4339,6 +4339,8 @@ class Company
          * this is the increase exponent for successfully achieved missions
          */
         this.missionSuccessIncreaseExponent = 1.001;
+
+        this.hackDetectedExponent = 1.002;
     }
 
     setPublicServer(publicServer)
@@ -4359,7 +4361,7 @@ class Company
 
     detectHacking()
     {
-        this.playerRespectModifier /= (this.missionSuccessIncreaseExponent * 2);
+        this.playerRespectModifier /= this.hackDetectedExponent;
     }
 
     static getRandomCompany()
@@ -4558,7 +4560,7 @@ class CPU extends EventListener
      */
     static getPriceFor(cpuData)
     {
-        return cpuData.lifeCycle * cpuData.speed / 20;
+        return cpuData.lifeCycle * cpuData.speed / 1000;
     }
 
     static get deadCPUColor()
@@ -5204,6 +5206,7 @@ class Connection extends EventListener
         this.connectionDistance = DEFAULT_CONNECTION_DISTANCE;
         this.computersTraced = 0;
         this.amountTraced = 0;
+        this.totalConnectionLength = 0;
     }
 
     improveConnectionDistance(amount)
@@ -5269,13 +5272,18 @@ class Connection extends EventListener
         if(this.amountTraced >= this.connectionDistance)
         {
             this.computersTraced++;
-            this.trigger("stepTraced", this.computersTraced);
+            this.trigger("stepTraced", this.computersTraced, this.tracePercent);
             this.amountTraced = 0;
             if(this.computersTraced >= this.connectionLength)
             {
                 this.trigger("connectionTraced");
             }
         }
+    }
+
+    get totalAmountTraced()
+    {
+        return this.computersTraced * this.connectionDistance + this.amountTraced;
     }
 
     close()
@@ -5301,8 +5309,14 @@ class Connection extends EventListener
         }
         this.computers.push(computer);
         this.connectionLength ++;
+        this.totalConnectionLength += this.connectionLength;
         this.buildHash();
         return this;
+    }
+
+    get tracePercent()
+    {
+        return (this.totalAmountTraced / this.totalConnectionLength * 100).toFixed(2);
     }
 
     removeComputer(computer)
@@ -5773,6 +5787,7 @@ module.exports = EventListener;
         $connectionTraced:null,
         $connectionWarningRow:null,
         $missionToggleButton:null,
+        $connectionTracePercentage:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -5802,6 +5817,7 @@ module.exports = EventListener;
             this.$computerPartsCPURow = $('#computer-parts-cpu-row');
             this.$connectionLength = $('#connection-length');
             this.$connectionTraced = $('#connection-traced');
+            this.$connectionTracePercentage = $('#connection-trace-percentage');
             this.$connectionWarningRow = $('#connection-warning-row');
             $('#settings-export-button').click(()=>{
                 this.$importExportTextarea.val(this.save());
@@ -6082,14 +6098,16 @@ module.exports = EventListener;
             }
             this.$activeMissionServer.show();
             this.$connectionTraced.html(0);
+            this.$connectionTracePercentage.html(0);
             this.mission = this.downlink.getNextMission()
                 .on('complete', ()=>{
                     this.updatePlayerDetails();
                     this.updateComputerPartsUI();
                     this.save();
                     this.getNextMission();
-                }).on("connectionStepTraced", (stepsTraced)=>{
+                }).on("connectionStepTraced", (stepsTraced, percentageTraced)=>{
                     this.$connectionTraced.html(stepsTraced);
+                    this.$connectionTracePercentage.html(percentageTraced);
                 });
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
@@ -6347,11 +6365,12 @@ module.exports = EventListener;
             {
                 return;
             }
-
             this.downlink.buyCPU(this.chosenPart, cpuSlot);
             this.updateMissionToggleButton();
             this.buildComputerGrid();
             this.updateComputerBuild();
+            this.updatePlayerDetails();
+            this.save();
         },
         handleEmptyCPUPool:function()
         {
@@ -6462,8 +6481,8 @@ class Mission extends EventListener
         this.computer = new MissionComputer(this.target, this.difficulty.serverType);
         this.computer.on('accessed', ()=>{
             this.signalComplete();
-        }).on('connectionStepTraced', (step)=>{
-            this.trigger("connectionStepTraced", step);
+        }).on('connectionStepTraced', (step, percentage)=>{
+            this.trigger("connectionStepTraced", step, percentage);
         }).on('hackTracked', ()=>{
             this.target.detectHacking();
         });
@@ -6597,25 +6616,19 @@ class MissionComputer extends Computer
     {
         super.connect();
         let clone = connection.clone();
+
         clone
             .once("connectionTraced", ()=>{
                 this.trigger('hackTracked');
-            }).on('stepTraced',(step)=>{
-                this.trigger('connectionStepTraced', step);
+            }).on('stepTraced',(step, percentage)=>{
+                this.trigger('connectionStepTraced', step, percentage);
             });
         this.currentPlayerConnection = clone;
 
 
         if(this.alerted)
         {
-            if (this.currentPlayerConnection.equals(this.previousPlayerConnection))
-            {
-                this.resumeTraceBack();
-            }
-            else
-            {
-                this.startTraceBack();
-            }
+            this.startTraceBack();
         }
 
 

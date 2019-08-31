@@ -92,7 +92,7 @@ class CPU extends EventListener
      */
     static getPriceFor(cpuData)
     {
-        return cpuData.lifeCycle * cpuData.speed / 20;
+        return cpuData.lifeCycle * cpuData.speed / 1000;
     }
 
     static get deadCPUColor()

@@ -28,6 +28,8 @@ class Company
          * this is the increase exponent for successfully achieved missions
          */
         this.missionSuccessIncreaseExponent = 1.001;
+
+        this.hackDetectedExponent = 1.002;
     }
 
     setPublicServer(publicServer)
@@ -48,7 +50,7 @@ class Company
 
     detectHacking()
     {
-        this.playerRespectModifier /= (this.missionSuccessIncreaseExponent * 2);
+        this.playerRespectModifier /= this.hackDetectedExponent;
     }
 
     static getRandomCompany()

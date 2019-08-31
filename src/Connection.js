@@ -30,6 +30,7 @@ class Connection extends EventListener
         this.connectionDistance = DEFAULT_CONNECTION_DISTANCE;
         this.computersTraced = 0;
         this.amountTraced = 0;
+        this.totalConnectionLength = 0;
     }
 
     improveConnectionDistance(amount)
@@ -95,13 +96,18 @@ class Connection extends EventListener
         if(this.amountTraced >= this.connectionDistance)
         {
             this.computersTraced++;
-            this.trigger("stepTraced", this.computersTraced);
+            this.trigger("stepTraced", this.computersTraced, this.tracePercent);
             this.amountTraced = 0;
             if(this.computersTraced >= this.connectionLength)
             {
                 this.trigger("connectionTraced");
             }
         }
+    }
+
+    get totalAmountTraced()
+    {
+        return this.computersTraced * this.connectionDistance + this.amountTraced;
     }
 
     close()
@@ -127,8 +133,14 @@ class Connection extends EventListener
         }
         this.computers.push(computer);
         this.connectionLength ++;
+        this.totalConnectionLength += this.connectionLength;
         this.buildHash();
         return this;
+    }
+
+    get tracePercent()
+    {
+        return (this.totalAmountTraced / this.totalConnectionLength * 100).toFixed(2);
     }
 
     removeComputer(computer)

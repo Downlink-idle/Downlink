@@ -66,6 +66,7 @@
         $connectionTraced:null,
         $connectionWarningRow:null,
         $missionToggleButton:null,
+        $connectionTracePercentage:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -95,6 +96,7 @@
             this.$computerPartsCPURow = $('#computer-parts-cpu-row');
             this.$connectionLength = $('#connection-length');
             this.$connectionTraced = $('#connection-traced');
+            this.$connectionTracePercentage = $('#connection-trace-percentage');
             this.$connectionWarningRow = $('#connection-warning-row');
             $('#settings-export-button').click(()=>{
                 this.$importExportTextarea.val(this.save());
@@ -375,14 +377,16 @@
             }
             this.$activeMissionServer.show();
             this.$connectionTraced.html(0);
+            this.$connectionTracePercentage.html(0);
             this.mission = this.downlink.getNextMission()
                 .on('complete', ()=>{
                     this.updatePlayerDetails();
                     this.updateComputerPartsUI();
                     this.save();
                     this.getNextMission();
-                }).on("connectionStepTraced", (stepsTraced)=>{
+                }).on("connectionStepTraced", (stepsTraced, percentageTraced)=>{
                     this.$connectionTraced.html(stepsTraced);
+                    this.$connectionTracePercentage.html(percentageTraced);
                 });
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
@@ -640,11 +644,12 @@
             {
                 return;
             }
-
             this.downlink.buyCPU(this.chosenPart, cpuSlot);
             this.updateMissionToggleButton();
             this.buildComputerGrid();
             this.updateComputerBuild();
+            this.updatePlayerDetails();
+            this.save();
         },
         handleEmptyCPUPool:function()
         {
