@@ -4597,11 +4597,11 @@ class CPUPool extends EventListener
          */
         this.averageSpeed = 0;
         /**
-         * @type {Decimal} The average speed of all cpus in the pool
+         * @type {number} The average speed of all cpus in the pool
          */
         this.totalSpeed = 0;
         /**
-         * @type {Decimal} The total cycles used by all tasks
+         * @type {number} The total cycles used by all tasks
          */
         this.load = 0;
         /**
@@ -4635,12 +4635,7 @@ class CPUPool extends EventListener
                 this.flagCPUDead(slot, cpu);
             });
             this.cpus[slot] = cpu;
-            if (cpu.living)
-            {
-                this.cpuCount++;
-            }
-            this.totalSpeed += cpu.speed;
-            this.averageSpeed = this.totalSpeed / this.cpuCount;
+            this.update();
         }
         else
         {
@@ -4651,13 +4646,27 @@ class CPUPool extends EventListener
     flagCPUDead(slot, cpu)
     {
         this.trigger('cpuBurnedOut');
-        this.cpuCount --;
-        this.totalSpeed -= cpu.speed;
-        this.averageSpeed = this.totalSpeed / this.cpuCount;
+        this.update();
         if(this.cpuCount === 0)
         {
             this.trigger('cpuPoolEmpty');
         }
+    }
+
+    update()
+    {
+        this.averageSpeed = 0;
+        this.totalSpeed = 0;
+        this.cpuCount = 0;
+        for(let cpu of this.cpus)
+        {
+            if(cpu && cpu.living)
+            {
+                this.totalSpeed += cpu.speed;
+                this.cpuCount ++;
+            }
+        }
+        this.averageSpeed = this.totalSpeed / this.cpuCount;
     }
 
     /**
@@ -5757,7 +5766,7 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.8a",
+        version:"0.3.9a",
         requiresHardReset:true,
         canTakeMissions:true,
         /**
@@ -6365,6 +6374,7 @@ module.exports = EventListener;
             {
                 return;
             }
+            this.canTakeMissions = true;
             this.downlink.buyCPU(this.chosenPart, cpuSlot);
             this.updateMissionToggleButton();
             this.buildComputerGrid();
