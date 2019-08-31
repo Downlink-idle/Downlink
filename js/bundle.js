@@ -5149,8 +5149,6 @@ class PublicComputer extends Computer
     {
         super(name, ipAddress);
         let keys = Object.keys(allPublicComputers);
-        console.log(keys);
-        console.log(name, ipAddress, this);
         while(keys.indexOf(this.ipAddress) >= 0)
         {
             this.ipAddress = Computer.randomIPAddress();
@@ -5160,7 +5158,6 @@ class PublicComputer extends Computer
 
     static getPublicComputerByIPAddress(hash)
     {
-        console.log(hash);
         return allPublicComputers[hash];
     }
 
@@ -5307,7 +5304,6 @@ class Connection extends EventListener
 
     addComputer(computer)
     {
-        console.log(computer);
         if(!(computer instanceof Computer))
         {
             throw new InvalidTypeError("Incorrect object type added");

@@ -123,7 +123,6 @@ class Connection extends EventListener
 
     addComputer(computer)
     {
-        console.log(computer);
         if(!(computer instanceof Computer))
         {
             throw new InvalidTypeError("Incorrect object type added");

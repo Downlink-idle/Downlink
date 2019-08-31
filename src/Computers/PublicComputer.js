@@ -17,7 +17,6 @@ class PublicComputer extends Computer
 
     static getPublicComputerByIPAddress(hash)
     {
-        console.log(hash);
         return allPublicComputers[hash];
     }
 
