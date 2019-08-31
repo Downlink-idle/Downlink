@@ -12,7 +12,7 @@ class Computer extends EventListener
         super();
         this.name= name;
 
-        this.ipAddress = Computer.randomIPAddress();
+        this.ipAddress = ipAddress?ipAddress:Computer.randomIPAddress();
         this.location = null;
         this.company = null;
     }

@@ -123,6 +123,7 @@ class Connection extends EventListener
 
     addComputer(computer)
     {
+        console.log(computer);
         if(!(computer instanceof Computer))
         {
             throw new InvalidTypeError("Incorrect object type added");
@@ -179,9 +180,9 @@ class Connection extends EventListener
     {
         let connection = new Connection(json.name);
         connection.startingPoint = startingPoint;
-        for(let computerHash of json.ipAddresses)
+        for(let ipAddress of json.ipAddresses)
         {
-            connection.addComputer(PublicComputer.getPublicComputerByIPAddress(computerHash));
+            connection.addComputer(PublicComputer.getPublicComputerByIPAddress(ipAddress));
         }
         return connection;
     }

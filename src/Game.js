@@ -15,7 +15,10 @@
             partAsNumber = 0;
         for(let partIndex in parts)
         {
-            partAsNumber +=  parts[partIndex] * Math.pow(1000, parts.length - 1 - partIndex);
+            let exponent = parts.length - 1 - partIndex,
+                part = parseInt(parts[partIndex], 10),
+                multiple = Math.pow(1000, exponent);
+            partAsNumber +=  (part * multiple);
         }
         return partAsNumber
     }
@@ -36,7 +39,7 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.11a",
+        version:"0.3.12a",
         requiresHardReset:true,
         canTakeMissions:true,
         /**
