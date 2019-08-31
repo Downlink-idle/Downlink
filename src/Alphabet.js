@@ -1,3 +1,4 @@
+const helpers = require('./Helpers');
 let alphabetGrid = [];
 
 class Alphabet
@@ -22,7 +23,8 @@ class Alphabet
 
     static shuffle()
     {
-        this.randomizedAlphabet = [...alphabetGrid].shuffle();
+        this.randomizedAlphabet = helpers.shuffleArray([...alphabetGrid]);
+
     }
 
     static getRandomLetter()

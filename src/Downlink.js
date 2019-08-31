@@ -142,13 +142,18 @@ class Downlink extends EventListener
     }
 
     /**
-     * @param {<Computer>} computer
-     * @returns {<Connection>}
+     * @param {Computer} computer
+     * @returns {Connection}
      */
     addComputerToConnection(computer)
     {
-        let result = this.playerConnection.addComputer(computer);
-        return result;
+        return this.playerConnection.addComputer(computer);
+    }
+
+    autoBuildConnection()
+    {
+        this.playerConnection = Connection.fromAllPublicServers();
+        return this.playerConnection;
     }
 
     toJSON()

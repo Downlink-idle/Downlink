@@ -1824,6 +1824,7 @@ function isSlowBuffer (obj) {
 })();
 
 },{"charenc":2,"crypt":3,"is-buffer":4}],6:[function(require,module,exports){
+const helpers = require('./Helpers');
 let alphabetGrid = [];
 
 class Alphabet
@@ -1848,7 +1849,8 @@ class Alphabet
 
     static shuffle()
     {
-        this.randomizedAlphabet = [...alphabetGrid].shuffle();
+        this.randomizedAlphabet = helpers.shuffleArray([...alphabetGrid]);
+
     }
 
     static getRandomLetter()
@@ -1866,7 +1868,7 @@ Alphabet.build();
 
 module.exports = Alphabet;
 
-},{}],7:[function(require,module,exports){
+},{"./Helpers":24}],7:[function(require,module,exports){
 const EventListener = require('../EventListener');
 
 class Challenge extends EventListener
@@ -4571,7 +4573,7 @@ class CPU extends EventListener
 
 module.exports = CPU;
 
-},{"../EventListener":22,"../Tasks/Task":30,"./cpus":19}],14:[function(require,module,exports){
+},{"../EventListener":22,"../Tasks/Task":31,"./cpus":19}],14:[function(require,module,exports){
 const   CPU = require('./CPU'),
         Task = require('../Tasks/Task'),
         EventListener = require('../EventListener');
@@ -4800,24 +4802,8 @@ class CPUPool extends EventListener
 
 module.exports = CPUPool;
 
-},{"../EventListener":22,"../Tasks/Task":30,"./CPU":13}],15:[function(require,module,exports){
+},{"../EventListener":22,"../Tasks/Task":31,"./CPU":13}],15:[function(require,module,exports){
 const EventListener = require('../EventListener');
-
-function randomIPAddress()
-{
-    let ipAddress = "";
-    for(let i = 0; i < 4; i++)
-    {
-        if(i)
-        {
-            ipAddress += '.';
-        }
-        ipAddress += Math.floor(Math.random() * 256);
-    }
-    return ipAddress;
-}
-
-let allComputers = {};
 
 class Computer extends EventListener
 {
@@ -4830,21 +4816,24 @@ class Computer extends EventListener
     {
         super();
         this.name= name;
-        // stop two computers having the same ip address
-        // while the statistic chances of this are **REALLY REALLY** small on any given instance, it will almost certainly
-        // happen to some poor schmuck and fuck his save file up
-        while(ipAddress == null)
-        {
-            let testIPAddress = randomIPAddress();
-            if(Object.keys(allComputers).indexOf(testIPAddress) < 0)
-            {
-                ipAddress = testIPAddress;
-            }
-        }
-        this.ipAddress = ipAddress;
+
+        this.ipAddress = ipAddress?ipAddress:Computer.randomIPAddress();
         this.location = null;
         this.company = null;
-        allComputers[this.simpleHash] = this;
+    }
+
+    static randomIPAddress()
+    {
+        let ipAddress = "";
+        for(let i = 0; i < 4; i++)
+        {
+            if(i)
+            {
+                ipAddress += '.';
+            }
+            ipAddress += Math.floor(Math.random() * 256);
+        }
+        return ipAddress;
     }
 
     setCompany(company)
@@ -4877,17 +4866,6 @@ class Computer extends EventListener
     {
 
     }
-
-    static allComputers()
-    {
-        return allComputers;
-    }
-
-    static getComputerByHash(hash)
-    {
-        return allComputers[hash];
-    }
-
 
     static fromJSON(json, company)
     {
@@ -4985,7 +4963,7 @@ class ComputerGenerator
      * a random point on the image|map is on a land mass. This method builds up a canvas and throws the image onto
      * the canvas. The canvas' context is then bound as an instance variable
      * @see getRandomLandboundPoint
-     * @param mapImage
+     * @param {object} canvas
      */
     defineMapImage(canvas)
     {
@@ -5023,7 +5001,7 @@ class ComputerGenerator
 
 module.exports = new ComputerGenerator();
 
-},{"../Missions/MissionComputer":25,"./CPU":13,"./Computer":15,"./PlayerComputer":17,"./PublicComputer":18}],17:[function(require,module,exports){
+},{"../Missions/MissionComputer":26,"./CPU":13,"./Computer":15,"./PlayerComputer":17,"./PublicComputer":18}],17:[function(require,module,exports){
 const   Password = require('../Challenges/Password'),
         {DictionaryCracker, PasswordCracker} = require('../Tasks/PasswordCracker'),
         Encryption = require('../Challenges/Encryption'),
@@ -5160,14 +5138,32 @@ class PlayerComputer extends Computer
 
 module.exports = PlayerComputer;
 
-},{"../Challenges/Encryption":8,"../Challenges/Password":9,"../Tasks/EncryptionCracker":28,"../Tasks/PasswordCracker":29,"./CPU.js":13,"./CPUPool":14,"./Computer":15}],18:[function(require,module,exports){
+},{"../Challenges/Encryption":8,"../Challenges/Password":9,"../Tasks/EncryptionCracker":29,"../Tasks/PasswordCracker":30,"./CPU.js":13,"./CPUPool":14,"./Computer":15}],18:[function(require,module,exports){
 let Computer = require('./Computer');
+
+let allPublicComputers = {};
 
 class PublicComputer extends Computer
 {
     constructor(name, ipAddress)
     {
         super(name, ipAddress);
+        let keys = Object.keys(allPublicComputers);
+        while(keys.indexOf(this.ipAddress) >= 0)
+        {
+            this.ipAddress = Computer.randomIPAddress();
+        }
+        allPublicComputers[this.ipAddress] = this;
+    }
+
+    static getPublicComputerByIPAddress(hash)
+    {
+        return allPublicComputers[hash];
+    }
+
+    static getAllKnownPublicServers()
+    {
+        return allPublicComputers;
     }
 }
 
@@ -5184,12 +5180,13 @@ module.exports = cpus;
 
 },{}],20:[function(require,module,exports){
 const   Computer = require('./Computers/Computer'),
+        PublicComputer = require('./Computers/PublicComputer'),
         EventListener = require('./EventListener'),
         md5 = require('md5');
 
 class InvalidTypeError extends Error{}
 class InvalidComputerError extends Error{}
-class DuplicateComputerError extends Error{}
+//class DuplicateComputerError extends Error{}
 
 let connections = 0;
 const DEFAULT_CONNECTION_DISTANCE = 10;
@@ -5349,22 +5346,12 @@ class Connection extends EventListener
         this.hash = md5(strToHash);
     }
 
-    equals(otherConnection)
-    {
-        if(!otherConnection || !(otherConnection instanceof this))
-        {
-            return false;
-        }
-
-        return JSON.stringify(this.computers) === JSON.stringify(otherConnection.computers);
-    }
-
     toJSON()
     {
-        let json= {name:this.name, computerHashes:[]};
+        let json= {name:this.name, ipAddresses:[]};
         for(let computer of this.computers)
         {
-            json.computerHashes.push(computer.simpleHash);
+            json.ipAddresses.push(computer.ipAddress);
         }
         return json;
     }
@@ -5373,9 +5360,24 @@ class Connection extends EventListener
     {
         let connection = new Connection(json.name);
         connection.startingPoint = startingPoint;
-        for(let computerHash of json.computerHashes)
+        for(let ipAddress of json.ipAddresses)
         {
-            connection.addComputer(Computer.getComputerByHash(computerHash));
+            connection.addComputer(PublicComputer.getPublicComputerByIPAddress(ipAddress));
+        }
+        return connection;
+    }
+
+    static fromAllPublicServers()
+    {
+        return this.fromComputerArray(Object.values(PublicComputer.getAllKnownPublicServers()));
+    }
+
+    static fromComputerArray(computerArray)
+    {
+        let connection = new Connection();
+        for(let computer of computerArray)
+        {
+            connection.addComputer(computer);
         }
         return connection;
     }
@@ -5383,7 +5385,7 @@ class Connection extends EventListener
 
 module.exports = Connection;
 
-},{"./Computers/Computer":15,"./EventListener":22,"md5":5}],21:[function(require,module,exports){
+},{"./Computers/Computer":15,"./Computers/PublicComputer":18,"./EventListener":22,"md5":5}],21:[function(require,module,exports){
 const   MissionGenerator = require('./Missions/MissionGenerator'),
         EventListener = require('./EventListener'),
         Connection = require('./Connection'),
@@ -5528,13 +5530,18 @@ class Downlink extends EventListener
     }
 
     /**
-     * @param {<Computer>} computer
-     * @returns {<Connection>}
+     * @param {Computer} computer
+     * @returns {Connection}
      */
     addComputerToConnection(computer)
     {
-        let result = this.playerConnection.addComputer(computer);
-        return result;
+        return this.playerConnection.addComputer(computer);
+    }
+
+    autoBuildConnection()
+    {
+        this.playerConnection = Connection.fromAllPublicServers();
+        return this.playerConnection;
     }
 
     toJSON()
@@ -5604,7 +5611,7 @@ class Downlink extends EventListener
 
 module.exports = Downlink;
 
-},{"./Companies/Company":11,"./Computers/CPU":13,"./Computers/ComputerGenerator":16,"./Connection":20,"./EventListener":22,"./Missions/MissionGenerator":27,"break_infinity.js":1}],22:[function(require,module,exports){
+},{"./Companies/Company":11,"./Computers/CPU":13,"./Computers/ComputerGenerator":16,"./Connection":20,"./EventListener":22,"./Missions/MissionGenerator":28,"break_infinity.js":1}],22:[function(require,module,exports){
 class Event
 {
     constructor(owner, name, once)
@@ -5745,7 +5752,10 @@ module.exports = EventListener;
             partAsNumber = 0;
         for(let partIndex in parts)
         {
-            partAsNumber +=  parts[partIndex] * Math.pow(1000, parts.length - 1 - partIndex);
+            let exponent = parts.length - 1 - partIndex,
+                part = parseInt(parts[partIndex], 10),
+                multiple = Math.pow(1000, exponent);
+            partAsNumber +=  (part * multiple);
         }
         return partAsNumber
     }
@@ -5766,7 +5776,7 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.10a",
+        version:"0.3.12a",
         requiresHardReset:true,
         canTakeMissions:true,
         /**
@@ -5837,6 +5847,7 @@ module.exports = EventListener;
             $('#settingsModalLink').click(()=>{this.showSettingsModal();});
             $('#game-version').html(this.version);
             $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
+            $('#connection-auto-build-button').click(()=>{this.autoBuildConnection()});
 
             this.$missionToggleButton = $('#missions-toggle-button').click(()=>{
                 this.takingMissions = !this.takingMissions;
@@ -5891,7 +5902,6 @@ module.exports = EventListener;
          * This will pass a fresh copy of the canvas to the Downlink object to keep for that purpose and also draw
          * one to the dom. The one on the dom will be drawn to and deleted and drawn to and deleted, but the
          * Downlink object needs to know the raw one.
-         * @param image
          */
         buildCanvas:function()
         {
@@ -5901,6 +5911,11 @@ module.exports = EventListener;
                 height:this.mapImageElement.height+'px',
                 width:this.mapImageElement.width+'px'
             });
+        },
+        autoBuildConnection:function()
+        {
+            this.downlink.autoBuildConnection();
+            this.updateConnectionMap();
         },
         newGame:function()
         {
@@ -6318,7 +6333,7 @@ module.exports = EventListener;
         },
         updateComputerPartsUI:function()
         {
-            let downlink = this.downlink
+            let downlink = this.downlink;
             $('.part').each(function(index){
                 let $node = $(this),
                     cost = new Decimal($node.data('partCost')),
@@ -6340,7 +6355,7 @@ module.exports = EventListener;
 
             for(let i = 0; i < gridSize; i++)
             {
-                html += '<div class="row cpuRow">'
+                html += '<div class="row cpuRow">';
                 for(let j = 0; j < gridSize; j++)
                 {
                     let cpu = cpus[cpuIndex];
@@ -6407,6 +6422,19 @@ module.exports = EventListener;
 })})(window.jQuery);
 
 },{"./Computers/CPU":13,"./Downlink":21,"break_infinity.js":1}],24:[function(require,module,exports){
+module.exports = {
+    shuffleArray:function(array)
+    {
+        for (let i = array.length - 1; i > 0; i--)
+        {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+};
+
+},{}],25:[function(require,module,exports){
 const   Company = require('../Companies/Company'),
         MissionComputer = require('./MissionComputer'),
         Password = require('../Challenges/Password'),
@@ -6559,7 +6587,7 @@ class Mission extends EventListener
 }
 module.exports = Mission;
 
-},{"../Challenges/Encryption":8,"../Challenges/Password":9,"../Companies/Company":11,"../EventListener":22,"./MissionComputer":25,"./MissionDifficulty":26}],25:[function(require,module,exports){
+},{"../Challenges/Encryption":8,"../Challenges/Password":9,"../Companies/Company":11,"../EventListener":22,"./MissionComputer":26,"./MissionDifficulty":27}],26:[function(require,module,exports){
 const   Computer = require('../Computers/Computer');
 class MissionComputer extends Computer
 {
@@ -6740,7 +6768,7 @@ class MissionComputer extends Computer
 
 module.exports = MissionComputer;
 
-},{"../Computers/Computer":15}],26:[function(require,module,exports){
+},{"../Computers/Computer":15}],27:[function(require,module,exports){
 const Decimal = require('break_infinity.js');
 
 /**
@@ -6776,7 +6804,7 @@ MissionDifficulty.DIFFICULTIES = {
 
 module.exports = MissionDifficulty;
 
-},{"break_infinity.js":1}],27:[function(require,module,exports){
+},{"break_infinity.js":1}],28:[function(require,module,exports){
 const   Mission = require('./Mission'),
         MINIMUM_MISSIONS = 10;
 let availableMissions = [];
@@ -6810,7 +6838,7 @@ class MissionGenerator
 
 module.exports = MissionGenerator;
 
-},{"./Mission":24}],28:[function(require,module,exports){
+},{"./Mission":25}],29:[function(require,module,exports){
 const   Alphabet = require('../Alphabet'),
         Task = require('./Task');
 
@@ -6965,7 +6993,7 @@ class EncryptionCracker extends Task
 
 module.exports = EncryptionCracker;
 
-},{"../Alphabet":6,"./Task":30}],29:[function(require,module,exports){
+},{"../Alphabet":6,"./Task":31}],30:[function(require,module,exports){
 const   DICTIONARY_CRACKER_MINIMUM_CYCLES = 5,
         SEQUENTIAL_CRACKER_MINIMUM_CYCLES = 20,
         Task = require('./Task'),
@@ -7054,7 +7082,7 @@ module.exports = {
     SequentialAttacker:SequentialAttacker
 };
 
-},{"../Challenges/Password":9,"./Task":30}],30:[function(require,module,exports){
+},{"../Challenges/Password":9,"./Task":31}],31:[function(require,module,exports){
 const   EventListener = require('../EventListener'),
         Decimal = require('break_infinity.js');
 

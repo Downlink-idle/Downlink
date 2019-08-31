@@ -69,7 +69,7 @@ class ComputerGenerator
      * a random point on the image|map is on a land mass. This method builds up a canvas and throws the image onto
      * the canvas. The canvas' context is then bound as an instance variable
      * @see getRandomLandboundPoint
-     * @param mapImage
+     * @param {object} canvas
      */
     defineMapImage(canvas)
     {

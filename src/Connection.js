@@ -1,10 +1,11 @@
 const   Computer = require('./Computers/Computer'),
+        PublicComputer = require('./Computers/PublicComputer'),
         EventListener = require('./EventListener'),
         md5 = require('md5');
 
 class InvalidTypeError extends Error{}
 class InvalidComputerError extends Error{}
-class DuplicateComputerError extends Error{}
+//class DuplicateComputerError extends Error{}
 
 let connections = 0;
 const DEFAULT_CONNECTION_DISTANCE = 10;
@@ -164,22 +165,12 @@ class Connection extends EventListener
         this.hash = md5(strToHash);
     }
 
-    equals(otherConnection)
-    {
-        if(!otherConnection || !(otherConnection instanceof this))
-        {
-            return false;
-        }
-
-        return JSON.stringify(this.computers) === JSON.stringify(otherConnection.computers);
-    }
-
     toJSON()
     {
-        let json= {name:this.name, computerHashes:[]};
+        let json= {name:this.name, ipAddresses:[]};
         for(let computer of this.computers)
         {
-            json.computerHashes.push(computer.simpleHash);
+            json.ipAddresses.push(computer.ipAddress);
         }
         return json;
     }
@@ -188,9 +179,24 @@ class Connection extends EventListener
     {
         let connection = new Connection(json.name);
         connection.startingPoint = startingPoint;
-        for(let computerHash of json.computerHashes)
+        for(let ipAddress of json.ipAddresses)
         {
-            connection.addComputer(Computer.getComputerByHash(computerHash));
+            connection.addComputer(PublicComputer.getPublicComputerByIPAddress(ipAddress));
+        }
+        return connection;
+    }
+
+    static fromAllPublicServers()
+    {
+        return this.fromComputerArray(Object.values(PublicComputer.getAllKnownPublicServers()));
+    }
+
+    static fromComputerArray(computerArray)
+    {
+        let connection = new Connection();
+        for(let computer of computerArray)
+        {
+            connection.addComputer(computer);
         }
         return connection;
     }

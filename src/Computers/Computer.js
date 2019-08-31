@@ -1,21 +1,5 @@
 const EventListener = require('../EventListener');
 
-function randomIPAddress()
-{
-    let ipAddress = "";
-    for(let i = 0; i < 4; i++)
-    {
-        if(i)
-        {
-            ipAddress += '.';
-        }
-        ipAddress += Math.floor(Math.random() * 256);
-    }
-    return ipAddress;
-}
-
-let allComputers = {};
-
 class Computer extends EventListener
 {
     /**
@@ -27,21 +11,24 @@ class Computer extends EventListener
     {
         super();
         this.name= name;
-        // stop two computers having the same ip address
-        // while the statistic chances of this are **REALLY REALLY** small on any given instance, it will almost certainly
-        // happen to some poor schmuck and fuck his save file up
-        while(ipAddress == null)
-        {
-            let testIPAddress = randomIPAddress();
-            if(Object.keys(allComputers).indexOf(testIPAddress) < 0)
-            {
-                ipAddress = testIPAddress;
-            }
-        }
-        this.ipAddress = ipAddress;
+
+        this.ipAddress = ipAddress?ipAddress:Computer.randomIPAddress();
         this.location = null;
         this.company = null;
-        allComputers[this.simpleHash] = this;
+    }
+
+    static randomIPAddress()
+    {
+        let ipAddress = "";
+        for(let i = 0; i < 4; i++)
+        {
+            if(i)
+            {
+                ipAddress += '.';
+            }
+            ipAddress += Math.floor(Math.random() * 256);
+        }
+        return ipAddress;
     }
 
     setCompany(company)
@@ -74,17 +61,6 @@ class Computer extends EventListener
     {
 
     }
-
-    static allComputers()
-    {
-        return allComputers;
-    }
-
-    static getComputerByHash(hash)
-    {
-        return allComputers[hash];
-    }
-
 
     static fromJSON(json, company)
     {
