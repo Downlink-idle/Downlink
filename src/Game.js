@@ -228,7 +228,6 @@
 
             this.initialised = true;
             return this.buildWorldMap().then(()=>{
-
                 let pc = this.downlink.getPlayerComputer();
                 pc.on('cpuBurnedOut', ()=>{this.buildComputerGrid();});
                 pc.on('cpuPoolEmpty', ()=>{this.handleEmptyCPUPool();});
@@ -236,6 +235,9 @@
                 this.updateComputerBuild();
                 this.buildComputerPartsUI();
                 this.buildComputerGrid();
+
+                this.canTakeMissions = pc.cpuPool.cpuCount > 0;
+                this.updateMissionToggleButton();
 
                 this.addPublicComputersToWorldMap();
                 this.$connectionLength.html(this.downlink.playerConnection.connectionLength);
@@ -640,8 +642,7 @@
             }
 
             this.downlink.buyCPU(this.chosenPart, cpuSlot);
-            this.canTakeMissions = true;
-            this.$missionToggleButton.removeAttr('disabled');
+            this.updateMissionToggleButton();
             this.buildComputerGrid();
             this.updateComputerBuild();
         },
@@ -649,8 +650,18 @@
         {
             this.takingMissions = false;
             this.canTakeMissions = false;
-            this.$missionToggleButton.attr('disabled', 'disabled').text("Start taking missions");
-
+            this.updateMissionToggleButton();
+        },
+        updateMissionToggleButton()
+        {
+            if(this.canTakeMissions)
+            {
+                this.$missionToggleButton.removeAttr('disabled');
+            }
+            else
+            {
+                this.$missionToggleButton.attr('disabled', 'disabled').text("Start taking missions");
+            }
         }
     };
 

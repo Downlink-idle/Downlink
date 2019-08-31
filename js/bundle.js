@@ -4504,7 +4504,7 @@ class CPU extends EventListener
 
     get remainingLifeCycle()
     {
-        return this.lifeCycle - this.lifeCycleUsed;
+        return Math.max(this.lifeCycle - this.lifeCycleUsed, 0);
     }
 
     get health()
@@ -4629,11 +4629,14 @@ class CPUPool extends EventListener
     {
         if(cpu)
         {
-            cpu.once('burnOut', ()=>{
+            cpu.once('burnOut', () => {
                 this.flagCPUDead(slot, cpu);
             });
             this.cpus[slot] = cpu;
-            this.cpuCount ++;
+            if (cpu.living)
+            {
+                this.cpuCount++;
+            }
             this.totalSpeed += cpu.speed;
             this.averageSpeed = this.totalSpeed / this.cpuCount;
         }
@@ -5932,7 +5935,6 @@ module.exports = EventListener;
 
             this.initialised = true;
             return this.buildWorldMap().then(()=>{
-
                 let pc = this.downlink.getPlayerComputer();
                 pc.on('cpuBurnedOut', ()=>{this.buildComputerGrid();});
                 pc.on('cpuPoolEmpty', ()=>{this.handleEmptyCPUPool();});
@@ -5940,6 +5942,9 @@ module.exports = EventListener;
                 this.updateComputerBuild();
                 this.buildComputerPartsUI();
                 this.buildComputerGrid();
+
+                this.canTakeMissions = pc.cpuPool.cpuCount > 0;
+                this.updateMissionToggleButton();
 
                 this.addPublicComputersToWorldMap();
                 this.$connectionLength.html(this.downlink.playerConnection.connectionLength);
@@ -6344,8 +6349,7 @@ module.exports = EventListener;
             }
 
             this.downlink.buyCPU(this.chosenPart, cpuSlot);
-            this.canTakeMissions = true;
-            this.$missionToggleButton.removeAttr('disabled');
+            this.updateMissionToggleButton();
             this.buildComputerGrid();
             this.updateComputerBuild();
         },
@@ -6353,8 +6357,18 @@ module.exports = EventListener;
         {
             this.takingMissions = false;
             this.canTakeMissions = false;
-            this.$missionToggleButton.attr('disabled', 'disabled').text("Start taking missions");
-
+            this.updateMissionToggleButton();
+        },
+        updateMissionToggleButton()
+        {
+            if(this.canTakeMissions)
+            {
+                this.$missionToggleButton.removeAttr('disabled');
+            }
+            else
+            {
+                this.$missionToggleButton.attr('disabled', 'disabled').text("Start taking missions");
+            }
         }
     };
 

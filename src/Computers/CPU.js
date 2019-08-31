@@ -38,7 +38,7 @@ class CPU extends EventListener
 
     get remainingLifeCycle()
     {
-        return this.lifeCycle - this.lifeCycleUsed;
+        return Math.max(this.lifeCycle - this.lifeCycleUsed, 0);
     }
 
     get health()
