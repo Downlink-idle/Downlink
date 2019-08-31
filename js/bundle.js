@@ -5757,7 +5757,7 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.5a",
+        version:"0.3.8a",
         requiresHardReset:true,
         canTakeMissions:true,
         /**
