@@ -36,7 +36,7 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.10a",
+        version:"0.3.11a",
         requiresHardReset:true,
         canTakeMissions:true,
         /**
@@ -107,6 +107,7 @@
             $('#settingsModalLink').click(()=>{this.showSettingsModal();});
             $('#game-version').html(this.version);
             $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
+            $('#connection-auto-build-button').click(()=>{this.autoBuildConnection()});
 
             this.$missionToggleButton = $('#missions-toggle-button').click(()=>{
                 this.takingMissions = !this.takingMissions;
@@ -161,7 +162,6 @@
          * This will pass a fresh copy of the canvas to the Downlink object to keep for that purpose and also draw
          * one to the dom. The one on the dom will be drawn to and deleted and drawn to and deleted, but the
          * Downlink object needs to know the raw one.
-         * @param image
          */
         buildCanvas:function()
         {
@@ -171,6 +171,11 @@
                 height:this.mapImageElement.height+'px',
                 width:this.mapImageElement.width+'px'
             });
+        },
+        autoBuildConnection:function()
+        {
+            this.downlink.autoBuildConnection();
+            this.updateConnectionMap();
         },
         newGame:function()
         {
@@ -588,7 +593,7 @@
         },
         updateComputerPartsUI:function()
         {
-            let downlink = this.downlink
+            let downlink = this.downlink;
             $('.part').each(function(index){
                 let $node = $(this),
                     cost = new Decimal($node.data('partCost')),
@@ -610,7 +615,7 @@
 
             for(let i = 0; i < gridSize; i++)
             {
-                html += '<div class="row cpuRow">'
+                html += '<div class="row cpuRow">';
                 for(let j = 0; j < gridSize; j++)
                 {
                     let cpu = cpus[cpuIndex];

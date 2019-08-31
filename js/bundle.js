@@ -4803,22 +4803,6 @@ module.exports = CPUPool;
 },{"../EventListener":22,"../Tasks/Task":30,"./CPU":13}],15:[function(require,module,exports){
 const EventListener = require('../EventListener');
 
-function randomIPAddress()
-{
-    let ipAddress = "";
-    for(let i = 0; i < 4; i++)
-    {
-        if(i)
-        {
-            ipAddress += '.';
-        }
-        ipAddress += Math.floor(Math.random() * 256);
-    }
-    return ipAddress;
-}
-
-let allComputers = {};
-
 class Computer extends EventListener
 {
     /**
@@ -4830,21 +4814,24 @@ class Computer extends EventListener
     {
         super();
         this.name= name;
-        // stop two computers having the same ip address
-        // while the statistic chances of this are **REALLY REALLY** small on any given instance, it will almost certainly
-        // happen to some poor schmuck and fuck his save file up
-        while(ipAddress == null)
-        {
-            let testIPAddress = randomIPAddress();
-            if(Object.keys(allComputers).indexOf(testIPAddress) < 0)
-            {
-                ipAddress = testIPAddress;
-            }
-        }
-        this.ipAddress = ipAddress;
+
+        this.ipAddress = Computer.randomIPAddress();
         this.location = null;
         this.company = null;
-        allComputers[this.simpleHash] = this;
+    }
+
+    static randomIPAddress()
+    {
+        let ipAddress = "";
+        for(let i = 0; i < 4; i++)
+        {
+            if(i)
+            {
+                ipAddress += '.';
+            }
+            ipAddress += Math.floor(Math.random() * 256);
+        }
+        return ipAddress;
     }
 
     setCompany(company)
@@ -4877,17 +4864,6 @@ class Computer extends EventListener
     {
 
     }
-
-    static allComputers()
-    {
-        return allComputers;
-    }
-
-    static getComputerByHash(hash)
-    {
-        return allComputers[hash];
-    }
-
 
     static fromJSON(json, company)
     {
@@ -4985,7 +4961,7 @@ class ComputerGenerator
      * a random point on the image|map is on a land mass. This method builds up a canvas and throws the image onto
      * the canvas. The canvas' context is then bound as an instance variable
      * @see getRandomLandboundPoint
-     * @param mapImage
+     * @param {object} canvas
      */
     defineMapImage(canvas)
     {
@@ -5163,11 +5139,29 @@ module.exports = PlayerComputer;
 },{"../Challenges/Encryption":8,"../Challenges/Password":9,"../Tasks/EncryptionCracker":28,"../Tasks/PasswordCracker":29,"./CPU.js":13,"./CPUPool":14,"./Computer":15}],18:[function(require,module,exports){
 let Computer = require('./Computer');
 
+let allPublicComputers = {};
+
 class PublicComputer extends Computer
 {
     constructor(name, ipAddress)
     {
         super(name, ipAddress);
+        let keys = Object.keys(allPublicComputers);
+        while(keys.indexOf(this.ipAddress) >= 0)
+        {
+            this.ipAddress = Computer.randomIPAddress();
+        }
+        allPublicComputers[this.ipAddress] = this;
+    }
+
+    static getPublicComputerByIPAddress(hash)
+    {
+        return allPublicComputers[hash];
+    }
+
+    static getAllKnownPublicServers()
+    {
+        return allPublicComputers;
     }
 }
 
@@ -5184,12 +5178,13 @@ module.exports = cpus;
 
 },{}],20:[function(require,module,exports){
 const   Computer = require('./Computers/Computer'),
+        PublicComputer = require('./Computers/PublicComputer'),
         EventListener = require('./EventListener'),
         md5 = require('md5');
 
 class InvalidTypeError extends Error{}
 class InvalidComputerError extends Error{}
-class DuplicateComputerError extends Error{}
+//class DuplicateComputerError extends Error{}
 
 let connections = 0;
 const DEFAULT_CONNECTION_DISTANCE = 10;
@@ -5349,22 +5344,12 @@ class Connection extends EventListener
         this.hash = md5(strToHash);
     }
 
-    equals(otherConnection)
-    {
-        if(!otherConnection || !(otherConnection instanceof this))
-        {
-            return false;
-        }
-
-        return JSON.stringify(this.computers) === JSON.stringify(otherConnection.computers);
-    }
-
     toJSON()
     {
-        let json= {name:this.name, computerHashes:[]};
+        let json= {name:this.name, ipAddresses:[]};
         for(let computer of this.computers)
         {
-            json.computerHashes.push(computer.simpleHash);
+            json.ipAddresses.push(computer.ipAddress);
         }
         return json;
     }
@@ -5373,9 +5358,24 @@ class Connection extends EventListener
     {
         let connection = new Connection(json.name);
         connection.startingPoint = startingPoint;
-        for(let computerHash of json.computerHashes)
+        for(let computerHash of json.ipAddresses)
         {
-            connection.addComputer(Computer.getComputerByHash(computerHash));
+            connection.addComputer(PublicComputer.getPublicComputerByIPAddress(computerHash));
+        }
+        return connection;
+    }
+
+    static fromAllPublicServers()
+    {
+        return this.fromComputerArray(Object.values(PublicComputer.getAllKnownPublicServers()));
+    }
+
+    static fromComputerArray(computerArray)
+    {
+        let connection = new Connection();
+        for(let computer of computerArray)
+        {
+            connection.addComputer(computer);
         }
         return connection;
     }
@@ -5383,7 +5383,7 @@ class Connection extends EventListener
 
 module.exports = Connection;
 
-},{"./Computers/Computer":15,"./EventListener":22,"md5":5}],21:[function(require,module,exports){
+},{"./Computers/Computer":15,"./Computers/PublicComputer":18,"./EventListener":22,"md5":5}],21:[function(require,module,exports){
 const   MissionGenerator = require('./Missions/MissionGenerator'),
         EventListener = require('./EventListener'),
         Connection = require('./Connection'),
@@ -5528,13 +5528,18 @@ class Downlink extends EventListener
     }
 
     /**
-     * @param {<Computer>} computer
-     * @returns {<Connection>}
+     * @param {Computer} computer
+     * @returns {Connection}
      */
     addComputerToConnection(computer)
     {
-        let result = this.playerConnection.addComputer(computer);
-        return result;
+        return this.playerConnection.addComputer(computer);
+    }
+
+    autoBuildConnection()
+    {
+        this.playerConnection = Connection.fromAllPublicServers();
+        return this.playerConnection;
     }
 
     toJSON()
@@ -5766,7 +5771,7 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.10a",
+        version:"0.3.11a",
         requiresHardReset:true,
         canTakeMissions:true,
         /**
@@ -5837,6 +5842,7 @@ module.exports = EventListener;
             $('#settingsModalLink').click(()=>{this.showSettingsModal();});
             $('#game-version').html(this.version);
             $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
+            $('#connection-auto-build-button').click(()=>{this.autoBuildConnection()});
 
             this.$missionToggleButton = $('#missions-toggle-button').click(()=>{
                 this.takingMissions = !this.takingMissions;
@@ -5891,7 +5897,6 @@ module.exports = EventListener;
          * This will pass a fresh copy of the canvas to the Downlink object to keep for that purpose and also draw
          * one to the dom. The one on the dom will be drawn to and deleted and drawn to and deleted, but the
          * Downlink object needs to know the raw one.
-         * @param image
          */
         buildCanvas:function()
         {
@@ -5901,6 +5906,11 @@ module.exports = EventListener;
                 height:this.mapImageElement.height+'px',
                 width:this.mapImageElement.width+'px'
             });
+        },
+        autoBuildConnection:function()
+        {
+            this.downlink.autoBuildConnection();
+            this.updateConnectionMap();
         },
         newGame:function()
         {
@@ -6318,7 +6328,7 @@ module.exports = EventListener;
         },
         updateComputerPartsUI:function()
         {
-            let downlink = this.downlink
+            let downlink = this.downlink;
             $('.part').each(function(index){
                 let $node = $(this),
                     cost = new Decimal($node.data('partCost')),
@@ -6340,7 +6350,7 @@ module.exports = EventListener;
 
             for(let i = 0; i < gridSize; i++)
             {
-                html += '<div class="row cpuRow">'
+                html += '<div class="row cpuRow">';
                 for(let j = 0; j < gridSize; j++)
                 {
                     let cpu = cpus[cpuIndex];
