@@ -36,7 +36,7 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.9a",
+        version:"0.3.10a",
         requiresHardReset:true,
         canTakeMissions:true,
         /**
