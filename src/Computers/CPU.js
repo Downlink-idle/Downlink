@@ -1,4 +1,4 @@
-const   Task = require('../Tasks/Task'),
+const   Task = require('./Tasks/Task'),
         EventListener = require('../EventListener'),
         cpus = require('./cpus');
 

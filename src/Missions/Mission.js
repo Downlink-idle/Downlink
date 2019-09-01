@@ -1,7 +1,7 @@
 const   Company = require('../Companies/Company'),
         MissionComputer = require('./MissionComputer'),
-        Password = require('../Challenges/Password'),
-        Encryption = require('../Challenges/Encryption'),
+        Password = require('./Challenges/Password'),
+        Encryption = require('./Challenges/Encryption'),
         EventListener = require('../EventListener'),
         MissionDifficulty = require('./MissionDifficulty'),
         helpers = require('../Helpers');
@@ -35,9 +35,9 @@ class Mission extends EventListener
 
         // these values are all instantiated later.
         /**
-         * @type {MissionDifficulty}
+         * @type {number}
          */
-        this.difficulty = null;
+        this.difficulty = 0;
         /**
          *
          * @type {MissionComputer}
@@ -53,12 +53,7 @@ class Mission extends EventListener
 
     setDifficulty(difficulty)
     {
-        if(!difficulty instanceof MissionDifficulty)
-        {
-            throw new Error("Mission Difficulty unrecognised");
-        }
         this.difficulty = difficulty;
-        return this;
     }
 
     get challenges()
@@ -80,30 +75,23 @@ class Mission extends EventListener
             return this;
         }
 
-        this.computer = new MissionComputer(this.target, this.difficulty.serverType);
-        this.computer.on('accessed', ()=>{
-            this.signalComplete();
-        }).on('connectionStepTraced', (step)=>{
-            this.trigger("connectionStepTraced", step);
-        }).on('hackTracked', ()=>{
-            console.log("Connection traced");
-            this.target.detectHacking();
-        }).on('updateTracePercentage', (percentage)=>{
-            this.trigger('updateTracePercentage', percentage);
-        });
+        this.setDifficulty(this.target.securityLevel);
 
-        let password = null, encryption = null;
+        let missionChallengeDifficulty = Math.floor(this.difficulty);
 
-        /**
-         * This a hoist, not the end result
-         */
-        if(this.difficulty === MissionDifficulty.DIFFICULTIES.EASY)
-        {
-            password = Password.randomDictionaryPassword(Password.PASSWORD_DICTIONARY_DIFFICULTIES.EASIEST);
-            encryption = Encryption.getNewLinearEncryption();
-        }
-
-        this.computer.setPassword(password).setEncryption(encryption);
+        this.computer = new MissionComputer(this.target, this.difficulty.serverType)
+            .setPassword(Password.randomDictionaryPassword(missionChallengeDifficulty))
+            .setEncryption(new Encryption(missionChallengeDifficulty))
+            .on('accessed', ()=>{
+                this.signalComplete();
+            }).on('connectionStepTraced', (step)=>{
+                this.trigger("connectionStepTraced", step);
+            }).on('hackTracked', ()=>{
+                console.log("Connection traced");
+                this.target.traceHacker();
+            }).on('updateTracePercentage', (percentage)=>{
+                this.trigger('updateTracePercentage', percentage);
+            });
 
         this.status = MISSION_STATUSES.UNDERWAY;
         return this;
@@ -114,13 +102,14 @@ class Mission extends EventListener
      */
     get reward()
     {
-        return this.difficulty.modifier * this.computer.difficultyModifier * this.sponsor.playerRespectModifier;
+        return this.difficulty * this.computer.difficultyModifier * this.sponsor.playerRespectModifier;
     }
 
     signalComplete()
     {
         this.status = MISSION_STATUSES.COMPLETE;
         this.sponsor.finishMission(this);
+        this.target.increaseSecurityLevel();
         this.trigger('complete');
     }
 
@@ -139,15 +128,12 @@ class Mission extends EventListener
         this.computer.tick();
     }
 
-    static getNewSimpleMission()
+    static getNewMission()
     {
-        let companies = helpers.shuffleArray([...Company.allCompanies]);
-        return new Mission(
-            companies.shift(),
-            companies.shift()
-        ).setDifficulty(
-            MissionDifficulty.DIFFICULTIES.EASY
-        );
+        let companies = helpers.shuffleArray([...Company.allCompanies]),
+            source = companies.shift(),
+            target = companies.shift();
+        return new Mission(source, target);
     }
 }
 module.exports = Mission;

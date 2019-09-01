@@ -1,7 +1,6 @@
 const   DICTIONARY_CRACKER_MINIMUM_CYCLES = 5,
         SEQUENTIAL_CRACKER_MINIMUM_CYCLES = 20,
-        Task = require('./Task'),
-        Password = require('../Challenges/Password');
+        Task = require('./Task');
 
 class PasswordCracker extends Task
 {

@@ -25,6 +25,10 @@ module.exports = {
             array.splice(index, 1);
         }
         return array;
+    },
+    getRandomIntegerBetween(min, max)
+    {
+
     }
 
 };

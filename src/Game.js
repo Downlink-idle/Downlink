@@ -3,8 +3,8 @@
 
     const   Downlink = require('./Downlink'),
             CPU = require('./Computers/CPU'),
-            EncryptionCracker = require('./Tasks/EncryptionCracker'),
-            {PasswordCracker} = require('./Tasks/PasswordCracker'),
+            EncryptionCracker = require('./Computers/Tasks/EncryptionCracker'),
+            {PasswordCracker} = require('./Computers/Tasks/PasswordCracker'),
             Decimal = require('break_infinity.js'),
             TICK_INTERVAL_LENGTH=100,
             MISSION_LIST_CLASS = 'mission-list-row',
@@ -41,10 +41,10 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.20a",
+        version:"0.3.23a",
         requiresHardReset:true,
         canTakeMissions:true,
-        requiresNewMission:false,
+        requiresNewMission:true,
         /**
          * jquery entities that are needed for updating
          */
@@ -121,7 +121,6 @@
                 this.takingMissions = !this.takingMissions;
                 if(this.takingMissions)
                 {
-                    this.requiresNewMission = true;
                     this.$missionToggleButton.text("Stop Taking Missions");
                 }
                 else
@@ -133,14 +132,12 @@
         },
         buildWorldMap:function()
         {
-            // resizing the worldmap container
             let image = new Image();
             this.mapImageElement = image;
-            let dimensionBounds = {x:{min:0, max:0}, y:{min:0, max:0}};
             /*
              This is needed so that we can know what the image values are before the game loads
              */
-            let p = new Promise((resolve, reject)=>{
+            return new Promise((resolve)=>{
 
                 image.onload =()=>{
                     this.buildCanvas();
@@ -148,8 +145,6 @@
                 };
                 image.src = './img/osm-world-map.png';
             });
-
-            return p;
         },
         getFreshCanvas()
         {
@@ -196,9 +191,8 @@
         saveFile:function()
         {
             let data = new Blob([this.save()], {type: 'text/plain'}),
-                urlParam = window.URL.createObjectURL(data),
                 a = document.createElement('a');
-            a.href = urlParam;
+            a.href = window.URL.createObjectURL(data);
             a.download = 'Downlink-Save.txt';
             document.body.appendChild(a);
             a.click();
@@ -312,7 +306,7 @@
             window.clearTimeout(this.interval);
             return this;
         },
-        restart:function()
+        "restart":function()
         {
             this.stop().start();
         },
@@ -322,7 +316,7 @@
                 let tickResults = this.downlink.tick();
                 this.animateTasks(tickResults.tasks);
                 this.$settingsTimePlayed.html(this.getRunTime());
-                if (this.requiresNewMission)
+                if (this.takingMissions && this.requiresNewMission)
                 {
                     this.getNextMission();
                 }
@@ -348,7 +342,7 @@
         },
         /**
          *
-         * @param {PasswordCracker|undefined} passwordCracker
+         * @param {PasswordCracker|undefined|null} passwordCracker
          */
         animatePasswordField:function(passwordCracker)
         {
@@ -402,7 +396,7 @@
         animateEncryptionGrid:function(encryptionCracker)
         {
             let cells = encryptionCracker.cellsForAnimating;
-            for(let i in cells)
+            for(let i = 0; i < cells.length; i++)
             {
                 let cell = cells[i];
                 let elem = this.$encryptionCells[i];
@@ -484,7 +478,11 @@
             switch(challenge.constructor.name)
             {
                 case "Password":
-                    this.animatePasswordField();
+                    this.animatePasswordField(null);
+                    break;
+                case "EncryptionGrid":
+                    break;
+                default:
                     break;
             }
         },
@@ -537,7 +535,7 @@
                 left:(computer.location.x - width / 2)+'px'
             })
         },
-        hardReset:function()
+        "hardReset":function()
         {
             this.stop();
             localStorage.clear();
@@ -557,8 +555,8 @@
         },
         parseLoadFile:function(loadFile)
         {
-            let jsonAsString = atob(loadFile), json = JSON.parse(jsonAsString);
-            return json;
+            let jsonAsString = atob(loadFile);
+            return JSON.parse(jsonAsString);
         },
         load:function()
         {
@@ -642,7 +640,7 @@
         updateComputerPartsUI:function()
         {
             let downlink = this.downlink;
-            $('.part').each(function(index){
+            $('.part').each(function(){
                 let $node = $(this),
                     cost = new Decimal($node.data('partCost')),
                     canAfford = downlink.canAfford(cost);

@@ -1868,8 +1868,2564 @@ Alphabet.build();
 
 module.exports = Alphabet;
 
-},{"./Helpers":24}],7:[function(require,module,exports){
+},{"./Helpers":23}],7:[function(require,module,exports){
+const   ComputerGenerator = require('../Computers/ComputerGenerator'),
+        companyNames = require('./companies');
+
+/**
+ * @type {Array.<Company>}
+ */
+let companies = [],
+    /** @type {boolean} */
+    locationsSet = false;
+
+
+class Company
+{
+    constructor(name)
+    {
+        this.name = name;
+
+        this.computers = [];
+
+        /**
+         * @type {number} the reward modifier this company offers the player
+         * this is based on the accrued successful missions and the number of times the company has detected you hacking
+         * one of their servers
+         */
+        this.playerRespectModifier = 1;
+        /**
+         * @type {number} the reward modifier this company offers the player
+         * this is the increase exponent for successfully achieved missions
+         */
+        this.missionSuccessIncreaseExponent = 1.001;
+
+        this.hackDetectedExponent = 1.002;
+        this.securityIncreaseExponent = 1.002;
+
+        this.securityLevel = 1;
+    }
+
+    setPublicServer(publicServer)
+    {
+        this.publicServer = publicServer;
+        publicServer.setCompany(this);
+    }
+
+    addComputer(computer)
+    {
+        this.computers.push(computer);
+    }
+
+    finishMission(mission)
+    {
+        this.playerRespectModifier *= this.missionSuccessIncreaseExponent;
+    }
+
+    traceHacker()
+    {
+        this.playerRespectModifier /= this.hackDetectedExponent;
+    }
+
+    increaseSecurityLevel()
+    {
+        this.securityLevel *= this.securityIncreaseExponent;
+    }
+
+    /**
+     * @returns {[<Company>]}
+     */
+    static get allCompanies()
+    {
+        return companies;
+    }
+
+    static setAllPublicServerLocations()
+    {
+        if(locationsSet)
+        {
+            return;
+        }
+        for(let company of companies)
+        {
+            company.publicServer.setLocation(ComputerGenerator.getRandomLandboundPoint());
+        }
+        locationsSet = true;
+    }
+
+    toJSON()
+    {
+
+        let json = {
+            name:this.name,
+            publicServer:this.publicServer.toJSON(),
+            playerRespectModifier:this.playerRespectModifier.toString(),
+            missionSuccessIncreaseExponent:this.missionSuccessIncreaseExponent.toString()
+        };
+
+        return json;
+    }
+
+    static loadCompaniesFromJSON(companiesJSON)
+    {
+        companies = [];
+        for(let companyJSON of companiesJSON)
+        {
+            companies.push(Company.fromJSON(companyJSON));
+        }
+    }
+
+    static fromJSON(companyJSON)
+    {
+        let company = new Company(companyJSON.name);
+        company.setPublicServer(ComputerGenerator.fromJSON(companyJSON.publicServer));
+        company.playerRespectModifier = parseFloat(companyJSON.playerRespectModifier);
+        company.missionSuccessIncreaseExponent = parseFloat(companyJSON.missionSuccessIncreaseExponent);
+
+        locationsSet = true;
+        return company;
+    }
+
+    static buildCompanyList()
+    {
+        companies = [];
+        for(let companyName of companyNames)
+        {
+            let company = new Company(companyName);
+            company.setPublicServer(ComputerGenerator.newPublicServer(company));
+            companies.push(company);
+        }
+    }
+}
+
+
+module.exports = Company;
+
+},{"../Computers/ComputerGenerator":12,"./companies":8}],8:[function(require,module,exports){
+let companyNames = [
+    "Mike Rowe soft",
+    "Pear",
+    "Outel",
+    "Ice",
+    "Tomsung",
+    "Popsy",
+    "Ohm Djezis",
+    "Fizzer",
+    "Wonder",
+    "Global Hyper Mega Compunet",
+    "Athena",
+    "Hybrides",
+    "Tógan Labs", // with permission from Eilís Ní Fhlannagáin
+];
+
+module.exports = companyNames;
+
+},{}],9:[function(require,module,exports){
+const   Task = require('./Tasks/Task'),
+        EventListener = require('../EventListener'),
+        cpus = require('./cpus');
+
+class CPUFullError extends Error{};
+class CPUDuplicateTaskError extends Error{};
+class InvalidTaskError extends Error{};
+
+const CPU_COST_MODIFIER = 4000;
+
+class CPU extends EventListener
+{
+    constructor(name, speed, color, lifeCycle, lifeCycleUsed)
+    {
+        super();
+        let defaultCPU = cpus[0];
+        /**
+         * @type {string}
+         */
+        this.name = name?name:defaultCPU.name;
+        /**
+         * @type {number}
+         */
+        this.speed = parseInt(speed?speed:defaultCPU.speed);
+        /**
+         * @type {string} the rgb() color for the cpu
+         */
+        this.color = color?color:defaultCPU.color;
+        /**
+         * @type {Array.<Task>}
+         */
+        this.tasks = [];
+        /**
+         * @type {number}
+         */
+        this.lifeCycle = parseInt(lifeCycle?lifeCycle:defaultCPU.lifeCycle);
+        this.lifeCycleUsed = parseInt(lifeCycleUsed?lifeCycleUsed:0);
+        this.living = this.lifeCycleUsed < this.lifeCycle;
+    }
+
+    get remainingLifeCycle()
+    {
+        return Math.max(this.lifeCycle - this.lifeCycleUsed, 0);
+    }
+
+    get health()
+    {
+        let decimal = this.remainingLifeCycle / this.lifeCycle,
+            percentage = decimal * 100,
+            fixed = percentage.toFixed(2);
+        if(this.lifeCycleUsed >= this.lifeCycle)
+        {
+            return 0;
+        }
+
+        return fixed;
+    }
+
+    toJSON()
+    {
+        let json = {
+            name:this.name,
+            speed:this.speed.toString(),
+            color:this.color,
+            lifeCycle:this.lifeCycle.toString(),
+            lifeCycleUsed:this.lifeCycleUsed.toString()
+        };
+        return json;
+    }
+
+    static fromJSON(json)
+    {
+        return new CPU(json.name, json.speed, json.color, json.lifeCycle, json.lifeCycleUsed);
+    }
+
+    static getCPUs()
+    {
+        return cpus;
+    }
+
+    tick(load)
+    {
+        this.lifeCycleUsed += Math.round(load);
+        if(this.lifeCycleUsed >= this.lifeCycle)
+        {
+            this.living = false;
+            this.trigger('burnOut');
+        }
+        this.trigger('lifeCycleUpdated');
+    }
+
+    /**
+     * @param cpuData
+     */
+    static getPriceFor(cpuData)
+    {
+        return cpuData.lifeCycle * cpuData.speed / CPU_COST_MODIFIER;
+    }
+
+    static get deadCPUColor()
+    {
+        return 'rgb(255, 0, 0)';
+    }
+}
+
+module.exports = CPU;
+
+},{"../EventListener":21,"./Tasks/Task":17,"./cpus":18}],10:[function(require,module,exports){
+const   CPU = require('./CPU'),
+        Task = require('./Tasks/Task'),
+        helpers = require('../Helpers'),
+        EventListener = require('../EventListener');
+
+/*
+ * Custom exceptions
+ */
+class NoFreeCPUCyclesError extends Error{};
+class CPUDuplicateTaskError extends Error{};
+class InvalidTaskError extends Error{};
+
+class CPUPool extends EventListener
+{
+    constructor(cpus)
+    {
+        super();
+        /**
+         * @type {Array.<CPU>}
+         */
+        this.cpus = [];
+        /**
+         * @type {number} The average speed of all cpus in the pool
+         */
+        this.averageSpeed = 0;
+        /**
+         * @type {number} The average speed of all cpus in the pool
+         */
+        this.totalSpeed = 0;
+        /**
+         * @type {number} The total cycles used by all tasks
+         */
+        this.load = 0;
+        /**
+         * * @type {Array.<Task>}
+         */
+        this.tasks = [];
+        /**
+         * @type {number} The number of CPUs. Because entries can be null, this needs to be counted
+         */
+        this.cpuCount = 0;
+
+        for(let cpu of cpus)
+        {
+            this.addCPU(cpu);
+        }
+    }
+
+    /**
+     * @param {CPU} cpu
+     */
+    addCPU(cpu)
+    {
+        this.setCPUSlot(this.cpus.length, cpu);
+    }
+
+    setCPUSlot(slot, cpu)
+    {
+        if(cpu)
+        {
+            cpu.once('burnOut', () => {
+                this.flagCPUDead(slot, cpu);
+            });
+            this.cpus[slot] = cpu;
+            this.update();
+        }
+        else
+        {
+            this.cpus[slot] = null;
+        }
+    }
+
+    flagCPUDead(slot, cpu)
+    {
+        this.trigger('cpuBurnedOut');
+        this.update();
+        if(this.cpuCount === 0)
+        {
+            this.trigger('cpuPoolEmpty');
+        }
+    }
+
+    update()
+    {
+        this.averageSpeed = 0;
+        this.totalSpeed = 0;
+        this.cpuCount = 0;
+        for(let cpu of this.cpus)
+        {
+            if(cpu && cpu.living)
+            {
+                this.totalSpeed += cpu.speed;
+                this.cpuCount ++;
+            }
+        }
+        this.averageSpeed = this.totalSpeed / this.cpuCount;
+    }
+
+    /**
+     * figure out how many cycles to assign the task. This number will be the larger of the minimum required cycles
+     * and 1/nth of the total cycles available to the pool (where n is the number of total tasks being run, including
+     * this task).
+     * @param {Task} task   The task to figure out the cycles for
+     * @returns {number}   The number of cycles to assign the task
+     */
+    getCyclesForTask(task)
+    {
+        return Math.max(task.minimumRequiredCycles, Math.floor(this.totalSpeed / (this.tasks.length + 1)));
+    }
+
+    /**
+     * Figure out how many cycles to remove from all of the current tasks in the pool and do so.
+     * This method will keep a tally of the freed cycles, as no task will lower its assigned cycles below the minimum
+     * required amount.
+     * @param task
+     * @returns {number}
+     */
+    balanceTaskLoadForNewTask(task)
+    {
+        // get the number of cycles to assign
+        let cyclesToAssign = this.getCyclesForTask(task);
+        if(this.tasks.length === 0)
+        {
+            return cyclesToAssign;
+        }
+
+        let idealCyclesToAssign = cyclesToAssign;
+        if(this.tasks.length > 0)
+        {
+            // average that out
+            let cyclesToTryToTakeAwayFromEachProcess = Math.ceil(idealCyclesToAssign /this.tasks.length),
+                cyclesFreedUp = 0;
+
+            for(let task of this.tasks)
+            {
+                // add the actual amount freed up to the total freed
+                cyclesFreedUp += task.freeCycles(cyclesToTryToTakeAwayFromEachProcess);
+            }
+            cyclesToAssign = cyclesFreedUp;
+        }
+        return cyclesToAssign;
+    }
+
+    /**
+     * Add a task to the cpu pool
+     * @param {Task} task   The task to be added
+     */
+    addTask(task)
+    {
+        // if it's not a task, complain
+        if (!(task instanceof Task))
+        {
+            throw new InvalidTaskError('Tried to add a non task object to a processor');
+        }
+        // if it's already in the pool, complain
+        if(this.tasks.indexOf(task)>=0)
+        {
+            throw new CPUDuplicateTaskError('This task is already on the CPU');
+        }
+        let freeCycles = this.availableCycles;
+        // if you don't have the free oomph, complain
+        if(task.minimumRequiredCycles > freeCycles)
+        {
+            throw new NoFreeCPUCyclesError(`CPU pool does not have the required cycles for ${task.name}. Need ${task.minimumRequiredCycles.toString()} but only have ${freeCycles}.`);
+        }
+
+        // figure out how many cycles to assign
+        let cyclesToAssign = this.balanceTaskLoadForNewTask(task);
+
+        task.setCyclesPerTick(cyclesToAssign);
+        task.on('complete', ()=>{ this.completeTask(task); });
+
+        this.load += task.minimumRequiredCycles;
+        this.tasks.push(task);
+    }
+
+    /**
+     * Finish a task and remove it from the cpu pool
+     * @param {Task} task
+     */
+    completeTask(task)
+    {
+        let freedCycles = task.cyclesPerTick;
+
+        helpers.removeArrayElement(this.tasks, task);
+        this.load -= task.minimumRequiredCycles;
+
+        if(this.tasks.length >= 1)
+        {
+            let freedCyclesPerTick = Math.floor(freedCycles / this.tasks.length);
+            let i = 0;
+            while(i < this.tasks.length && freedCycles > (0))
+            {
+                let task = this.tasks[i];
+                freedCycles -= freedCyclesPerTick;
+                task.addCycles(freedCyclesPerTick);
+                i++;
+            }
+        }
+        this.trigger('taskComplete');
+    }
+
+    get availableCycles()
+    {
+        return this.totalSpeed - this.load;
+    }
+
+    get averageLoad()
+    {
+        return this.load / this.cpuCount;
+    }
+
+    /**
+     *
+     * @returns {Array.<Task>}
+     */
+    tick()
+    {
+        let tasks = [];
+        for(let task of this.tasks)
+        {
+            task.tick();
+            // we do this because the task could be removed from this.tasks after ticking
+            // so it would be lost reference wise and we would have no way of updating it later
+            tasks.push(task);
+        }
+        for(let cpu of this.cpus)
+        {
+            if(cpu && cpu.remainingLifeCycle > 0)
+            {
+                cpu.tick(this.averageLoad);
+            }
+        }
+        return tasks;
+    }
+}
+
+module.exports = CPUPool;
+
+},{"../EventListener":21,"../Helpers":23,"./CPU":9,"./Tasks/Task":17}],11:[function(require,module,exports){
 const EventListener = require('../EventListener');
+
+class Computer extends EventListener
+{
+    /**
+     *
+     * @param {string}      name      The name of the computer
+     * @param {string|null} ipAddress The ipAddress, if none provided a random ip address
+     */
+    constructor(name, ipAddress)
+    {
+        super();
+        this.name= name;
+
+        this.ipAddress = ipAddress?ipAddress:Computer.randomIPAddress();
+        this.location = null;
+        this.company = null;
+    }
+
+    static randomIPAddress()
+    {
+        let ipAddress = "";
+        for(let i = 0; i < 4; i++)
+        {
+            if(i)
+            {
+                ipAddress += '.';
+            }
+            ipAddress += Math.floor(Math.random() * 256);
+        }
+        return ipAddress;
+    }
+
+    setCompany(company)
+    {
+        this.company = company;
+    }
+
+    get simpleHash()
+    {
+        return this.name+'::'+this.ipAddress;
+    }
+
+    setLocation(location)
+    {
+        this.location = location;
+        return this;
+    }
+
+    connect()
+    {
+        return this;
+    }
+
+    disconnect()
+    {
+        return this;
+    }
+
+    tick()
+    {
+
+    }
+
+    static fromJSON(json, company)
+    {
+        let computer = new this(json.name, json.ipAddress);
+
+        computer.location = json.location;
+        computer.company = company;
+        return computer;
+    }
+
+    toJSON()
+    {
+        return {
+            className:this.constructor.name,
+            name:this.name,
+            ipAddress:this.ipAddress,
+            location:this.location
+        };
+    }
+
+
+}
+
+module.exports = Computer;
+
+},{"../EventListener":21}],12:[function(require,module,exports){
+const   PlayerComputer = require('./PlayerComputer'),
+        Computer = require('./Computer'),
+        CPU = require('./CPU'),
+        PublicComputer= require('./PublicComputer'),
+        MissionComputer = require('../Missions/MissionComputer'),
+        constructors = {PlayerComputer:PlayerComputer, PublicComputer:PublicComputer, MissionComputer:MissionComputer};
+
+const LAND_COLOR = 0xf2efe9;
+
+function getRandomIntInclusive(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min; //The maximum is inclusive and the minimum is inclusive
+}
+
+function getRandomBoundInt(boundary)
+{
+    return getRandomIntInclusive(boundary.min, boundary.max);
+}
+
+function colorArrayToHex(colorArray)
+{
+    let [red, green, blue] = colorArray;
+    let rgb = red * 256 * 256 + green * 256 + blue;
+    return rgb;
+}
+
+class ComputerGenerator
+{
+    constructor()
+    {
+        this.canvasContext = null;
+        this.boundaries = {};
+    }
+
+
+    /**
+     *
+     */
+    getRandomLandboundPoint()
+    {
+        let point = null;
+        while(point == null)
+        {
+            let testPoint= this.getRandomPointData();
+            if(testPoint.color === LAND_COLOR)
+            {
+                point = testPoint;
+            }
+        }
+        return point;
+    }
+
+    getRandomPointData()
+    {
+        let point = {
+            x:getRandomBoundInt(this.boundaries.x),
+            y:getRandomBoundInt(this.boundaries.y)
+        };
+        let color = this.canvasContext.getImageData(point.x, point.y, 1, 1).data;
+        point.color =  colorArrayToHex(color);
+
+        return point;
+    }
+
+
+    /**
+     * In order to determine valid locations for any new computer, the class needs a reference to the image so that
+     * a random point on the image|map is on a land mass. This method builds up a canvas and throws the image onto
+     * the canvas. The canvas' context is then bound as an instance variable
+     * @see getRandomLandboundPoint
+     * @param {object} canvas
+     */
+    defineMapImage(canvas)
+    {
+
+        this.boundaries = {
+            x:{min:0, max:canvas.width},
+            y:{min:0, max:canvas.height}
+        };
+        this.canvasContext = canvas.getContext('2d');
+        return this;
+    }
+
+    newPlayerComputer(location)
+    {
+        let potato = new PlayerComputer([new CPU()]);
+        potato.setLocation(location?location:this.getRandomLandboundPoint());
+        return potato;
+    }
+
+    newPublicServer(company)
+    {
+        let server = new PublicComputer(company.name+' Public Server');
+        server.setCompany(company);
+        return server;
+    }
+
+    fromJSON(computerJSON, company)
+    {
+        let computer = constructors[computerJSON.className].fromJSON(computerJSON, company);
+        return computer;
+    }
+}
+
+
+
+module.exports = new ComputerGenerator();
+
+},{"../Missions/MissionComputer":29,"./CPU":9,"./Computer":11,"./PlayerComputer":13,"./PublicComputer":14}],13:[function(require,module,exports){
+const   Password = require('../Missions/Challenges/Password'),
+        {DictionaryCracker, PasswordCracker} = require('./Tasks/PasswordCracker'),
+        Encryption = require('../Missions/Challenges/Encryption'),
+        EncryptionCracker = require('./Tasks/EncryptionCracker'),
+        Computer = require('./Computer'),
+        CPUPool = require('./CPUPool'),
+        CPU = require('./CPU.js');
+
+class InvalidTaskError extends Error{};
+const DEFAULT_MAX_CPUS = 4;
+
+class PlayerComputer extends Computer
+{
+    constructor(cpus, maxCPUs)
+    {
+        super('Home', null, '127.0.0.1');
+        this.cpuPool = new CPUPool(cpus);
+        this.cpuPool.on('cpuBurnedOut', ()=>{
+            this.trigger('cpuBurnedOut');
+        }).on("cpuPoolEmpty", ()=>{
+            this.trigger('cpuPoolEmpty');
+        });
+        this.queuedTasks = [];
+        this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
+    }
+
+    get cpus()
+    {
+        return this.cpuPool.cpus;
+    }
+
+    addCPU(cpu)
+    {
+        this.cpuPool.addCPU(cpu);
+    }
+
+    setCPUSlot(slot, cpu)
+    {
+        this.cpuPool.setCPUSlot(slot, cpu);
+    }
+
+    getTaskForChallenge(challenge)
+    {
+        let task = null;
+        if(challenge instanceof Password)
+        {
+            task = new DictionaryCracker(challenge);
+        }
+        if(challenge instanceof  Encryption)
+        {
+            task = new EncryptionCracker(challenge);
+        }
+
+        if(!task)
+        {
+            throw new InvalidTaskError(`No task found for challenge ${challenge.constructor.name}`);
+        }
+        return task;
+    }
+
+    addTaskForChallenge(challenge)
+    {
+        let task = this.getTaskForChallenge(challenge);
+
+        this.cpuPool.addTask(task);
+    }
+
+    tick()
+    {
+        return this.cpuPool.tick();
+    }
+
+
+    get tasks()
+    {
+        return this.cpuPool.tasks;
+    }
+
+    toJSON()
+    {
+        let json = super.toJSON();
+        json.cpus = [];
+        for(let cpu of this.cpus)
+        {
+            if(cpu)
+            {
+                json.cpus.push(cpu.toJSON());
+            }
+            else
+            {
+                json.cpus.push(null);
+            }
+        }
+        return json;
+    }
+
+    static fromJSON(json)
+    {
+        let cpus = [];
+        for(let cpuJSON of json.cpus)
+        {
+            if(cpuJSON)
+            {
+                cpus.push(CPU.fromJSON(cpuJSON));
+            }
+            else
+            {
+                cpus.push(null);
+            }
+        }
+        let pc = new PlayerComputer(cpus);
+        pc.setLocation(json.location);
+        return pc;
+    }
+}
+
+module.exports = PlayerComputer;
+
+},{"../Missions/Challenges/Encryption":25,"../Missions/Challenges/Password":26,"./CPU.js":9,"./CPUPool":10,"./Computer":11,"./Tasks/EncryptionCracker":15,"./Tasks/PasswordCracker":16}],14:[function(require,module,exports){
+let Computer = require('./Computer');
+
+let allPublicComputers = {};
+
+class PublicComputer extends Computer
+{
+    constructor(name, ipAddress)
+    {
+        super(name, ipAddress);
+        let keys = Object.keys(allPublicComputers);
+        while(keys.indexOf(this.ipAddress) >= 0)
+        {
+            this.ipAddress = Computer.randomIPAddress();
+        }
+        allPublicComputers[this.ipAddress] = this;
+    }
+
+    static getPublicComputerByIPAddress(hash)
+    {
+        return allPublicComputers[hash];
+    }
+
+    static getAllKnownPublicServers()
+    {
+        return allPublicComputers;
+    }
+}
+
+module.exports = PublicComputer;
+
+},{"./Computer":11}],15:[function(require,module,exports){
+const   Alphabet = require('../../Alphabet'),
+        helpers = require('../../Helpers'),
+        Task = require('./Task');
+
+
+const GRID_SIZE_DIFFICULTY_EXPONENT = 0.8;
+
+class EncryptionCell
+{
+    constructor()
+    {
+        this.solved = false;
+        this.letter = Alphabet.getRandomLetter();
+    }
+
+    solve()
+    {
+        this.solved = true;
+        this.letter = '0';
+    }
+
+    tick()
+    {
+        if(this.solved)
+        {
+            return;
+        }
+        this.letter = Alphabet.getRandomLetter();
+    }
+}
+
+class EncryptionCracker extends Task
+{
+    constructor(encryption)
+    {
+        super('EncryptionCracker', encryption, encryption.difficulty);
+        this.rows = encryption.rows;
+        this.cols = encryption.cols;
+        this.encryption = encryption;
+
+        /**
+         * This is just an arbitrary number representing how many clock cycles per tick are needed to solve each cell
+         */
+        this.encryptionDifficulty = encryption.difficulty;
+
+        /**
+         *
+         * @type {number}
+         */
+        this.cyclesPerTick = 0;
+        /**
+         * The amount of progress you have made on the current tick
+         */
+        this.currentTickPercentage = 0;
+
+        /**
+         * @type {Array.<Array.<EncryptionCell>>}
+         */
+        this.grid = [];
+        /**
+         * @type {Array.<EncryptionCell>}
+         */
+        this.cells = [];
+        this.unsolvedCells = [];
+        for(let i = 0; i < this.rows; i++)
+        {
+            let row = [];
+            this.grid.push(row);
+
+            for(let j = 0; j < this.cols; j++)
+            {
+                let cell = new EncryptionCell();
+                row[j] = cell;
+                this.cells.push(cell);
+                this.unsolvedCells.push(cell);
+            }
+        }
+    }
+
+
+    solveNCells(cellsToSolve)
+    {
+        this.trigger('start');
+        for(let i = 0; i < cellsToSolve; i++)
+        {
+            let cell = helpers.getRandomArrayElement(this.unsolvedCells);
+            if(cell)
+            {
+                cell.solve();
+                helpers.removeArrayElement(this.unsolvedCells, cell);
+            }
+        }
+        if(!this.unsolvedCells.length)
+        {
+            this.signalComplete();
+        }
+
+    }
+
+    /**
+     * This should hopefully update the graphic properly
+     * @returns {Array<EncryptionCell>}
+     */
+    get cellsForAnimating()
+    {
+        return this.cells;
+    }
+
+    get percentage()
+    {
+        return (this.cells.length - this.unsolvedCells.length) / (this.cells.length);
+    }
+
+    get solved()
+    {
+        return this.unsolvedCells.length == 0;
+    }
+
+    tick()
+    {
+        super.tick();
+
+        // Cycle through all of the cells and tick them.
+        for (let cell of this.unsolvedCells)
+        {
+            cell.tick();
+        }
+
+        // figure out how many cells to solve
+        // I'm trying to figure out how to make this longer
+        // this may lead to a number less than zero and so, this tick, nothing will happen
+        this.currentTickPercentage += (this.cyclesPerTick / this.encryptionDifficulty) / Math.pow(this.unsolvedCells.length, GRID_SIZE_DIFFICULTY_EXPONENT);
+
+        // if the currentTickPercentage is bigger than one, we solve that many cells
+        if(this.currentTickPercentage >= 1)
+        {
+            let fullCells = Math.floor(this.currentTickPercentage);
+            this.currentTickPercentage -= fullCells;
+            this.solveNCells(fullCells);
+        }
+    }
+
+    static fromJSON(json)
+    {
+        json = json?json:{rows:10,cols:10,difficulty:50};
+        return new EncryptionCracker(json.rows, json.cols, json.difficulty);
+    }
+
+    getRewardRatio()
+    {
+        return this.difficultyRatio / Math.pow(this.ticksTaken, 2);
+    }
+}
+
+module.exports = EncryptionCracker;
+
+},{"../../Alphabet":6,"../../Helpers":23,"./Task":17}],16:[function(require,module,exports){
+const   DICTIONARY_CRACKER_MINIMUM_CYCLES = 5,
+        SEQUENTIAL_CRACKER_MINIMUM_CYCLES = 20,
+        Task = require('./Task');
+
+class PasswordCracker extends Task
+{
+    constructor(password, name, minimumRequiredCycles)
+    {
+        super(name, password, minimumRequiredCycles);
+        this.password = password;
+        this.currentGuess = null;
+    }
+
+    attackPassword()
+    {
+        if(!this.password.solved)
+        {
+            let result = this.password.attack(this.currentGuess);
+            if (result)
+            {
+                this.signalComplete();
+            }
+            return result;
+        }
+    }
+
+}
+
+
+class DictionaryCracker extends PasswordCracker
+{
+    constructor(password)
+    {
+        super(password, 'Dictionary Cracker', DICTIONARY_CRACKER_MINIMUM_CYCLES);
+        this.dictionary = [...password.dictionary];
+        this.totalGuesses = 0;
+    }
+
+    get dictionaryEntriesLeft()
+    {
+        return this.dictionary.length;
+    }
+
+    tick()
+    {
+        super.tick();
+
+        if(!this.solved)
+        {
+            let attacking = true,
+                found = false,
+                guessesThisTick = 0;
+
+            while(attacking)
+            {
+                this.currentGuess = this.dictionary[this.totalGuesses++];
+
+                let guessSuccessful = this.attackPassword();
+                found = found || guessSuccessful;
+                if(guessSuccessful || guessesThisTick++ >= this.cyclesPerTick)
+                {
+                    attacking = false;
+                }
+            }
+        }
+    }
+}
+
+class SequentialAttacker extends PasswordCracker
+{
+    constructor(password)
+    {
+        super(password, 'Sequential Cracker', SEQUENTIAL_CRACKER_MINIMUM_CYCLES);
+    }
+
+    tick()
+    {
+
+    }
+}
+
+module.exports = {
+    PasswordCracker:PasswordCracker,
+    DictionaryCracker:DictionaryCracker,
+    SequentialAttacker:SequentialAttacker
+};
+
+},{"./Task":17}],17:[function(require,module,exports){
+const   EventListener = require('../../EventListener'),
+        Decimal = require('break_infinity.js');
+
+class CPUOverloadError extends Error
+{
+    constructor(task, cycles)
+    {
+        super(`Trying to run a task (${task.name}) with fewer cycles ${cycles} than it requires ${task.minimumRequiredCycles}`);
+        this.task = task;
+        this.cycles = cycles;
+    }
+}
+
+class Task extends EventListener
+{
+    constructor(name, challenge, minimumRequiredCycles)
+    {
+        super();
+        this.name= name;
+        this.minimumRequiredCycles = minimumRequiredCycles?minimumRequiredCycles:10;
+        this.cyclesPerTick = 0;
+        this.weight = 1;
+        this.difficultyRatio = 0;
+        this.ticksTaken = 0;
+        this.working = false;
+        this.completed = false;
+        this.challenge = challenge.setTask(this);
+    }
+
+    setCyclesPerTick(cyclesPerTick)
+    {
+        if(cyclesPerTick < this.minimumRequiredCycles)
+        {
+            throw new CPUOverloadError(this, cyclesPerTick);
+        }
+        this.cyclesPerTick = cyclesPerTick;
+        return this;
+    }
+
+    addCycles(tickIncrease)
+    {
+        this.cyclesPerTick += tickIncrease;
+    }
+
+    /**
+     * Try to release a number of ticks from the task and return the number actually released
+     * @param {number} tickReduction
+     * @returns {number|*}
+     */
+    freeCycles(tickReduction)
+    {
+        // figure out how many freeable ticks we have
+        const freeableTicks = this.cyclesPerTick-this.minimumRequiredCycles;
+        // if it's one or less, free none and return 0
+        let ticksToFree = 0;
+        if(freeableTicks > 1)
+        {
+            if(freeableTicks > tickReduction)
+            {
+                ticksToFree = tickReduction;
+            }
+            else
+            {
+                ticksToFree = Math.floor(freeableTicks / 2);
+            }
+        }
+        this.cyclesPerTick -= ticksToFree;
+        return ticksToFree;
+    }
+
+    signalComplete()
+    {
+        this.working = false;
+        this.completed = true;
+        this.trigger('complete');
+        this.challenge.solve();
+    }
+
+    getRewardRatio()
+    {
+        return 0;
+        //return this.difficultyRatio / Math.pow(this.ticksTaken, 2.5);
+    }
+
+    tick()
+    {
+        this.ticksTaken++;
+    }
+}
+
+module.exports = Task;
+
+},{"../../EventListener":21,"break_infinity.js":1}],18:[function(require,module,exports){
+let cpus = [
+    {name:"Garbo Processor", speed:20, lifeCycle:20000, color:'rgb(108, 140, 217)'},
+    {name:"Garbo Processor II", speed:40, lifeCycle:40000, color:'rgb(77, 98, 148)'},
+    {name:"Garbo Processor II.5", speed:80, lifeCycle:60000, color:'rgb(38, 66, 136)'},
+    {name:"Garbo Processor BLT", speed:133, lifeCycle: 100000, color:'rgb(1, 23, 74)'}
+];
+module.exports = cpus;
+
+},{}],19:[function(require,module,exports){
+const   Computer = require('./Computers/Computer'),
+        PublicComputer = require('./Computers/PublicComputer'),
+        EventListener = require('./EventListener'),
+        helpers = require('./Helpers'),
+        md5 = require('md5');
+
+class InvalidTypeError extends Error{}
+class InvalidComputerError extends Error{}
+//class DuplicateComputerError extends Error{}
+
+let connections = 0;
+
+/**
+ * A class to encapsulate the points in between you and the target computer, excluding both
+ */
+class Connection extends EventListener
+{
+    constructor(name)
+    {
+        super();
+        if(!name)
+        {
+            connections++;
+        }
+        /**
+         * This is used for easy comparison between two connections
+         * and will only be of import in later game because in early game the connections will be automated
+         * @type {string}
+         */
+        this.hash = '';
+        /**
+         * * @type {Computer}
+         */
+        this.startingPoint = null;
+        /**
+         * @type {Computer}
+         */
+        this.endPoint = null;
+        this.name = name?name:`Connection ${connections}`;
+        this.computers=[];
+        this.connectionLength = 0;
+        this.computersTraced = 0;
+        this.amountTraced = 0;
+        this.traceTicks = 0;
+    }
+
+    static improveConnectionDistance(amount)
+    {
+        Connection.connectionDistance += amount;
+    }
+
+    get totalConnectionLength()
+    {
+        return this.connectionLength * Connection.connectionDistance;
+    }
+
+    setStartingPoint(startingComputer)
+    {
+        this.startingPoint = startingComputer;
+        this.connectionLength ++;
+        return this;
+    }
+
+    setEndPoint(endPointComputer)
+    {
+        this.endPoint = endPointComputer;
+        this.connectionLength ++;
+        return this;
+    }
+
+    connect()
+    {
+        this.computersTraced = 0;
+        this.amountTraced = 0;
+        return this.open();
+    }
+
+    reconnect()
+    {
+        this.open();
+    }
+
+    open()
+    {
+        for(let computer of this.computers)
+        {
+            computer.connect();
+        }
+        return this;
+    }
+
+    /**
+     * this is needed so that mission computers retain the state of the connection's tracedness
+     */
+    clone()
+    {
+        let clone = new Connection(this.name);
+        for(let computer of this.computers)
+        {
+            clone.addComputer(computer);
+        }
+        return clone;
+    }
+
+    /**
+     * @param {Connection} otherConnection
+     * @returns {boolean}
+     */
+    equals(otherConnection)
+    {
+        return (this.hash === otherConnection.hash);
+    }
+
+    /**
+     * @param stepTraceAmount the amount of the current step in the connection to trace by
+     */
+    traceStep(stepTraceAmount)
+    {
+        this.amountTraced += stepTraceAmount;
+        this.traceTicks++;
+        if(this.traceTicks % Connection.sensitivity === 0)
+        {
+            this.trigger('updateTracePercentage', this.tracePercent);
+        }
+
+        if(this.amountTraced >= Connection.connectionDistance)
+        {
+            this.computersTraced++;
+            this.amountTraced = 0;
+            if(this.computersTraced >= this.connectionLength)
+            {
+                this.trigger("connectionTraced");
+            }
+            this.trigger("stepTraced", this.computersTraced);
+        }
+    }
+
+    get totalAmountTraced()
+    {
+        let traceAmount = (this.computersTraced * Connection.connectionDistance) + this.amountTraced;
+        return traceAmount;
+    }
+
+    close()
+    {
+        let reverseComputers = this.computers.reverse();
+        for(let computer of reverseComputers)
+        {
+            computer.disconnect();
+        }
+        return this;
+    }
+
+    addComputer(computer)
+    {
+        if(!(computer instanceof Computer))
+        {
+            throw new InvalidTypeError("Incorrect object type added");
+        }
+        if(this.computers.indexOf(computer) >= 0)
+        {
+            this.removeComputer(computer);
+            return this;
+        }
+        this.computers.push(computer);
+        this.connectionLength ++;
+        this.buildHash();
+        return this;
+    }
+
+    get tracePercent()
+    {
+        return (this.totalAmountTraced / this.totalConnectionLength * 100).toFixed(2);
+    }
+
+    removeComputer(computer)
+    {
+        if(this.computers.indexOf(computer) < 0)
+        {
+            throw new InvalidComputerError("Computers not found in connection");
+        }
+        this.buildHash();
+        helpers.removeArrayElement(this.computers, computer);
+        this.connectionLength --;
+    }
+
+    buildHash()
+    {
+        let strToHash = '';
+        for(let computer of this.computers)
+        {
+            strToHash += computer.simpleHash;
+        }
+        this.hash = md5(strToHash);
+    }
+
+    toJSON()
+    {
+        let json= {name:this.name, ipAddresses:[]};
+        for(let computer of this.computers)
+        {
+            json.ipAddresses.push(computer.ipAddress);
+        }
+        return json;
+    }
+
+    static fromJSON(json, startingPoint)
+    {
+        let connection = new Connection(json.name);
+        connection.startingPoint = startingPoint;
+        for(let ipAddress of json.ipAddresses)
+        {
+            connection.addComputer(PublicComputer.getPublicComputerByIPAddress(ipAddress));
+        }
+        return connection;
+    }
+
+    static fromAllPublicServers()
+    {
+        return this.fromComputerArray(Object.values(PublicComputer.getAllKnownPublicServers()));
+    }
+
+    static fromComputerArray(computerArray)
+    {
+        let connection = new Connection();
+        for(let computer of computerArray)
+        {
+            connection.addComputer(computer);
+        }
+        return connection;
+    }
+}
+
+Connection.connectionDistance = 1300;
+Connection.sensitivity = 25;
+
+module.exports = Connection;
+
+},{"./Computers/Computer":11,"./Computers/PublicComputer":14,"./EventListener":21,"./Helpers":23,"md5":5}],20:[function(require,module,exports){
+const   MissionGenerator = require('./Missions/MissionGenerator'),
+        EventListener = require('./EventListener'),
+        Connection = require('./Connection'),
+        Company = require('./Companies/Company'),
+        ComputerGenerator = require('./Computers/ComputerGenerator'),
+        CPU = require('./Computers/CPU'),
+        Decimal = require('break_infinity.js');
+
+/**
+ * This class serves to expose, to the front end, any of the game classes functionality that the UI needs access to
+ * It exists only as a means of hard encapsulation
+ * This exists as an instantiable class only because it's really difficult to get static classes to have events
+ */
+class Downlink extends EventListener
+{
+    constructor()
+    {
+        super();
+        /**
+         * @type {PlayerComputer}
+         */
+        this.playerComputer = null;
+        /**
+         *
+         * @type {Connection}
+         */
+        this.playerConnection = null;
+        this.getNewConnection();
+        this.runTime = 0;
+        this.lastTickTime = Date.now();
+        /**
+         * @type {Decimal}
+         */
+        this.currency = new Decimal(0);
+    }
+
+    getNewConnection()
+    {
+        this.playerConnection = new Connection("Player Connection");
+        return this.playerConnection;
+    }
+
+    setPlayerComputer()
+    {
+        this.playerComputer = ComputerGenerator.newPlayerComputer();
+        this.playerConnection.setStartingPoint(this.playerComputer);
+        return this.playerComputer;
+    }
+
+    getPlayerComputer()
+    {
+        if(!this.playerComputer)
+        {
+            this.setPlayerComputer();
+        }
+        this.playerComputer.on('cpuPoolEmpty', ()=>{this.trigger('cpuPoolEmpty')});
+        return this.playerComputer;
+    }
+
+    tick()
+    {
+        let now = Date.now();
+        this.runTime += now - this.lastTickTime;
+
+        let tasks = this.playerComputer.tick();
+        if(this.activeMission)
+        {
+            this.activeMission.tick();
+        }
+        this.lastTickTime = Date.now();
+        return {
+            tasks:tasks
+        }
+    }
+
+    getNextMission()
+    {
+        if(this.playerComputer.cpuPool.cpuCount === 0)
+        {
+            return null;
+        }
+
+        this.activeMission = MissionGenerator.getFirstAvailableMission().on("complete", ()=>{
+            this.finishCurrentMission(this.activeMission);
+            this.activeMission = null;
+            this.trigger('missionComplete');
+        });
+        this.activeMission.computer.connect(this.playerConnection);
+        for(let challenge of this.activeMission.challenges)
+        {
+            challenge.on("solved", ()=>{this.challengeSolved(challenge)});
+            this.playerComputer.addTaskForChallenge(challenge);
+        }
+        return this.activeMission;
+    }
+
+    finishCurrentMission(mission)
+    {
+        this.currency = this.currency.add(mission.reward);
+    }
+
+    challengeSolved(challenge)
+    {
+        this.trigger("challengeSolved", challenge);
+    }
+
+    /**
+     * Just exposing the currently available missions
+     */
+    get availableMissions()
+    {
+        return MissionGenerator.availableMissions;
+    }
+
+    get currentMissionTasks()
+    {
+        return this.playerComputer.missionTasks;
+    }
+
+    get allPublicServers()
+    {
+        let servers = [];
+        for(let company of Company.allCompanies)
+        {
+            servers.push(company.publicServer);
+        }
+        return servers;
+    }
+
+    /**
+     *
+     * @returns {[<Company>]}
+     */
+    get companies()
+    {
+        return Company.allCompanies;
+    }
+
+    performPostLoad(canvas)
+    {
+        this.buildComputerGenerator(canvas);
+        Company.setAllPublicServerLocations();
+    }
+
+    buildComputerGenerator(imageReference)
+    {
+        ComputerGenerator.defineMapImage(imageReference);
+    }
+
+    /**
+     * @param {Computer} computer
+     * @returns {Connection}
+     */
+    addComputerToConnection(computer)
+    {
+        return this.playerConnection.addComputer(computer);
+    }
+
+    autoBuildConnection()
+    {
+        this.playerConnection = Connection.fromAllPublicServers();
+        return this.playerConnection;
+    }
+
+    toJSON()
+    {
+        let json = {
+            playerComputer:this.playerComputer.toJSON(),
+            playerConnection:this.playerConnection.toJSON(),
+            companies:[],
+            currency:this.currency.toString(),
+            runTime:this.runTime
+        };
+        for(let company of this.companies)
+        {
+            json.companies.push(company.toJSON());
+        }
+        return json;
+    }
+
+    static fromJSON(json)
+    {
+        Company.loadCompaniesFromJSON(json.companies);
+
+        let downlink = new Downlink();
+
+        downlink.currency = Decimal.fromString(json.currency);
+        downlink.playerComputer = ComputerGenerator.fromJSON(json.playerComputer);
+        downlink.runTime = parseInt(json.runTime);
+        downlink.lastTickTime = Date.now();
+
+        downlink.playerConnection = Connection.fromJSON(json.playerConnection);
+        downlink.playerConnection.setStartingPoint(downlink.playerComputer);
+
+        return downlink;
+    }
+
+    static getNew()
+    {
+        Company.buildCompanyList();
+
+        let dl = new Downlink();
+        return dl;
+    }
+
+    static stop()
+    {
+
+    }
+
+    get secondsRunning()
+    {
+        return Math.floor(this.runTime / 1000);
+    }
+
+    canAfford(cost)
+    {
+        return this.currency.greaterThan(cost);
+    }
+
+    buyCPU(cpuData, slot)
+    {
+        let cpu = CPU.fromJSON(cpuData);
+        this.currency = this.currency.minus(CPU.getPriceFor(cpuData));
+        this.playerComputer.setCPUSlot(slot, cpu);
+
+    }
+}
+
+module.exports = Downlink;
+
+},{"./Companies/Company":7,"./Computers/CPU":9,"./Computers/ComputerGenerator":12,"./Connection":19,"./EventListener":21,"./Missions/MissionGenerator":31,"break_infinity.js":1}],21:[function(require,module,exports){
+class Event
+{
+    constructor(owner, name, once)
+    {
+        this.owner = owner;
+        this.name = name;
+        this.once = once;
+        this.triggered = false;
+        this.callbacks = [];
+    }
+
+    addListener(callback)
+    {
+        this.callbacks.push(callback);
+        return this;
+    }
+
+    removeListener(callback)
+    {
+        let index = this.callbacks.indexOf(callback);
+        if(index >= 0)
+        {
+            this.callbacks.splice(index, 1);
+        }
+        return this;
+    }
+
+    trigger(args)
+    {
+        if(!this.once || (this.once && !this.triggered))
+        {
+            this.callbacks.forEach(function (callback) {
+                callback(...args);
+            });
+        }
+        this.triggered = true;
+    }
+}
+
+class EventListener
+{
+    constructor()
+    {
+        /**
+         * @type {{Event}}
+         */
+        this.events = {};
+    }
+
+    once(eventName, callback)
+    {
+        let e = eventName.toLowerCase();
+        if(!this.events[e])
+        {
+            this.events[e] = new Event(this, e, true);
+        }
+        this.events[e].triggered = false;
+        this.events[e].addListener(callback);
+        return this;
+    }
+
+    on(eventName, callback)
+    {
+        let e = eventName.toLowerCase();
+        if(!this.events[e])
+        {
+            this.events[e] = new Event(this, e);
+        }
+        this.events[e].addListener(callback);
+        return this;
+    }
+
+    off(eventName)
+    {
+        if(eventName)
+        {
+            let e = eventName.toLowerCase();
+            this.events[e] = null;
+        }
+        else
+        {
+            this.events = {};
+        }
+        return this;
+    }
+
+    addListener(eventName, callback)
+    {
+        let e = eventName.toLowerCase();
+        return this.on(e, callback);
+    }
+
+    trigger(eventName, ...args)
+    {
+        let e = eventName.toLowerCase();
+        if(this.events[e])
+        {
+            try
+            {
+                let evt = this.events[e];
+                evt.trigger(args);
+            }
+            catch(e)
+            {
+                console.log(e);
+            }
+        }
+    }
+
+
+    removeListener(eventName, callback)
+    {
+        let e = eventName.toLowerCase();
+        if(this.events[e])
+        {
+            this.events[e].removeListener(callback);
+        }
+    }
+}
+
+module.exports = EventListener;
+
+},{}],22:[function(require,module,exports){
+// This file is solely responsible for exposing the necessary parts of the game to the UI elements
+(($)=>{$(()=>{
+
+    const   Downlink = require('./Downlink'),
+            CPU = require('./Computers/CPU'),
+            EncryptionCracker = require('./Computers/Tasks/EncryptionCracker'),
+            {PasswordCracker} = require('./Computers/Tasks/PasswordCracker'),
+            Decimal = require('break_infinity.js'),
+            TICK_INTERVAL_LENGTH=100,
+            MISSION_LIST_CLASS = 'mission-list-row',
+            COMPANY_REP_CLASS = 'company-rep-row',
+            PLAYER_COMPUTER_CPU_ROW_CLASS = "cpu-row";
+
+    function parseVersionNumber(versionNumberAsString)
+    {
+        let parts = versionNumberAsString.split('.'),
+            partAsNumber = 0;
+        for(let partIndex in parts)
+        {
+            let exponent = parts.length - 1 - partIndex,
+                part = parseInt(parts[partIndex], 10),
+                multiple = Math.pow(1000, exponent);
+            partAsNumber +=  (part * multiple);
+        }
+        return partAsNumber
+    }
+
+    function saveIsOlder(oldVersionString, currentVersionString)
+    {
+        let oldVersion = parseVersionNumber(oldVersionString),
+            currentVersion = parseVersionNumber(currentVersionString);
+
+        return oldVersion < currentVersion;
+    }
+
+    let game = {
+        interval:null,
+        ticking:true,
+        initialised:false,
+        takingMissions:false,
+        mission:false,
+        computer:null,
+        downlink:null,
+        version:"0.3.23a",
+        requiresHardReset:true,
+        canTakeMissions:true,
+        requiresNewMission:true,
+        /**
+         * jquery entities that are needed for updating
+         */
+        $missionContainer:null,
+        $activeMissionName:null,
+        $activeMissionPassword:null,
+        $activeMissionEncryptionGrid:null,
+        $activeMissionEncryptionType:null,
+        $activeMissionIPAddress:null,
+        $activeMissionServerName:null,
+        $playerCurrencySpan:null,
+        $playerStandingsTitle:null,
+        $playerComputerCPUListContainer:null,
+        $worldMapModal:null,
+        $worldMapContainer:null,
+        $worldMapCanvasContainer:null,
+        $activeMissionServer:null,
+        $settingsTimePlayed:null,
+        $settingsModal:null,
+        $importExportTextarea:null,
+        $computerBuildModal:null,
+        $computerBuild:null,
+        $computerPartsCPURow:null,
+        $connectionLength:null,
+        $connectionTraced:null,
+        $connectionWarningRow:null,
+        $missionToggleButton:null,
+        $connectionTracePercentage:null,
+        $encryptionCells:null,
+
+        /**
+         * HTML DOM elements, as opposed to jQuery entities for special cases
+         */
+        mapImageElement:null,
+        bindUIElements:function()
+        {
+            this.$missionContainer = $('#mission-list');
+            this.$activeMissionName = $('#active-mission');
+            this.$activeMissionServer = $('#active-mission-machine-details');
+            this.$activeMissionPassword = $('#active-mission-password-input');
+            this.$activeMissionEncryptionGrid = $('#active-mission-encryption-grid');
+            this.$activeMissionEncryptionType = $('#active-mission-encryption-type');
+            this.$activeMissionIPAddress = $('#active-mission-server-ip-address');
+            this.$activeMissionServerName = $('#active-mission-server-name');
+            this.$playerCurrencySpan = $('#player-currency');
+            this.$playerStandingsTitle = $('#player-company-standings-title');
+            this.$playerComputerCPUListContainer = $('#player-computer-processors');
+            this.$worldMapModal = $('#connection-modal');
+            this.$worldMapContainer = $('#world-map');
+            this.$worldMapCanvasContainer = $('#canvas-container');
+            this.$worldMapModal.on("hide.bs.modal", ()=>{this.afterHideConnectionManager()});
+            this.$settingsTimePlayed = $('#settings-time-played');
+            this.$settingsModal = $('#settings-modal');
+            this.$importExportTextarea = $('#settings-import-export');
+            this.$computerBuildModal = $('#computer-build-modal');
+            this.$computerBuild = $('#computer-build-layout');
+            this.$computerPartsCPURow = $('#computer-parts-cpu-row');
+            this.$connectionLength = $('#connection-length');
+            this.$connectionTraced = $('#connection-traced');
+            this.$connectionTracePercentage = $('#connection-trace-percentage');
+            this.$connectionWarningRow = $('#connection-warning-row');
+            $('#settings-export-button').click(()=>{
+                this.$importExportTextarea.val(this.save());
+            });
+            $('#settings-import-button').click(()=>{this.importFile(this.$importExportTextarea.val())});
+            $('#settings-save-button').click(()=>{this.saveFile();});
+            $('#connectionModalLink').click(()=>{this.showConnectionManager();});
+            $('#settingsModalLink').click(()=>{this.showSettingsModal();});
+            $('#game-version').html(this.version);
+            $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
+            $('#connection-auto-build-button').click(()=>{this.autoBuildConnection()});
+
+            this.$missionToggleButton = $('#missions-toggle-button').click(()=>{
+                this.takingMissions = !this.takingMissions;
+                if(this.takingMissions)
+                {
+                    this.$missionToggleButton.text("Stop Taking Missions");
+                }
+                else
+                {
+                    this.$missionToggleButton.text("Start Taking Missions");
+                }
+            });
+
+        },
+        buildWorldMap:function()
+        {
+            let image = new Image();
+            this.mapImageElement = image;
+            /*
+             This is needed so that we can know what the image values are before the game loads
+             */
+            return new Promise((resolve)=>{
+
+                image.onload =()=>{
+                    this.buildCanvas();
+                    resolve();
+                };
+                image.src = './img/osm-world-map.png';
+            });
+        },
+        getFreshCanvas()
+        {
+            let canvas = document.createElement('canvas');
+            canvas.width = this.mapImageElement.width;
+            canvas.height = this.mapImageElement.height;
+            canvas
+                .getContext('2d')
+                .drawImage(
+                    this.mapImageElement, 0, 0,
+                    this.mapImageElement.width, this.mapImageElement.height
+                );
+            this.$worldMapCanvasContainer.empty().append($(canvas));
+            return canvas;
+        },
+        /**
+         * Using a canvas for two reasons. JavaScript requires one to figure out whether a random point is landbound or not
+         * This will pass a fresh copy of the canvas to the Downlink object to keep for that purpose and also draw
+         * one to the dom. The one on the dom will be drawn to and deleted and drawn to and deleted, but the
+         * Downlink object needs to know the raw one.
+         */
+        buildCanvas:function()
+        {
+            this.downlink.performPostLoad(this.getFreshCanvas());
+
+            this.$worldMapContainer.css({
+                height:this.mapImageElement.height+'px',
+                width:this.mapImageElement.width+'px'
+            });
+        },
+        autoBuildConnection:function()
+        {
+            this.downlink.autoBuildConnection();
+            this.updateConnectionMap();
+        },
+        newGame:function()
+        {
+            this.downlink = Downlink.getNew();
+        },
+        loadGame:function(json)
+        {
+            this.downlink = Downlink.fromJSON(json);
+        },
+        saveFile:function()
+        {
+            let data = new Blob([this.save()], {type: 'text/plain'}),
+                a = document.createElement('a');
+            a.href = window.URL.createObjectURL(data);
+            a.download = 'Downlink-Save.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        },
+        importFile:function(json)
+        {
+            this.stop();
+            this.initialised = false;
+            this.loadGame(json);
+            this.performPostLoadCleanup().then(()=>{
+                this.start();
+            });
+        },
+        needsHardReset:function(saveFile)
+        {
+            if(!saveFile.version)
+            {
+                return true;
+            }
+            return (this.requiresHardReset && saveIsOlder(saveFile.version, this.version));
+        },
+        initialise:function()
+        {
+            this.bindUIElements();
+
+            let saveFile = this.load();
+            if (saveFile && !this.needsHardReset(saveFile))
+            {
+                this.loadGame(saveFile);
+            }
+            else
+            {
+                this.newGame();
+            }
+
+            return this.performPostLoadCleanup();
+        },
+        performPostLoadCleanup:function()
+        {
+            this.updatePlayerDetails();
+
+            this.initialised = true;
+            return this.buildWorldMap().then(()=>{
+                let pc = this.downlink.getPlayerComputer();
+                pc.on('cpuBurnedOut', ()=>{this.buildComputerGrid();});
+                pc.on('cpuPoolEmpty', ()=>{this.handleEmptyCPUPool();});
+                this.addComputerToWorldMap(pc);
+                this.updateComputerBuild();
+                this.buildComputerPartsUI();
+                this.buildComputerGrid();
+
+                this.canTakeMissions = pc.cpuPool.cpuCount > 0;
+                this.updateMissionToggleButton();
+
+                this.addPublicComputersToWorldMap();
+                this.$connectionLength.html(this.downlink.playerConnection.connectionLength);
+                this.showOrHideConnectionWarning();
+
+                this.ticking = true;
+                this.updateConnectionMap();
+                this.save();
+            });
+        },
+        addPublicComputersToWorldMap:function()
+        {
+            for(let computer of this.downlink.allPublicServers)
+            {
+                this.addComputerToWorldMap(computer, ()=>{
+                    this.addComputerToConnection(computer);
+                });
+            }
+        },
+        addComputerToConnection:function(computer)
+        {
+            this.downlink.addComputerToConnection(computer);
+            this.updateConnectionMap();
+        },
+        updateConnectionMap:function()
+        {
+            let connection = this.downlink.playerConnection;
+            let context = this.getFreshCanvas().getContext('2d');
+            let currentComputer = this.downlink.playerComputer;
+            for(let computer of connection.computers)
+            {
+                // connect the current computer to the current computer in the connection
+                context.beginPath();
+                context.moveTo(currentComputer.location.x, currentComputer.location.y);
+                context.lineTo(computer.location.x, computer.location.y);
+                context.stroke();
+                // set the currentComputer to be the current computer in the connection
+                currentComputer = computer;
+            }
+        },
+        start:function(){
+            this.ticking = true;
+            if(this.initialised)
+            {
+                this.tick();
+            }
+            else
+            {
+                this.initialise().then(() => {
+                    this.tick();
+                });
+            }
+            return this;
+        },
+        stop:function(){
+            this.ticking = false;
+            window.clearTimeout(this.interval);
+            return this;
+        },
+        "restart":function()
+        {
+            this.stop().start();
+        },
+        tick:function() {
+            if (this.ticking)
+            {
+                let tickResults = this.downlink.tick();
+                this.animateTasks(tickResults.tasks);
+                this.$settingsTimePlayed.html(this.getRunTime());
+                if (this.takingMissions && this.requiresNewMission)
+                {
+                    this.getNextMission();
+                }
+                this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
+            }
+        },
+        animateTasks:function(tasks)
+        {
+            if(tasks.length)
+            {
+                for(let task of tasks)
+                {
+                    if(task instanceof EncryptionCracker)
+                    {
+                        this.animateEncryptionGrid(task);
+                    }
+                    else if(task instanceof PasswordCracker)
+                    {
+                        this.animatePasswordField(task);
+                    }
+                }
+            }
+        },
+        /**
+         *
+         * @param {PasswordCracker|undefined|null} passwordCracker
+         */
+        animatePasswordField:function(passwordCracker)
+        {
+            if(passwordCracker)
+            {
+                this.$activeMissionPassword
+                    .val(passwordCracker.currentGuess)
+                    .removeClass("solved-password unsolved-password")
+                    .addClass(passwordCracker.completed ? "solved-password" : "unsolved-password");
+            }
+            else
+            {
+                this.$activeMissionPassword
+                    .removeClass("unsolved-password")
+                    .addClass('solved-password');
+            }
+        },
+        updateEncryptionGridUI(numberOfCells, numberOfCols)
+        {
+            this.$activeMissionEncryptionGrid.css({
+                'grid-template-columns':`repeat(${numberOfCols}, 1fr)`,
+                "width":numberOfCols * 30+"px"
+            });
+            const   numberOfExtantCells = this.$activeMissionEncryptionGrid.children().length,
+                    diff = numberOfCells - numberOfExtantCells;
+
+            if(diff > 0)
+            {
+                // we need to add new cells
+                let htmlToAppend = '';
+                for (let i = 0; i < diff; i++)
+                {
+                    htmlToAppend += '<div class="encryption-cell unsolved-encryption-cell">*</div>';
+                }
+
+                this.$activeMissionEncryptionGrid.append($(htmlToAppend));
+            }
+            else if(diff < 0)
+            {
+                // we need to remove cells
+                let cellsToRemove = Math.abs(diff);
+                $(`.encryption-cell:nth-last-child(-n+${cellsToRemove})`).remove();
+            }
+            $('.encryption-cell').removeClass('solved-encryption-cell').addClass('unsolved-encryption-cell');
+            this.$encryptionCells = document.querySelectorAll('.encryption-cell');
+        },
+        /**
+         *
+         * @param {EncryptionCracker} encryptionCracker
+         */
+        animateEncryptionGrid:function(encryptionCracker)
+        {
+            let cells = encryptionCracker.cellsForAnimating;
+            for(let i = 0; i < cells.length; i++)
+            {
+                let cell = cells[i];
+                let elem = this.$encryptionCells[i];
+                let classes = elem.classList;
+                if(cell.solved && classes.contains('unsolved-encryption-cell'))
+                {
+                    classes.remove('unsolved-encryption-cell');
+                    classes.add('solved-encryption-cell');
+                }
+                if(elem.childNodes[0].nodeValue !== cell.letter)
+                {
+                    elem.childNodes[0].nodeValue = cell.letter;
+                }
+            }
+        },
+        getNextMission:function(){
+            if(!this.takingMissions)
+            {
+                return false;
+            }
+            this.$activeMissionServer.show();
+            this.$connectionTraced.html(0);
+            this.$connectionTracePercentage.html(0);
+            this.mission = this.downlink.getNextMission();
+            this.updateMissionInterface(this.mission);
+            this.updatePlayerDetails();
+            this.updateComputerPartsUI();
+            this.requiresNewMission = false;
+
+            this.downlink
+                .on("challengeSolved", (task)=>{this.updateChallenge(task)});
+            // bind the mission events to the UI updates
+            this.mission.on('complete', ()=>{
+                this.requiresNewMission = true;
+                this.save();
+            }).on("connectionStepTraced", (stepsTraced)=>{
+                this.$connectionTraced.html(stepsTraced);
+            }).on("updateTracePercentage", (percentageTraced)=>{
+                this.$connectionTracePercentage.html(percentageTraced);
+            });
+
+        },
+        updatePlayerDetails:function()
+        {
+            this.$playerCurrencySpan.html(this.downlink.currency.toFixed(2));
+            this.updatePlayerReputations();
+        },
+        updatePlayerReputations:function()
+        {
+            $(`.${COMPANY_REP_CLASS}`).remove();
+            let html = '';
+            for(let company of this.downlink.companies)
+            {
+                html += `<div class="row ${COMPANY_REP_CLASS}"><div class="col">${company.name}</div><div class="col-2">${company.playerRespectModifier.toFixed(2)}</div></div>`;
+            }
+            this.$playerStandingsTitle.after(html);
+        },
+        updateComputerBuild:function()
+        {
+            $(`.${PLAYER_COMPUTER_CPU_ROW_CLASS}`).remove();
+
+            for(let cpu of this.downlink.playerComputer.cpus)
+            {
+                if(cpu)
+                {
+                    let $row = $(`<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}">
+                        <div class="col">${cpu.name}</div>
+                        <div class="col-2">${cpu.speed}MHz</div>
+                        <div class="col-5 cpu-remaining-cycle">${cpu.remainingLifeCycle}</div>
+                    </div>`).appendTo(this.$playerComputerCPUListContainer);
+                    cpu.on('lifeCycleUpdated', ()=>{
+                        $('.cpu-remaining-cycle', $row).html(cpu.health?cpu.health:"Dead");
+                    });
+                }
+            }
+        },
+        updateChallenge:function(challenge)
+        {
+            switch(challenge.constructor.name)
+            {
+                case "Password":
+                    this.animatePasswordField(null);
+                    break;
+                case "EncryptionGrid":
+                    break;
+                default:
+                    break;
+            }
+        },
+        /**
+         *
+         * @param {Mission} mission
+         */
+        updateMissionInterface:function(mission){
+            this.updateAvailableMissionList(mission);
+            this.updateCurrentMissionView(mission.computer);
+        },
+        updateCurrentMissionView:function(server){
+
+            this.$activeMissionPassword.val('');
+            this.updateEncryptionGridUI(server.encryption.size, server.encryption.cols);
+            this.$activeMissionEncryptionType.html(server.encryption.name);
+            this.$activeMissionIPAddress.html(server.ipAddress);
+            this.$activeMissionServerName.html(server.name);
+        },
+        updateAvailableMissionList:function(mission){
+            $('.'+MISSION_LIST_CLASS).remove();
+            this.$activeMissionName.html(mission.name);
+            let html = '';
+            for(let mission of this.downlink.availableMissions)
+            {
+                html += `<div class="row ${MISSION_LIST_CLASS}"><div class="col">${mission.name}</div></div>`;
+            }
+            let $html = $(html);
+            this.$missionContainer.append($html);
+        },
+        addComputerToWorldMap(computer, callback)
+        {
+            let $node = $('<div/>')
+                .addClass('computer')
+                .attr('title', computer.name)
+                .addClass(computer.constructor.name);
+            if(callback)
+            {
+                $node.on("click", callback);
+            }
+
+            this.$worldMapContainer.append($node);
+            let width = parseInt($node.css('width'), 10),
+                height = parseInt($node.css('height'), 10);
+            // This makes sure that the centre of the location is the centre of the div
+            // which means that the lines between computer points go from centre point to centre point
+            // instead of top left to top left
+            $node.css({
+                top:(computer.location.y - height / 2)+'px',
+                left:(computer.location.x - width / 2)+'px'
+            })
+        },
+        "hardReset":function()
+        {
+            this.stop();
+            localStorage.clear();
+        },
+        getJSON:function()
+        {
+            return this.downlink.toJSON();
+        },
+        save:function()
+        {
+            let json = this.getJSON();
+            json.version = this.version;
+            let jsonAsString = JSON.stringify(json),
+                jsonAsAsciiSafeString = btoa(jsonAsString);
+            localStorage.setItem('saveFile', jsonAsAsciiSafeString);
+            return jsonAsAsciiSafeString;
+        },
+        parseLoadFile:function(loadFile)
+        {
+            let jsonAsString = atob(loadFile);
+            return JSON.parse(jsonAsString);
+        },
+        load:function()
+        {
+            let jsonAsAsciiSafeString = localStorage.getItem('saveFile');
+            if(jsonAsAsciiSafeString)
+            {
+                return this.parseLoadFile(jsonAsAsciiSafeString);
+            }
+            return null;
+        },
+        showConnectionManager:function()
+        {
+            this.takingMissions = false;
+            this.$worldMapModal.modal({keyboard:false, backdrop:"static"});
+        },
+        showOrHideConnectionWarning:function()
+        {
+            if(this.downlink.playerConnection.connectionLength < 4)
+            {
+                this.$connectionWarningRow.show();
+            }
+            else
+            {
+                this.$connectionWarningRow.hide();
+            }
+        },
+        afterHideConnectionManager:function()
+        {
+            this.$connectionTraced.html(0);
+            this.$connectionLength.html(this.downlink.playerConnection.connectionLength);
+            this.showOrHideConnectionWarning();
+            this.save();
+        },
+        getRunTime:function()
+        {
+            return this.downlink.secondsRunning;
+        },
+        showSettingsModal:function()
+        {
+            this.$settingsModal.modal({keyboard:false, backdrop:"static"});
+        },
+        showComputerBuildModal:function()
+        {
+            this.$computerBuildModal.modal({keyboard:false, backdrop:"static"});
+        },
+        buildComputerPartsUI:function()
+        {
+            this.$computerPartsCPURow.empty();
+            for(let cpu of CPU.getCPUs())
+            {
+                let cost = CPU.getPriceFor(cpu),
+                    affordable = this.downlink.canAfford(cost);
+                let $node = $(`<div data-part-cost="${cost.toString()}" class="col-4 cpu part ${affordable?"":"un"}affordable-part">
+                        <div class="row"><div class="col" style="color:${cpu?cpu.color:'black'}"><i class="fas fa-microchip"></i></div></div>
+                        <div class="row"><div class="col">${cpu.name}</div></div>
+                        <div class="row"><div class="col">${cpu.speed} MHz</div></div>
+                        <div class="row"><div class="col">${cost.toString()}</div></div>
+                    </div>`);
+                $node.click(() => {
+                    this.setChosenPart(cpu, 'CPU', cost, $node);
+                });
+
+                this.$computerPartsCPURow.append($node);
+            }
+        },
+        setChosenPart(part, type, cost, $node)
+        {
+            if(!this.downlink.canAfford(cost))
+            {
+                return;
+            }
+            $('.chosenPart').removeClass('chosenPart');
+            if(part === this.chosenPart)
+            {
+                this.chosenPart = null;
+                return;
+            }
+            this.chosenPart = part;
+            $node.addClass('chosenPart');
+        },
+        updateComputerPartsUI:function()
+        {
+            let downlink = this.downlink;
+            $('.part').each(function(){
+                let $node = $(this),
+                    cost = new Decimal($node.data('partCost')),
+                    canAfford = downlink.canAfford(cost);
+                $node.removeClass('affordable-part unaffordable-part').addClass(
+                    (canAfford?'':'un')+'affordable-part'
+                );
+            });
+        },
+        buildComputerGrid:function()
+        {
+            this.$computerBuild.empty();
+
+            let pc = this.downlink.playerComputer,
+                cpus = pc.cpuPool.cpus,
+                gridSize = Math.floor(Math.sqrt(pc.maxCPUs)),
+                html = '',
+                cpuIndex = 0;
+
+            for(let i = 0; i < gridSize; i++)
+            {
+                html += '<div class="row cpuRow">';
+                for(let j = 0; j < gridSize; j++)
+                {
+                    let cpu = cpus[cpuIndex];
+                    let cpuColor = "black";
+                    if(cpu)
+                    {
+                        if(cpu.living)
+                        {
+                            cpuColor = cpu.color;
+                        }
+                        else
+                        {
+                            cpuColor = CPU.deadCPUColor;
+                        }
+                    }
+                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" style="color:${cpuColor}" title="${cpu?cpu.name:''}">${cpu?'<i class="fas fa-microchip"></i>':''}</div>`;
+                    cpuIndex++;
+                }
+                html += '</div>';
+            }
+            this.$computerBuild.html(html);
+            $('.cpuHolder').click((evt)=> {
+                let cpuSlot = $(evt.currentTarget).data('cpuSlot');
+                this.buyCPU(cpuSlot)
+            });
+            $('.cpuRow').css('width', gridSize * 30);
+        },
+        buyCPU:function(cpuSlot)
+        {
+            if(!this.chosenPart || !this.downlink.canAfford(CPU.getPriceFor(this.chosenPart)))
+            {
+                return;
+            }
+            this.canTakeMissions = true;
+            this.downlink.buyCPU(this.chosenPart, cpuSlot);
+            this.updateMissionToggleButton();
+            this.buildComputerGrid();
+            this.updateComputerBuild();
+            this.updatePlayerDetails();
+            this.save();
+        },
+        handleEmptyCPUPool:function()
+        {
+            this.takingMissions = false;
+            this.canTakeMissions = false;
+            this.updateMissionToggleButton();
+        },
+        updateMissionToggleButton()
+        {
+            if(this.canTakeMissions)
+            {
+                this.$missionToggleButton.removeAttr('disabled');
+            }
+            else
+            {
+                this.$missionToggleButton.attr('disabled', 'disabled').text("Start taking missions");
+            }
+        }
+    };
+
+    game.start();
+
+    window.game = game;
+})})(window.jQuery);
+
+},{"./Computers/CPU":9,"./Computers/Tasks/EncryptionCracker":15,"./Computers/Tasks/PasswordCracker":16,"./Downlink":20,"break_infinity.js":1}],23:[function(require,module,exports){
+module.exports = {
+    shuffleArray:function(array)
+    {
+        for (let i = array.length - 1; i > 0; i--)
+        {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    },
+    popRandomArrayElement:function(array)
+    {
+        this.shuffleArray(array);
+        return array.pop();
+    },
+    getRandomArrayElement:function(array)
+    {
+        return array[Math.floor(Math.random() * array.length)];
+    },
+    removeArrayElement(array, element)
+    {
+        let index = array.indexOf(element);
+        if(index >= 0)
+        {
+            array.splice(index, 1);
+        }
+        return array;
+    },
+    getRandomIntegerBetween(min, max)
+    {
+
+    }
+
+};
+
+},{}],24:[function(require,module,exports){
+const EventListener = require('../../EventListener');
 
 class Challenge extends EventListener
 {
@@ -1879,7 +4435,7 @@ class Challenge extends EventListener
      * Downlink.Challenges.Challenge
      *
      * @param {string} name         The name of the challenge, useful for UI purposes
-     * @param {Decimal} difficulty   An int to describe in some abstract manner what reward ratio this challenge
+     * @param {number} difficulty   An int to describe in some abstract manner what reward ratio this challenge
      *     should provide. Provided in the form of an integer.
      */
     constructor(name, difficulty)
@@ -1915,16 +4471,8 @@ class Challenge extends EventListener
 
 module.exports = Challenge;
 
-},{"../EventListener":22}],8:[function(require,module,exports){
-/**
- * @type {{}}
- */
-const   DIFFICULTIES = {
-            'EASY':{name:'Linear', size:{min:7, max:10}},
-            'MEDIUM':{name:'Quadratic', size:{min:10,max:15}},
-            'HARD':{name:'Cubic', size:{min:15,max:20}}
-        },
-        DIFFICULTY_EXPONENT = 0.4;
+},{"../../EventListener":21}],25:[function(require,module,exports){
+const DIFFICULTY_EXPONENT = 0.4;
 
 function getRandomIntBetween(min, max)
 {
@@ -1933,42 +4481,38 @@ function getRandomIntBetween(min, max)
 const Challenge = require('./Challenge');
 class Encryption extends Challenge
 {
+    /**
+     *
+     * @param {number} difficulty
+     */
     constructor(difficulty)
     {
-        let rows = getRandomIntBetween(difficulty.size.min, difficulty.size.max),
-            cols = getRandomIntBetween(difficulty.size.min, difficulty.size.max),
-            difficultyRatio = Math.floor(Math.pow(rows * cols, DIFFICULTY_EXPONENT));
+        let rows = Encryption.getDimensionForDifficulty(difficulty),
+            cols = Encryption.getDimensionForDifficulty(difficulty),
+            size = rows * cols,
+            difficultyRatio = Math.floor(Math.pow(size, DIFFICULTY_EXPONENT));
 
         super(difficulty.name + ' Encryption', difficultyRatio);
         this.rows = rows;
         this.cols = cols;
-        this.size = cols * rows;
+        this.size = size;
     }
 
-    static get DIFFICULTIES()
+    static getDimensionForDifficulty(difficulty)
     {
-        return DIFFICULTIES;
+        const min = 5 + difficulty,
+              max = 8 + difficulty * 2;
+        return getRandomIntBetween(5+difficulty, 9+difficulty);
     }
-
-    static getNewLinearEncryption()
-    {
-        return new Encryption(DIFFICULTIES.EASY);
-    }
-
-    static getNewQuadraticEncryption()
-    {
-        return new Encryption(DIFFICULTIES.MEDIUM);
-    }
-
 }
 
 module.exports = Encryption;
 
-},{"./Challenge":7}],9:[function(require,module,exports){
+},{"./Challenge":24}],26:[function(require,module,exports){
 const   dictionary = require('./dictionary'),
         Challenge = require('./Challenge'),
-        Alphabet = require('../Alphabet'),
-        helpers = require('../Helpers');
+        Alphabet = require('../../Alphabet'),
+        helpers = require('../../Helpers');
 
 const PASSWORD_TYPES = {
     'DICTIONARY':'Dictionary',
@@ -2008,8 +4552,6 @@ class Password extends Challenge
      */
     static randomDictionaryPassword(difficulty)
     {
-        // limit the difficulty to be between the easiest and hardest allowed difficulties
-        difficulty = Math.min(Math.max(difficulty, PASSWORD_DICTIONARY_DIFFICULTIES.EASIEST), PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST);
         // reduce the dictionary by a percentage of that amount
         let reduction = PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST - difficulty,
             usedDictionary = [];
@@ -2044,7 +4586,7 @@ class Password extends Challenge
 
 module.exports = Password;
 
-},{"../Alphabet":6,"../Helpers":24,"./Challenge":7,"./dictionary":10}],10:[function(require,module,exports){
+},{"../../Alphabet":6,"../../Helpers":23,"./Challenge":24,"./dictionary":27}],27:[function(require,module,exports){
 // stolen from Bart Busschot's xkpasswd JS github repo
 // See https://github.com/bbusschots/hsxkpasswd.js
 
@@ -4313,2224 +6855,11 @@ let dictionary = [
 
 module.exports = dictionary;
 
-},{}],11:[function(require,module,exports){
-const   ComputerGenerator = require('../Computers/ComputerGenerator'),
-        companyNames = require('./companies');
-
-/**
- * @type {Array.<Company>}
- */
-let companies = [],
-    /** @type {boolean} */
-    locationsSet = false;
-
-
-class Company
-{
-    constructor(name)
-    {
-        this.name = name;
-
-        this.computers = [];
-
-        /**
-         * @type {number} the reward modifier this company offers the player
-         * this is based on the accrued successful missions and the number of times the company has detected you hacking
-         * one of their servers
-         */
-        this.playerRespectModifier = 1;
-        /**
-         * @type {number} the reward modifier this company offers the player
-         * this is the increase exponent for successfully achieved missions
-         */
-        this.missionSuccessIncreaseExponent = 1.001;
-
-        this.hackDetectedExponent = 1.002;
-    }
-
-    setPublicServer(publicServer)
-    {
-        this.publicServer = publicServer;
-        publicServer.setCompany(this);
-    }
-
-    addComputer(computer)
-    {
-        this.computers.push(computer);
-    }
-
-    finishMission(mission)
-    {
-        this.playerRespectModifier *= this.missionSuccessIncreaseExponent;
-    }
-
-    detectHacking()
-    {
-        this.playerRespectModifier /= this.hackDetectedExponent;
-    }
-
-    static getRandomCompany()
-    {
-        return companies.randomElement();
-    }
-
-    /**
-     * @returns {[<Company>]}
-     */
-    static get allCompanies()
-    {
-        return companies;
-    }
-
-    static setAllPublicServerLocations()
-    {
-        if(locationsSet)
-        {
-            return;
-        }
-        for(let company of companies)
-        {
-            company.publicServer.setLocation(ComputerGenerator.getRandomLandboundPoint());
-        }
-        locationsSet = true;
-    }
-
-    toJSON()
-    {
-
-        let json = {
-            name:this.name,
-            publicServer:this.publicServer.toJSON(),
-            playerRespectModifier:this.playerRespectModifier.toString(),
-            missionSuccessIncreaseExponent:this.missionSuccessIncreaseExponent.toString()
-        };
-
-        return json;
-    }
-
-    static loadCompaniesFromJSON(companiesJSON)
-    {
-        companies = [];
-        for(let companyJSON of companiesJSON)
-        {
-            companies.push(Company.fromJSON(companyJSON));
-        }
-    }
-
-    static fromJSON(companyJSON)
-    {
-        let company = new Company(companyJSON.name);
-        company.setPublicServer(ComputerGenerator.fromJSON(companyJSON.publicServer));
-        company.playerRespectModifier = parseFloat(companyJSON.playerRespectModifier);
-        company.missionSuccessIncreaseExponent = parseFloat(companyJSON.missionSuccessIncreaseExponent);
-
-        locationsSet = true;
-        return company;
-    }
-
-    static buildCompanyList()
-    {
-        companies = [];
-        for(let companyName of companyNames)
-        {
-            let company = new Company(companyName);
-            company.setPublicServer(ComputerGenerator.newPublicServer(company));
-            companies.push(company);
-        }
-    }
-}
-
-
-module.exports = Company;
-
-},{"../Computers/ComputerGenerator":16,"./companies":12}],12:[function(require,module,exports){
-let companyNames = [
-    "Mike Rowe soft",
-    "Pear",
-    "Outel",
-    "Ice",
-    "Tomsung",
-    "Popsy",
-    "Ohm Djezis",
-    "Fizzer",
-    "Wonder",
-    "Global Hyper Mega Compunet",
-    "Athena",
-    "Hybrides",
-    "Tógan Labs", // with permission from Eilís Ní Fhlannagáin
-];
-
-module.exports = companyNames;
-
-},{}],13:[function(require,module,exports){
-const   Task = require('../Tasks/Task'),
-        EventListener = require('../EventListener'),
-        cpus = require('./cpus');
-
-class CPUFullError extends Error{};
-class CPUDuplicateTaskError extends Error{};
-class InvalidTaskError extends Error{};
-
-const CPU_COST_MODIFIER = 4000;
-
-class CPU extends EventListener
-{
-    constructor(name, speed, color, lifeCycle, lifeCycleUsed)
-    {
-        super();
-        let defaultCPU = cpus[0];
-        /**
-         * @type {string}
-         */
-        this.name = name?name:defaultCPU.name;
-        /**
-         * @type {number}
-         */
-        this.speed = parseInt(speed?speed:defaultCPU.speed);
-        /**
-         * @type {string} the rgb() color for the cpu
-         */
-        this.color = color?color:defaultCPU.color;
-        /**
-         * @type {Array.<Task>}
-         */
-        this.tasks = [];
-        /**
-         * @type {number}
-         */
-        this.lifeCycle = parseInt(lifeCycle?lifeCycle:defaultCPU.lifeCycle);
-        this.lifeCycleUsed = parseInt(lifeCycleUsed?lifeCycleUsed:0);
-        this.living = this.lifeCycleUsed < this.lifeCycle;
-    }
-
-    get remainingLifeCycle()
-    {
-        return Math.max(this.lifeCycle - this.lifeCycleUsed, 0);
-    }
-
-    get health()
-    {
-        let decimal = this.remainingLifeCycle / this.lifeCycle,
-            percentage = decimal * 100,
-            fixed = percentage.toFixed(2);
-        if(this.lifeCycleUsed >= this.lifeCycle)
-        {
-            return 0;
-        }
-
-        return fixed;
-    }
-
-    toJSON()
-    {
-        let json = {
-            name:this.name,
-            speed:this.speed.toString(),
-            color:this.color,
-            lifeCycle:this.lifeCycle.toString(),
-            lifeCycleUsed:this.lifeCycleUsed.toString()
-        };
-        return json;
-    }
-
-    static fromJSON(json)
-    {
-        return new CPU(json.name, json.speed, json.color, json.lifeCycle, json.lifeCycleUsed);
-    }
-
-    static getCPUs()
-    {
-        return cpus;
-    }
-
-    tick(load)
-    {
-        this.lifeCycleUsed += Math.round(load);
-        if(this.lifeCycleUsed >= this.lifeCycle)
-        {
-            this.living = false;
-            this.trigger('burnOut');
-        }
-        this.trigger('lifeCycleUpdated');
-    }
-
-    /**
-     * @param cpuData
-     */
-    static getPriceFor(cpuData)
-    {
-        return cpuData.lifeCycle * cpuData.speed / CPU_COST_MODIFIER;
-    }
-
-    static get deadCPUColor()
-    {
-        return 'rgb(255, 0, 0)';
-    }
-}
-
-module.exports = CPU;
-
-},{"../EventListener":22,"../Tasks/Task":31,"./cpus":19}],14:[function(require,module,exports){
-const   CPU = require('./CPU'),
-        Task = require('../Tasks/Task'),
-        helpers = require('../Helpers'),
-        EventListener = require('../EventListener');
-
-/*
- * Custom exceptions
- */
-class NoFreeCPUCyclesError extends Error{};
-class CPUDuplicateTaskError extends Error{};
-class InvalidTaskError extends Error{};
-
-class CPUPool extends EventListener
-{
-    constructor(cpus)
-    {
-        super();
-        /**
-         * @type {Array.<CPU>}
-         */
-        this.cpus = [];
-        /**
-         * @type {number} The average speed of all cpus in the pool
-         */
-        this.averageSpeed = 0;
-        /**
-         * @type {number} The average speed of all cpus in the pool
-         */
-        this.totalSpeed = 0;
-        /**
-         * @type {number} The total cycles used by all tasks
-         */
-        this.load = 0;
-        /**
-         * * @type {Array.<Task>}
-         */
-        this.tasks = [];
-        /**
-         * @type {number} The number of CPUs. Because entries can be null, this needs to be counted
-         */
-        this.cpuCount = 0;
-
-        for(let cpu of cpus)
-        {
-            this.addCPU(cpu);
-        }
-    }
-
-    /**
-     * @param {CPU} cpu
-     */
-    addCPU(cpu)
-    {
-        this.setCPUSlot(this.cpus.length, cpu);
-    }
-
-    setCPUSlot(slot, cpu)
-    {
-        if(cpu)
-        {
-            cpu.once('burnOut', () => {
-                this.flagCPUDead(slot, cpu);
-            });
-            this.cpus[slot] = cpu;
-            this.update();
-        }
-        else
-        {
-            this.cpus[slot] = null;
-        }
-    }
-
-    flagCPUDead(slot, cpu)
-    {
-        this.trigger('cpuBurnedOut');
-        this.update();
-        if(this.cpuCount === 0)
-        {
-            this.trigger('cpuPoolEmpty');
-        }
-    }
-
-    update()
-    {
-        this.averageSpeed = 0;
-        this.totalSpeed = 0;
-        this.cpuCount = 0;
-        for(let cpu of this.cpus)
-        {
-            if(cpu && cpu.living)
-            {
-                this.totalSpeed += cpu.speed;
-                this.cpuCount ++;
-            }
-        }
-        this.averageSpeed = this.totalSpeed / this.cpuCount;
-    }
-
-    /**
-     * figure out how many cycles to assign the task. This number will be the larger of the minimum required cycles
-     * and 1/nth of the total cycles available to the pool (where n is the number of total tasks being run, including
-     * this task).
-     * @param {Task} task   The task to figure out the cycles for
-     * @returns {number}   The number of cycles to assign the task
-     */
-    getCyclesForTask(task)
-    {
-        return Math.max(task.minimumRequiredCycles, Math.floor(this.totalSpeed / (this.tasks.length + 1)));
-    }
-
-    /**
-     * Figure out how many cycles to remove from all of the current tasks in the pool and do so.
-     * This method will keep a tally of the freed cycles, as no task will lower its assigned cycles below the minimum
-     * required amount.
-     * @param task
-     * @returns {number}
-     */
-    balanceTaskLoadForNewTask(task)
-    {
-        // get the number of cycles to assign
-        let cyclesToAssign = this.getCyclesForTask(task);
-        if(this.tasks.length === 0)
-        {
-            return cyclesToAssign;
-        }
-
-        let idealCyclesToAssign = cyclesToAssign;
-        if(this.tasks.length > 0)
-        {
-            // average that out
-            let cyclesToTryToTakeAwayFromEachProcess = Math.ceil(idealCyclesToAssign /this.tasks.length),
-                cyclesFreedUp = 0;
-
-            for(let task of this.tasks)
-            {
-                // add the actual amount freed up to the total freed
-                cyclesFreedUp += task.freeCycles(cyclesToTryToTakeAwayFromEachProcess);
-            }
-            cyclesToAssign = cyclesFreedUp;
-        }
-        return cyclesToAssign;
-    }
-
-    /**
-     * Add a task to the cpu pool
-     * @param {Task} task   The task to be added
-     */
-    addTask(task)
-    {
-        // if it's not a task, complain
-        if (!(task instanceof Task))
-        {
-            throw new InvalidTaskError('Tried to add a non task object to a processor');
-        }
-        // if it's already in the pool, complain
-        if(this.tasks.indexOf(task)>=0)
-        {
-            throw new CPUDuplicateTaskError('This task is already on the CPU');
-        }
-        let freeCycles = this.availableCycles;
-        // if you don't have the free oomph, complain
-        if(task.minimumRequiredCycles > freeCycles)
-        {
-            throw new NoFreeCPUCyclesError(`CPU pool does not have the required cycles for ${task.name}. Need ${task.minimumRequiredCycles.toString()} but only have ${freeCycles}.`);
-        }
-
-        // figure out how many cycles to assign
-        let cyclesToAssign = this.balanceTaskLoadForNewTask(task);
-
-        task.setCyclesPerTick(cyclesToAssign);
-        task.on('complete', ()=>{ this.completeTask(task); });
-
-        this.load += task.minimumRequiredCycles;
-        this.tasks.push(task);
-    }
-
-    /**
-     * Finish a task and remove it from the cpu pool
-     * @param {Task} task
-     */
-    completeTask(task)
-    {
-        let freedCycles = task.cyclesPerTick;
-
-        helpers.removeArrayElement(this.tasks, task);
-        this.load -= task.minimumRequiredCycles;
-
-        if(this.tasks.length >= 1)
-        {
-            let freedCyclesPerTick = Math.floor(freedCycles / this.tasks.length);
-            let i = 0;
-            while(i < this.tasks.length && freedCycles > (0))
-            {
-                let task = this.tasks[i];
-                freedCycles -= freedCyclesPerTick;
-                task.addCycles(freedCyclesPerTick);
-                i++;
-            }
-        }
-        this.trigger('taskComplete');
-    }
-
-    get availableCycles()
-    {
-        return this.totalSpeed - this.load;
-    }
-
-    get averageLoad()
-    {
-        return this.load / this.cpuCount;
-    }
-
-    /**
-     *
-     * @returns {Array.<Task>}
-     */
-    tick()
-    {
-        let tasks = [];
-        for(let task of this.tasks)
-        {
-            task.tick();
-            // we do this because the task could be removed from this.tasks after ticking
-            // so it would be lost reference wise and we would have no way of updating it later
-            tasks.push(task);
-        }
-        for(let cpu of this.cpus)
-        {
-            if(cpu && cpu.remainingLifeCycle > 0)
-            {
-                cpu.tick(this.averageLoad);
-            }
-        }
-        return tasks;
-    }
-}
-
-module.exports = CPUPool;
-
-},{"../EventListener":22,"../Helpers":24,"../Tasks/Task":31,"./CPU":13}],15:[function(require,module,exports){
-const EventListener = require('../EventListener');
-
-class Computer extends EventListener
-{
-    /**
-     *
-     * @param {string}      name      The name of the computer
-     * @param {string|null} ipAddress The ipAddress, if none provided a random ip address
-     */
-    constructor(name, ipAddress)
-    {
-        super();
-        this.name= name;
-
-        this.ipAddress = ipAddress?ipAddress:Computer.randomIPAddress();
-        this.location = null;
-        this.company = null;
-    }
-
-    static randomIPAddress()
-    {
-        let ipAddress = "";
-        for(let i = 0; i < 4; i++)
-        {
-            if(i)
-            {
-                ipAddress += '.';
-            }
-            ipAddress += Math.floor(Math.random() * 256);
-        }
-        return ipAddress;
-    }
-
-    setCompany(company)
-    {
-        this.company = company;
-    }
-
-    get simpleHash()
-    {
-        return this.name+'::'+this.ipAddress;
-    }
-
-    setLocation(location)
-    {
-        this.location = location;
-        return this;
-    }
-
-    connect()
-    {
-        return this;
-    }
-
-    disconnect()
-    {
-        return this;
-    }
-
-    tick()
-    {
-
-    }
-
-    static fromJSON(json, company)
-    {
-        let computer = new this(json.name, json.ipAddress);
-
-        computer.location = json.location;
-        computer.company = company;
-        return computer;
-    }
-
-    toJSON()
-    {
-        return {
-            className:this.constructor.name,
-            name:this.name,
-            ipAddress:this.ipAddress,
-            location:this.location
-        };
-    }
-
-
-}
-
-module.exports = Computer;
-
-},{"../EventListener":22}],16:[function(require,module,exports){
-const   PlayerComputer = require('./PlayerComputer'),
-        Computer = require('./Computer'),
-        CPU = require('./CPU'),
-        PublicComputer= require('./PublicComputer'),
-        MissionComputer = require('../Missions/MissionComputer'),
-        constructors = {PlayerComputer:PlayerComputer, PublicComputer:PublicComputer, MissionComputer:MissionComputer};
-
-const LAND_COLOR = 0xf2efe9;
-
-function getRandomIntInclusive(min, max) {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min + 1)) + min; //The maximum is inclusive and the minimum is inclusive
-}
-
-function getRandomBoundInt(boundary)
-{
-    return getRandomIntInclusive(boundary.min, boundary.max);
-}
-
-function colorArrayToHex(colorArray)
-{
-    let [red, green, blue] = colorArray;
-    let rgb = red * 256 * 256 + green * 256 + blue;
-    return rgb;
-}
-
-class ComputerGenerator
-{
-    constructor()
-    {
-        this.canvasContext = null;
-        this.boundaries = {};
-    }
-
-
-    /**
-     *
-     */
-    getRandomLandboundPoint()
-    {
-        let point = null;
-        while(point == null)
-        {
-            let testPoint= this.getRandomPointData();
-            if(testPoint.color === LAND_COLOR)
-            {
-                point = testPoint;
-            }
-        }
-        return point;
-    }
-
-    getRandomPointData()
-    {
-        let point = {
-            x:getRandomBoundInt(this.boundaries.x),
-            y:getRandomBoundInt(this.boundaries.y)
-        };
-        let color = this.canvasContext.getImageData(point.x, point.y, 1, 1).data;
-        point.color =  colorArrayToHex(color);
-
-        return point;
-    }
-
-
-    /**
-     * In order to determine valid locations for any new computer, the class needs a reference to the image so that
-     * a random point on the image|map is on a land mass. This method builds up a canvas and throws the image onto
-     * the canvas. The canvas' context is then bound as an instance variable
-     * @see getRandomLandboundPoint
-     * @param {object} canvas
-     */
-    defineMapImage(canvas)
-    {
-
-        this.boundaries = {
-            x:{min:0, max:canvas.width},
-            y:{min:0, max:canvas.height}
-        };
-        this.canvasContext = canvas.getContext('2d');
-        return this;
-    }
-
-    newPlayerComputer(location)
-    {
-        let potato = new PlayerComputer([new CPU()]);
-        potato.setLocation(location?location:this.getRandomLandboundPoint());
-        return potato;
-    }
-
-    newPublicServer(company)
-    {
-        let server = new PublicComputer(company.name+' Public Server');
-        server.setCompany(company);
-        return server;
-    }
-
-    fromJSON(computerJSON, company)
-    {
-        let computer = constructors[computerJSON.className].fromJSON(computerJSON, company);
-        return computer;
-    }
-}
-
-
-
-module.exports = new ComputerGenerator();
-
-},{"../Missions/MissionComputer":26,"./CPU":13,"./Computer":15,"./PlayerComputer":17,"./PublicComputer":18}],17:[function(require,module,exports){
-const   Password = require('../Challenges/Password'),
-        {DictionaryCracker, PasswordCracker} = require('../Tasks/PasswordCracker'),
-        Encryption = require('../Challenges/Encryption'),
-        EncryptionCracker = require('../Tasks/EncryptionCracker'),
-        Computer = require('./Computer'),
-        CPUPool = require('./CPUPool'),
-        CPU = require('./CPU.js');
-
-class InvalidTaskError extends Error{};
-const DEFAULT_MAX_CPUS = 4;
-
-class PlayerComputer extends Computer
-{
-    constructor(cpus, maxCPUs)
-    {
-        super('Home', null, '127.0.0.1');
-        this.cpuPool = new CPUPool(cpus);
-        this.cpuPool.on('cpuBurnedOut', ()=>{
-            this.trigger('cpuBurnedOut');
-        }).on("cpuPoolEmpty", ()=>{
-            this.trigger('cpuPoolEmpty');
-        });
-        this.queuedTasks = [];
-        this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
-    }
-
-    get cpus()
-    {
-        return this.cpuPool.cpus;
-    }
-
-    addCPU(cpu)
-    {
-        this.cpuPool.addCPU(cpu);
-    }
-
-    setCPUSlot(slot, cpu)
-    {
-        this.cpuPool.setCPUSlot(slot, cpu);
-    }
-
-    getTaskForChallenge(challenge)
-    {
-        let task = null;
-        if(challenge instanceof Password)
-        {
-            task = new DictionaryCracker(challenge);
-        }
-        if(challenge instanceof  Encryption)
-        {
-            task = new EncryptionCracker(challenge);
-        }
-
-        if(!task)
-        {
-            throw new InvalidTaskError(`No task found for challenge ${challenge.constructor.name}`);
-        }
-        return task;
-    }
-
-    addTaskForChallenge(challenge)
-    {
-        let task = this.getTaskForChallenge(challenge);
-
-        this.cpuPool.addTask(task);
-    }
-
-    tick()
-    {
-        return this.cpuPool.tick();
-    }
-
-
-    get tasks()
-    {
-        return this.cpuPool.tasks;
-    }
-
-    toJSON()
-    {
-        let json = super.toJSON();
-        json.cpus = [];
-        for(let cpu of this.cpus)
-        {
-            if(cpu)
-            {
-                json.cpus.push(cpu.toJSON());
-            }
-            else
-            {
-                json.cpus.push(null);
-            }
-        }
-        return json;
-    }
-
-    static fromJSON(json)
-    {
-        let cpus = [];
-        for(let cpuJSON of json.cpus)
-        {
-            if(cpuJSON)
-            {
-                cpus.push(CPU.fromJSON(cpuJSON));
-            }
-            else
-            {
-                cpus.push(null);
-            }
-        }
-        let pc = new PlayerComputer(cpus);
-        pc.setLocation(json.location);
-        return pc;
-    }
-}
-
-module.exports = PlayerComputer;
-
-},{"../Challenges/Encryption":8,"../Challenges/Password":9,"../Tasks/EncryptionCracker":29,"../Tasks/PasswordCracker":30,"./CPU.js":13,"./CPUPool":14,"./Computer":15}],18:[function(require,module,exports){
-let Computer = require('./Computer');
-
-let allPublicComputers = {};
-
-class PublicComputer extends Computer
-{
-    constructor(name, ipAddress)
-    {
-        super(name, ipAddress);
-        let keys = Object.keys(allPublicComputers);
-        while(keys.indexOf(this.ipAddress) >= 0)
-        {
-            this.ipAddress = Computer.randomIPAddress();
-        }
-        allPublicComputers[this.ipAddress] = this;
-    }
-
-    static getPublicComputerByIPAddress(hash)
-    {
-        return allPublicComputers[hash];
-    }
-
-    static getAllKnownPublicServers()
-    {
-        return allPublicComputers;
-    }
-}
-
-module.exports = PublicComputer;
-
-},{"./Computer":15}],19:[function(require,module,exports){
-let cpus = [
-    {name:"Garbo Processor", speed:20, lifeCycle:20000, color:'rgb(108, 140, 217)'},
-    {name:"Garbo Processor II", speed:40, lifeCycle:40000, color:'rgb(77, 98, 148)'},
-    {name:"Garbo Processor II.5", speed:80, lifeCycle:60000, color:'rgb(29, 45, 84)'},
-    {name:"Garbo Processor BLT", speed:133, lifeCycle: 100000, color:'rgb(1, 23, 74)'}
-];
-module.exports = cpus;
-
-},{}],20:[function(require,module,exports){
-const   Computer = require('./Computers/Computer'),
-        PublicComputer = require('./Computers/PublicComputer'),
-        EventListener = require('./EventListener'),
-        helpers = require('./Helpers'),
-        md5 = require('md5');
-
-class InvalidTypeError extends Error{}
-class InvalidComputerError extends Error{}
-//class DuplicateComputerError extends Error{}
-
-let connections = 0;
-
-/**
- * A class to encapsulate the points in between you and the target computer, excluding both
- */
-class Connection extends EventListener
-{
-    constructor(name)
-    {
-        super();
-        if(!name)
-        {
-            connections++;
-        }
-        /**
-         * This is used for easy comparison between two connections
-         * and will only be of import in later game because in early game the connections will be automated
-         * @type {string}
-         */
-        this.hash = '';
-        /**
-         * * @type {Computer}
-         */
-        this.startingPoint = null;
-        /**
-         * @type {Computer}
-         */
-        this.endPoint = null;
-        this.name = name?name:`Connection ${connections}`;
-        this.computers=[];
-        this.connectionLength = 0;
-        this.computersTraced = 0;
-        this.amountTraced = 0;
-        this.traceTicks = 0;
-    }
-
-    static improveConnectionDistance(amount)
-    {
-        Connection.connectionDistance += amount;
-    }
-
-    get totalConnectionLength()
-    {
-        return this.connectionLength * Connection.connectionDistance;
-    }
-
-    setStartingPoint(startingComputer)
-    {
-        this.startingPoint = startingComputer;
-        this.connectionLength ++;
-        return this;
-    }
-
-    setEndPoint(endPointComputer)
-    {
-        this.endPoint = endPointComputer;
-        this.connectionLength ++;
-        return this;
-    }
-
-    connect()
-    {
-        this.computersTraced = 0;
-        this.amountTraced = 0;
-        return this.open();
-    }
-
-    reconnect()
-    {
-        this.open();
-    }
-
-    open()
-    {
-        for(let computer of this.computers)
-        {
-            computer.connect();
-        }
-        return this;
-    }
-
-    /**
-     * this is needed so that mission computers retain the state of the connection's tracedness
-     */
-    clone()
-    {
-        let clone = new Connection(this.name);
-        for(let computer of this.computers)
-        {
-            clone.addComputer(computer);
-        }
-        return clone;
-    }
-
-    /**
-     * @param {Connection} otherConnection
-     * @returns {boolean}
-     */
-    equals(otherConnection)
-    {
-        return (this.hash === otherConnection.hash);
-    }
-
-    /**
-     * @param stepTraceAmount the amount of the current step in the connection to trace by
-     */
-    traceStep(stepTraceAmount)
-    {
-        this.amountTraced += stepTraceAmount;
-        this.traceTicks++;
-        if(this.traceTicks % Connection.sensitivity === 0)
-        {
-            this.trigger('updateTracePercentage', this.tracePercent);
-        }
-
-        if(this.amountTraced >= Connection.connectionDistance)
-        {
-            this.computersTraced++;
-            this.amountTraced = 0;
-            if(this.computersTraced >= this.connectionLength)
-            {
-                this.trigger("connectionTraced");
-            }
-            this.trigger("stepTraced", this.computersTraced);
-        }
-    }
-
-    get totalAmountTraced()
-    {
-        let traceAmount = (this.computersTraced * Connection.connectionDistance) + this.amountTraced;
-        return traceAmount;
-    }
-
-    close()
-    {
-        let reverseComputers = this.computers.reverse();
-        for(let computer of reverseComputers)
-        {
-            computer.disconnect();
-        }
-        return this;
-    }
-
-    addComputer(computer)
-    {
-        if(!(computer instanceof Computer))
-        {
-            throw new InvalidTypeError("Incorrect object type added");
-        }
-        if(this.computers.indexOf(computer) >= 0)
-        {
-            this.removeComputer(computer);
-            return this;
-        }
-        this.computers.push(computer);
-        this.connectionLength ++;
-        this.buildHash();
-        return this;
-    }
-
-    get tracePercent()
-    {
-        return (this.totalAmountTraced / this.totalConnectionLength * 100).toFixed(2);
-    }
-
-    removeComputer(computer)
-    {
-        if(this.computers.indexOf(computer) < 0)
-        {
-            throw new InvalidComputerError("Computers not found in connection");
-        }
-        this.buildHash();
-        helpers.removeArrayElement(this.computers, computer);
-        this.connectionLength --;
-    }
-
-    buildHash()
-    {
-        let strToHash = '';
-        for(let computer of this.computers)
-        {
-            strToHash += computer.simpleHash;
-        }
-        this.hash = md5(strToHash);
-    }
-
-    toJSON()
-    {
-        let json= {name:this.name, ipAddresses:[]};
-        for(let computer of this.computers)
-        {
-            json.ipAddresses.push(computer.ipAddress);
-        }
-        return json;
-    }
-
-    static fromJSON(json, startingPoint)
-    {
-        let connection = new Connection(json.name);
-        connection.startingPoint = startingPoint;
-        for(let ipAddress of json.ipAddresses)
-        {
-            connection.addComputer(PublicComputer.getPublicComputerByIPAddress(ipAddress));
-        }
-        return connection;
-    }
-
-    static fromAllPublicServers()
-    {
-        return this.fromComputerArray(Object.values(PublicComputer.getAllKnownPublicServers()));
-    }
-
-    static fromComputerArray(computerArray)
-    {
-        let connection = new Connection();
-        for(let computer of computerArray)
-        {
-            connection.addComputer(computer);
-        }
-        return connection;
-    }
-}
-
-Connection.connectionDistance = 1300;
-Connection.sensitivity = 25;
-
-module.exports = Connection;
-
-},{"./Computers/Computer":15,"./Computers/PublicComputer":18,"./EventListener":22,"./Helpers":24,"md5":5}],21:[function(require,module,exports){
-const   MissionGenerator = require('./Missions/MissionGenerator'),
-        EventListener = require('./EventListener'),
-        Connection = require('./Connection'),
-        Company = require('./Companies/Company'),
-        ComputerGenerator = require('./Computers/ComputerGenerator'),
-        CPU = require('./Computers/CPU'),
-        Decimal = require('break_infinity.js');
-
-/**
- * This class serves to expose, to the front end, any of the game classes functionality that the UI needs access to
- * It exists only as a means of hard encapsulation
- * This exists as an instantiable class only because it's really difficult to get static classes to have events
- */
-class Downlink extends EventListener
-{
-    constructor()
-    {
-        super();
-        /**
-         * @type {PlayerComputer}
-         */
-        this.playerComputer = null;
-        /**
-         *
-         * @type {Connection}
-         */
-        this.playerConnection = null;
-        this.getNewConnection();
-        this.runTime = 0;
-        this.lastTickTime = Date.now();
-        /**
-         * @type {Decimal}
-         */
-        this.currency = new Decimal(0);
-    }
-
-    getNewConnection()
-    {
-        this.playerConnection = new Connection("Player Connection");
-        return this.playerConnection;
-    }
-
-    setPlayerComputer()
-    {
-        this.playerComputer = ComputerGenerator.newPlayerComputer();
-        this.playerConnection.setStartingPoint(this.playerComputer);
-        return this.playerComputer;
-    }
-
-    getPlayerComputer()
-    {
-        if(!this.playerComputer)
-        {
-            this.setPlayerComputer();
-        }
-        this.playerComputer.on('cpuPoolEmpty', ()=>{this.trigger('cpuPoolEmpty')});
-        return this.playerComputer;
-    }
-
-    tick()
-    {
-        let now = Date.now();
-        this.runTime += now - this.lastTickTime;
-
-        let tasks = this.playerComputer.tick();
-        if(this.activeMission)
-        {
-            this.activeMission.tick();
-        }
-        this.lastTickTime = Date.now();
-        return {
-            tasks:tasks
-        }
-    }
-
-    getNextMission()
-    {
-        if(this.playerComputer.cpuPool.cpuCount === 0)
-        {
-            return null;
-        }
-
-        this.activeMission = MissionGenerator.getFirstAvailableMission().on("complete", ()=>{
-            this.finishCurrentMission(this.activeMission);
-            this.activeMission = null;
-            this.trigger('missionComplete');
-        });
-        this.activeMission.computer.connect(this.playerConnection);
-        for(let challenge of this.activeMission.challenges)
-        {
-            challenge.on("solved", ()=>{this.challengeSolved(challenge)});
-            this.playerComputer.addTaskForChallenge(challenge);
-        }
-        return this.activeMission;
-    }
-
-    finishCurrentMission(mission)
-    {
-        this.currency = this.currency.add(mission.reward);
-    }
-
-    challengeSolved(challenge)
-    {
-        this.trigger("challengeSolved", challenge);
-    }
-
-    /**
-     * Just exposing the currently available missions
-     */
-    get availableMissions()
-    {
-        return MissionGenerator.availableMissions;
-    }
-
-    get currentMissionTasks()
-    {
-        return this.playerComputer.missionTasks;
-    }
-
-    get allPublicServers()
-    {
-        let servers = [];
-        for(let company of Company.allCompanies)
-        {
-            servers.push(company.publicServer);
-        }
-        return servers;
-    }
-
-    /**
-     *
-     * @returns {[<Company>]}
-     */
-    get companies()
-    {
-        return Company.allCompanies;
-    }
-
-    performPostLoad(canvas)
-    {
-        this.buildComputerGenerator(canvas);
-        Company.setAllPublicServerLocations();
-    }
-
-    buildComputerGenerator(imageReference)
-    {
-        ComputerGenerator.defineMapImage(imageReference);
-    }
-
-    /**
-     * @param {Computer} computer
-     * @returns {Connection}
-     */
-    addComputerToConnection(computer)
-    {
-        return this.playerConnection.addComputer(computer);
-    }
-
-    autoBuildConnection()
-    {
-        this.playerConnection = Connection.fromAllPublicServers();
-        return this.playerConnection;
-    }
-
-    toJSON()
-    {
-        let json = {
-            playerComputer:this.playerComputer.toJSON(),
-            playerConnection:this.playerConnection.toJSON(),
-            companies:[],
-            currency:this.currency.toString(),
-            runTime:this.runTime
-        };
-        for(let company of this.companies)
-        {
-            json.companies.push(company.toJSON());
-        }
-        return json;
-    }
-
-    static fromJSON(json)
-    {
-        Company.loadCompaniesFromJSON(json.companies);
-
-        let downlink = new Downlink();
-
-        downlink.currency = Decimal.fromString(json.currency);
-        downlink.playerComputer = ComputerGenerator.fromJSON(json.playerComputer);
-        downlink.runTime = parseInt(json.runTime);
-        downlink.lastTickTime = Date.now();
-
-        downlink.playerConnection = Connection.fromJSON(json.playerConnection);
-        downlink.playerConnection.setStartingPoint(downlink.playerComputer);
-
-        return downlink;
-    }
-
-    static getNew()
-    {
-        Company.buildCompanyList();
-
-        let dl = new Downlink();
-        return dl;
-    }
-
-    static stop()
-    {
-
-    }
-
-    get secondsRunning()
-    {
-        return Math.floor(this.runTime / 1000);
-    }
-
-    canAfford(cost)
-    {
-        return this.currency.greaterThan(cost);
-    }
-
-    buyCPU(cpuData, slot)
-    {
-        let cpu = CPU.fromJSON(cpuData);
-        this.currency = this.currency.minus(CPU.getPriceFor(cpuData));
-        this.playerComputer.setCPUSlot(slot, cpu);
-
-    }
-}
-
-module.exports = Downlink;
-
-},{"./Companies/Company":11,"./Computers/CPU":13,"./Computers/ComputerGenerator":16,"./Connection":20,"./EventListener":22,"./Missions/MissionGenerator":28,"break_infinity.js":1}],22:[function(require,module,exports){
-class Event
-{
-    constructor(owner, name, once)
-    {
-        this.owner = owner;
-        this.name = name;
-        this.once = once;
-        this.triggered = false;
-        this.callbacks = [];
-    }
-
-    addListener(callback)
-    {
-        this.callbacks.push(callback);
-        return this;
-    }
-
-    removeListener(callback)
-    {
-        let index = this.callbacks.indexOf(callback);
-        if(index >= 0)
-        {
-            this.callbacks.splice(index, 1);
-        }
-        return this;
-    }
-
-    trigger(args)
-    {
-        if(!this.once || (this.once && !this.triggered))
-        {
-            this.callbacks.forEach(function (callback) {
-                callback(...args);
-            });
-        }
-        this.triggered = true;
-    }
-}
-
-class EventListener
-{
-    constructor()
-    {
-        /**
-         * @type {{Event}}
-         */
-        this.events = {};
-    }
-
-    once(eventName, callback)
-    {
-        let e = eventName.toLowerCase();
-        if(!this.events[e])
-        {
-            this.events[e] = new Event(this, e, true);
-        }
-        this.events[e].triggered = false;
-        this.events[e].addListener(callback);
-        return this;
-    }
-
-    on(eventName, callback)
-    {
-        let e = eventName.toLowerCase();
-        if(!this.events[e])
-        {
-            this.events[e] = new Event(this, e);
-        }
-        this.events[e].addListener(callback);
-        return this;
-    }
-
-    off(eventName)
-    {
-        if(eventName)
-        {
-            let e = eventName.toLowerCase();
-            this.events[e] = null;
-        }
-        else
-        {
-            this.events = {};
-        }
-        return this;
-    }
-
-    addListener(eventName, callback)
-    {
-        let e = eventName.toLowerCase();
-        return this.on(e, callback);
-    }
-
-    trigger(eventName, ...args)
-    {
-        let e = eventName.toLowerCase();
-        if(this.events[e])
-        {
-            try
-            {
-                let evt = this.events[e];
-                evt.trigger(args);
-            }
-            catch(e)
-            {
-                console.log(e);
-            }
-        }
-    }
-
-
-    removeListener(eventName, callback)
-    {
-        let e = eventName.toLowerCase();
-        if(this.events[e])
-        {
-            this.events[e].removeListener(callback);
-        }
-    }
-}
-
-module.exports = EventListener;
-
-},{}],23:[function(require,module,exports){
-// This file is solely responsible for exposing the necessary parts of the game to the UI elements
-(($)=>{$(()=>{
-
-    const   Downlink = require('./Downlink'),
-            CPU = require('./Computers/CPU'),
-            EncryptionCracker = require('./Tasks/EncryptionCracker'),
-            {PasswordCracker} = require('./Tasks/PasswordCracker'),
-            Decimal = require('break_infinity.js'),
-            TICK_INTERVAL_LENGTH=100,
-            MISSION_LIST_CLASS = 'mission-list-row',
-            COMPANY_REP_CLASS = 'company-rep-row',
-            PLAYER_COMPUTER_CPU_ROW_CLASS = "cpu-row";
-
-    function parseVersionNumber(versionNumberAsString)
-    {
-        let parts = versionNumberAsString.split('.'),
-            partAsNumber = 0;
-        for(let partIndex in parts)
-        {
-            let exponent = parts.length - 1 - partIndex,
-                part = parseInt(parts[partIndex], 10),
-                multiple = Math.pow(1000, exponent);
-            partAsNumber +=  (part * multiple);
-        }
-        return partAsNumber
-    }
-
-    function saveIsOlder(oldVersionString, currentVersionString)
-    {
-        let oldVersion = parseVersionNumber(oldVersionString),
-            currentVersion = parseVersionNumber(currentVersionString);
-
-        return oldVersion < currentVersion;
-    }
-
-    let game = {
-        interval:null,
-        ticking:true,
-        initialised:false,
-        takingMissions:false,
-        mission:false,
-        computer:null,
-        downlink:null,
-        version:"0.3.20a",
-        requiresHardReset:true,
-        canTakeMissions:true,
-        requiresNewMission:false,
-        /**
-         * jquery entities that are needed for updating
-         */
-        $missionContainer:null,
-        $activeMissionName:null,
-        $activeMissionPassword:null,
-        $activeMissionEncryptionGrid:null,
-        $activeMissionEncryptionType:null,
-        $activeMissionIPAddress:null,
-        $activeMissionServerName:null,
-        $playerCurrencySpan:null,
-        $playerStandingsTitle:null,
-        $playerComputerCPUListContainer:null,
-        $worldMapModal:null,
-        $worldMapContainer:null,
-        $worldMapCanvasContainer:null,
-        $activeMissionServer:null,
-        $settingsTimePlayed:null,
-        $settingsModal:null,
-        $importExportTextarea:null,
-        $computerBuildModal:null,
-        $computerBuild:null,
-        $computerPartsCPURow:null,
-        $connectionLength:null,
-        $connectionTraced:null,
-        $connectionWarningRow:null,
-        $missionToggleButton:null,
-        $connectionTracePercentage:null,
-        $encryptionCells:null,
-
-        /**
-         * HTML DOM elements, as opposed to jQuery entities for special cases
-         */
-        mapImageElement:null,
-        bindUIElements:function()
-        {
-            this.$missionContainer = $('#mission-list');
-            this.$activeMissionName = $('#active-mission');
-            this.$activeMissionServer = $('#active-mission-machine-details');
-            this.$activeMissionPassword = $('#active-mission-password-input');
-            this.$activeMissionEncryptionGrid = $('#active-mission-encryption-grid');
-            this.$activeMissionEncryptionType = $('#active-mission-encryption-type');
-            this.$activeMissionIPAddress = $('#active-mission-server-ip-address');
-            this.$activeMissionServerName = $('#active-mission-server-name');
-            this.$playerCurrencySpan = $('#player-currency');
-            this.$playerStandingsTitle = $('#player-company-standings-title');
-            this.$playerComputerCPUListContainer = $('#player-computer-processors');
-            this.$worldMapModal = $('#connection-modal');
-            this.$worldMapContainer = $('#world-map');
-            this.$worldMapCanvasContainer = $('#canvas-container');
-            this.$worldMapModal.on("hide.bs.modal", ()=>{this.afterHideConnectionManager()});
-            this.$settingsTimePlayed = $('#settings-time-played');
-            this.$settingsModal = $('#settings-modal');
-            this.$importExportTextarea = $('#settings-import-export');
-            this.$computerBuildModal = $('#computer-build-modal');
-            this.$computerBuild = $('#computer-build-layout');
-            this.$computerPartsCPURow = $('#computer-parts-cpu-row');
-            this.$connectionLength = $('#connection-length');
-            this.$connectionTraced = $('#connection-traced');
-            this.$connectionTracePercentage = $('#connection-trace-percentage');
-            this.$connectionWarningRow = $('#connection-warning-row');
-            $('#settings-export-button').click(()=>{
-                this.$importExportTextarea.val(this.save());
-            });
-            $('#settings-import-button').click(()=>{this.importFile(this.$importExportTextarea.val())});
-            $('#settings-save-button').click(()=>{this.saveFile();});
-            $('#connectionModalLink').click(()=>{this.showConnectionManager();});
-            $('#settingsModalLink').click(()=>{this.showSettingsModal();});
-            $('#game-version').html(this.version);
-            $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
-            $('#connection-auto-build-button').click(()=>{this.autoBuildConnection()});
-
-            this.$missionToggleButton = $('#missions-toggle-button').click(()=>{
-                this.takingMissions = !this.takingMissions;
-                if(this.takingMissions)
-                {
-                    this.requiresNewMission = true;
-                    this.$missionToggleButton.text("Stop Taking Missions");
-                }
-                else
-                {
-                    this.$missionToggleButton.text("Start Taking Missions");
-                }
-            });
-
-        },
-        buildWorldMap:function()
-        {
-            // resizing the worldmap container
-            let image = new Image();
-            this.mapImageElement = image;
-            let dimensionBounds = {x:{min:0, max:0}, y:{min:0, max:0}};
-            /*
-             This is needed so that we can know what the image values are before the game loads
-             */
-            let p = new Promise((resolve, reject)=>{
-
-                image.onload =()=>{
-                    this.buildCanvas();
-                    resolve();
-                };
-                image.src = './img/osm-world-map.png';
-            });
-
-            return p;
-        },
-        getFreshCanvas()
-        {
-            let canvas = document.createElement('canvas');
-            canvas.width = this.mapImageElement.width;
-            canvas.height = this.mapImageElement.height;
-            canvas
-                .getContext('2d')
-                .drawImage(
-                    this.mapImageElement, 0, 0,
-                    this.mapImageElement.width, this.mapImageElement.height
-                );
-            this.$worldMapCanvasContainer.empty().append($(canvas));
-            return canvas;
-        },
-        /**
-         * Using a canvas for two reasons. JavaScript requires one to figure out whether a random point is landbound or not
-         * This will pass a fresh copy of the canvas to the Downlink object to keep for that purpose and also draw
-         * one to the dom. The one on the dom will be drawn to and deleted and drawn to and deleted, but the
-         * Downlink object needs to know the raw one.
-         */
-        buildCanvas:function()
-        {
-            this.downlink.performPostLoad(this.getFreshCanvas());
-
-            this.$worldMapContainer.css({
-                height:this.mapImageElement.height+'px',
-                width:this.mapImageElement.width+'px'
-            });
-        },
-        autoBuildConnection:function()
-        {
-            this.downlink.autoBuildConnection();
-            this.updateConnectionMap();
-        },
-        newGame:function()
-        {
-            this.downlink = Downlink.getNew();
-        },
-        loadGame:function(json)
-        {
-            this.downlink = Downlink.fromJSON(json);
-        },
-        saveFile:function()
-        {
-            let data = new Blob([this.save()], {type: 'text/plain'}),
-                urlParam = window.URL.createObjectURL(data),
-                a = document.createElement('a');
-            a.href = urlParam;
-            a.download = 'Downlink-Save.txt';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        },
-        importFile:function(json)
-        {
-            this.stop();
-            this.initialised = false;
-            this.loadGame(json);
-            this.performPostLoadCleanup().then(()=>{
-                this.start();
-            });
-        },
-        needsHardReset:function(saveFile)
-        {
-            if(!saveFile.version)
-            {
-                return true;
-            }
-            return (this.requiresHardReset && saveIsOlder(saveFile.version, this.version));
-        },
-        initialise:function()
-        {
-            this.bindUIElements();
-
-            let saveFile = this.load();
-            if (saveFile && !this.needsHardReset(saveFile))
-            {
-                this.loadGame(saveFile);
-            }
-            else
-            {
-                this.newGame();
-            }
-
-            return this.performPostLoadCleanup();
-        },
-        performPostLoadCleanup:function()
-        {
-            this.updatePlayerDetails();
-
-            this.initialised = true;
-            return this.buildWorldMap().then(()=>{
-                let pc = this.downlink.getPlayerComputer();
-                pc.on('cpuBurnedOut', ()=>{this.buildComputerGrid();});
-                pc.on('cpuPoolEmpty', ()=>{this.handleEmptyCPUPool();});
-                this.addComputerToWorldMap(pc);
-                this.updateComputerBuild();
-                this.buildComputerPartsUI();
-                this.buildComputerGrid();
-
-                this.canTakeMissions = pc.cpuPool.cpuCount > 0;
-                this.updateMissionToggleButton();
-
-                this.addPublicComputersToWorldMap();
-                this.$connectionLength.html(this.downlink.playerConnection.connectionLength);
-                this.showOrHideConnectionWarning();
-
-                this.ticking = true;
-                this.updateConnectionMap();
-                this.save();
-            });
-        },
-        addPublicComputersToWorldMap:function()
-        {
-            for(let computer of this.downlink.allPublicServers)
-            {
-                this.addComputerToWorldMap(computer, ()=>{
-                    this.addComputerToConnection(computer);
-                });
-            }
-        },
-        addComputerToConnection:function(computer)
-        {
-            this.downlink.addComputerToConnection(computer);
-            this.updateConnectionMap();
-        },
-        updateConnectionMap:function()
-        {
-            let connection = this.downlink.playerConnection;
-            let context = this.getFreshCanvas().getContext('2d');
-            let currentComputer = this.downlink.playerComputer;
-            for(let computer of connection.computers)
-            {
-                // connect the current computer to the current computer in the connection
-                context.beginPath();
-                context.moveTo(currentComputer.location.x, currentComputer.location.y);
-                context.lineTo(computer.location.x, computer.location.y);
-                context.stroke();
-                // set the currentComputer to be the current computer in the connection
-                currentComputer = computer;
-            }
-        },
-        start:function(){
-            this.ticking = true;
-            if(this.initialised)
-            {
-                this.tick();
-            }
-            else
-            {
-                this.initialise().then(() => {
-                    this.tick();
-                });
-            }
-            return this;
-        },
-        stop:function(){
-            this.ticking = false;
-            window.clearTimeout(this.interval);
-            return this;
-        },
-        restart:function()
-        {
-            this.stop().start();
-        },
-        tick:function() {
-            if (this.ticking)
-            {
-                let tickResults = this.downlink.tick();
-                this.animateTasks(tickResults.tasks);
-                this.$settingsTimePlayed.html(this.getRunTime());
-                if (this.requiresNewMission)
-                {
-                    this.getNextMission();
-                }
-                this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
-            }
-        },
-        animateTasks:function(tasks)
-        {
-            if(tasks.length)
-            {
-                for(let task of tasks)
-                {
-                    if(task instanceof EncryptionCracker)
-                    {
-                        this.animateEncryptionGrid(task);
-                    }
-                    else if(task instanceof PasswordCracker)
-                    {
-                        this.animatePasswordField(task);
-                    }
-                }
-            }
-        },
-        /**
-         *
-         * @param {PasswordCracker|undefined} passwordCracker
-         */
-        animatePasswordField:function(passwordCracker)
-        {
-            if(passwordCracker)
-            {
-                this.$activeMissionPassword
-                    .val(passwordCracker.currentGuess)
-                    .removeClass("solved-password unsolved-password")
-                    .addClass(passwordCracker.completed ? "solved-password" : "unsolved-password");
-            }
-            else
-            {
-                this.$activeMissionPassword
-                    .removeClass("unsolved-password")
-                    .addClass('solved-password');
-            }
-        },
-        updateEncryptionGridUI(numberOfCells, numberOfCols)
-        {
-            this.$activeMissionEncryptionGrid.css({
-                'grid-template-columns':`repeat(${numberOfCols}, 1fr)`,
-                "width":numberOfCols * 30+"px"
-            });
-            const   numberOfExtantCells = this.$activeMissionEncryptionGrid.children().length,
-                    diff = numberOfCells - numberOfExtantCells;
-
-            if(diff > 0)
-            {
-                // we need to add new cells
-                let htmlToAppend = '';
-                for (let i = 0; i < diff; i++)
-                {
-                    htmlToAppend += '<div class="encryption-cell unsolved-encryption-cell">*</div>';
-                }
-
-                this.$activeMissionEncryptionGrid.append($(htmlToAppend));
-            }
-            else if(diff < 0)
-            {
-                // we need to remove cells
-                let cellsToRemove = Math.abs(diff);
-                $(`.encryption-cell:nth-last-child(-n+${cellsToRemove})`).remove();
-            }
-            $('.encryption-cell').removeClass('solved-encryption-cell').addClass('unsolved-encryption-cell');
-            this.$encryptionCells = document.querySelectorAll('.encryption-cell');
-        },
-        /**
-         *
-         * @param {EncryptionCracker} encryptionCracker
-         */
-        animateEncryptionGrid:function(encryptionCracker)
-        {
-            let cells = encryptionCracker.cellsForAnimating;
-            for(let i in cells)
-            {
-                let cell = cells[i];
-                let elem = this.$encryptionCells[i];
-                let classes = elem.classList;
-                if(cell.solved && classes.contains('unsolved-encryption-cell'))
-                {
-                    classes.remove('unsolved-encryption-cell');
-                    classes.add('solved-encryption-cell');
-                }
-                if(elem.childNodes[0].nodeValue !== cell.letter)
-                {
-                    elem.childNodes[0].nodeValue = cell.letter;
-                }
-            }
-        },
-        getNextMission:function(){
-            if(!this.takingMissions)
-            {
-                return false;
-            }
-            this.$activeMissionServer.show();
-            this.$connectionTraced.html(0);
-            this.$connectionTracePercentage.html(0);
-            this.mission = this.downlink.getNextMission();
-            this.updateMissionInterface(this.mission);
-            this.updatePlayerDetails();
-            this.updateComputerPartsUI();
-            this.requiresNewMission = false;
-
-            this.downlink
-                .on("challengeSolved", (task)=>{this.updateChallenge(task)});
-            // bind the mission events to the UI updates
-            this.mission.on('complete', ()=>{
-                this.requiresNewMission = true;
-                this.save();
-            }).on("connectionStepTraced", (stepsTraced)=>{
-                this.$connectionTraced.html(stepsTraced);
-            }).on("updateTracePercentage", (percentageTraced)=>{
-                this.$connectionTracePercentage.html(percentageTraced);
-            });
-
-        },
-        updatePlayerDetails:function()
-        {
-            this.$playerCurrencySpan.html(this.downlink.currency.toFixed(2));
-            this.updatePlayerReputations();
-        },
-        updatePlayerReputations:function()
-        {
-            $(`.${COMPANY_REP_CLASS}`).remove();
-            let html = '';
-            for(let company of this.downlink.companies)
-            {
-                html += `<div class="row ${COMPANY_REP_CLASS}"><div class="col">${company.name}</div><div class="col-2">${company.playerRespectModifier.toFixed(2)}</div></div>`;
-            }
-            this.$playerStandingsTitle.after(html);
-        },
-        updateComputerBuild:function()
-        {
-            $(`.${PLAYER_COMPUTER_CPU_ROW_CLASS}`).remove();
-
-            for(let cpu of this.downlink.playerComputer.cpus)
-            {
-                if(cpu)
-                {
-                    let $row = $(`<div class="row ${PLAYER_COMPUTER_CPU_ROW_CLASS}">
-                        <div class="col">${cpu.name}</div>
-                        <div class="col-2">${cpu.speed}MHz</div>
-                        <div class="col-5 cpu-remaining-cycle">${cpu.remainingLifeCycle}</div>
-                    </div>`).appendTo(this.$playerComputerCPUListContainer);
-                    cpu.on('lifeCycleUpdated', ()=>{
-                        $('.cpu-remaining-cycle', $row).html(cpu.health?cpu.health:"Dead");
-                    });
-                }
-            }
-        },
-        updateChallenge:function(challenge)
-        {
-            switch(challenge.constructor.name)
-            {
-                case "Password":
-                    this.animatePasswordField();
-                    break;
-            }
-        },
-        /**
-         *
-         * @param {Mission} mission
-         */
-        updateMissionInterface:function(mission){
-            this.updateAvailableMissionList(mission);
-            this.updateCurrentMissionView(mission.computer);
-        },
-        updateCurrentMissionView:function(server){
-
-            this.$activeMissionPassword.val('');
-            this.updateEncryptionGridUI(server.encryption.size, server.encryption.cols);
-            this.$activeMissionEncryptionType.html(server.encryption.name);
-            this.$activeMissionIPAddress.html(server.ipAddress);
-            this.$activeMissionServerName.html(server.name);
-        },
-        updateAvailableMissionList:function(mission){
-            $('.'+MISSION_LIST_CLASS).remove();
-            this.$activeMissionName.html(mission.name);
-            let html = '';
-            for(let mission of this.downlink.availableMissions)
-            {
-                html += `<div class="row ${MISSION_LIST_CLASS}"><div class="col">${mission.name}</div></div>`;
-            }
-            let $html = $(html);
-            this.$missionContainer.append($html);
-        },
-        addComputerToWorldMap(computer, callback)
-        {
-            let $node = $('<div/>')
-                .addClass('computer')
-                .attr('title', computer.name)
-                .addClass(computer.constructor.name);
-            if(callback)
-            {
-                $node.on("click", callback);
-            }
-
-            this.$worldMapContainer.append($node);
-            let width = parseInt($node.css('width'), 10),
-                height = parseInt($node.css('height'), 10);
-            // This makes sure that the centre of the location is the centre of the div
-            // which means that the lines between computer points go from centre point to centre point
-            // instead of top left to top left
-            $node.css({
-                top:(computer.location.y - height / 2)+'px',
-                left:(computer.location.x - width / 2)+'px'
-            })
-        },
-        hardReset:function()
-        {
-            this.stop();
-            localStorage.clear();
-        },
-        getJSON:function()
-        {
-            return this.downlink.toJSON();
-        },
-        save:function()
-        {
-            let json = this.getJSON();
-            json.version = this.version;
-            let jsonAsString = JSON.stringify(json),
-                jsonAsAsciiSafeString = btoa(jsonAsString);
-            localStorage.setItem('saveFile', jsonAsAsciiSafeString);
-            return jsonAsAsciiSafeString;
-        },
-        parseLoadFile:function(loadFile)
-        {
-            let jsonAsString = atob(loadFile), json = JSON.parse(jsonAsString);
-            return json;
-        },
-        load:function()
-        {
-            let jsonAsAsciiSafeString = localStorage.getItem('saveFile');
-            if(jsonAsAsciiSafeString)
-            {
-                return this.parseLoadFile(jsonAsAsciiSafeString);
-            }
-            return null;
-        },
-        showConnectionManager:function()
-        {
-            this.takingMissions = false;
-            this.$worldMapModal.modal({keyboard:false, backdrop:"static"});
-        },
-        showOrHideConnectionWarning:function()
-        {
-            if(this.downlink.playerConnection.connectionLength < 4)
-            {
-                this.$connectionWarningRow.show();
-            }
-            else
-            {
-                this.$connectionWarningRow.hide();
-            }
-        },
-        afterHideConnectionManager:function()
-        {
-            this.$connectionTraced.html(0);
-            this.$connectionLength.html(this.downlink.playerConnection.connectionLength);
-            this.showOrHideConnectionWarning();
-            this.save();
-        },
-        getRunTime:function()
-        {
-            return this.downlink.secondsRunning;
-        },
-        showSettingsModal:function()
-        {
-            this.$settingsModal.modal({keyboard:false, backdrop:"static"});
-        },
-        showComputerBuildModal:function()
-        {
-            this.$computerBuildModal.modal({keyboard:false, backdrop:"static"});
-        },
-        buildComputerPartsUI:function()
-        {
-            this.$computerPartsCPURow.empty();
-            for(let cpu of CPU.getCPUs())
-            {
-                let cost = CPU.getPriceFor(cpu),
-                    affordable = this.downlink.canAfford(cost);
-                let $node = $(`<div data-part-cost="${cost.toString()}" class="col-4 cpu part ${affordable?"":"un"}affordable-part">
-                        <div class="row"><div class="col" style="color:${cpu?cpu.color:'black'}"><i class="fas fa-microchip"></i></div></div>
-                        <div class="row"><div class="col">${cpu.name}</div></div>
-                        <div class="row"><div class="col">${cpu.speed} MHz</div></div>
-                        <div class="row"><div class="col">${cost.toString()}</div></div>
-                    </div>`);
-                $node.click(() => {
-                    this.setChosenPart(cpu, 'CPU', cost, $node);
-                });
-
-                this.$computerPartsCPURow.append($node);
-            }
-        },
-        setChosenPart(part, type, cost, $node)
-        {
-            if(!this.downlink.canAfford(cost))
-            {
-                return;
-            }
-            $('.chosenPart').removeClass('chosenPart');
-            if(part === this.chosenPart)
-            {
-                this.chosenPart = null;
-                return;
-            }
-            this.chosenPart = part;
-            $node.addClass('chosenPart');
-        },
-        updateComputerPartsUI:function()
-        {
-            let downlink = this.downlink;
-            $('.part').each(function(index){
-                let $node = $(this),
-                    cost = new Decimal($node.data('partCost')),
-                    canAfford = downlink.canAfford(cost);
-                $node.removeClass('affordable-part unaffordable-part').addClass(
-                    (canAfford?'':'un')+'affordable-part'
-                );
-            });
-        },
-        buildComputerGrid:function()
-        {
-            this.$computerBuild.empty();
-
-            let pc = this.downlink.playerComputer,
-                cpus = pc.cpuPool.cpus,
-                gridSize = Math.floor(Math.sqrt(pc.maxCPUs)),
-                html = '',
-                cpuIndex = 0;
-
-            for(let i = 0; i < gridSize; i++)
-            {
-                html += '<div class="row cpuRow">';
-                for(let j = 0; j < gridSize; j++)
-                {
-                    let cpu = cpus[cpuIndex];
-                    let cpuColor = "black";
-                    if(cpu)
-                    {
-                        if(cpu.living)
-                        {
-                            cpuColor = cpu.color;
-                        }
-                        else
-                        {
-                            cpuColor = CPU.deadCPUColor;
-                        }
-                    }
-                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" style="color:${cpuColor}" title="${cpu?cpu.name:''}">${cpu?'<i class="fas fa-microchip"></i>':''}</div>`;
-                    cpuIndex++;
-                }
-                html += '</div>';
-            }
-            this.$computerBuild.html(html);
-            $('.cpuHolder').click((evt)=> {
-                let cpuSlot = $(evt.currentTarget).data('cpuSlot');
-                this.buyCPU(cpuSlot)
-            });
-            $('.cpuRow').css('width', gridSize * 30);
-        },
-        buyCPU:function(cpuSlot)
-        {
-            if(!this.chosenPart || !this.downlink.canAfford(CPU.getPriceFor(this.chosenPart)))
-            {
-                return;
-            }
-            this.canTakeMissions = true;
-            this.downlink.buyCPU(this.chosenPart, cpuSlot);
-            this.updateMissionToggleButton();
-            this.buildComputerGrid();
-            this.updateComputerBuild();
-            this.updatePlayerDetails();
-            this.save();
-        },
-        handleEmptyCPUPool:function()
-        {
-            this.takingMissions = false;
-            this.canTakeMissions = false;
-            this.updateMissionToggleButton();
-        },
-        updateMissionToggleButton()
-        {
-            if(this.canTakeMissions)
-            {
-                this.$missionToggleButton.removeAttr('disabled');
-            }
-            else
-            {
-                this.$missionToggleButton.attr('disabled', 'disabled').text("Start taking missions");
-            }
-        }
-    };
-
-    game.start();
-
-    window.game = game;
-})})(window.jQuery);
-
-},{"./Computers/CPU":13,"./Downlink":21,"./Tasks/EncryptionCracker":29,"./Tasks/PasswordCracker":30,"break_infinity.js":1}],24:[function(require,module,exports){
-module.exports = {
-    shuffleArray:function(array)
-    {
-        for (let i = array.length - 1; i > 0; i--)
-        {
-            const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]];
-        }
-        return array;
-    },
-    popRandomArrayElement:function(array)
-    {
-        this.shuffleArray(array);
-        return array.pop();
-    },
-    getRandomArrayElement:function(array)
-    {
-        return array[Math.floor(Math.random() * array.length)];
-    },
-    removeArrayElement(array, element)
-    {
-        let index = array.indexOf(element);
-        if(index >= 0)
-        {
-            array.splice(index, 1);
-        }
-        return array;
-    }
-
-};
-
-},{}],25:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 const   Company = require('../Companies/Company'),
         MissionComputer = require('./MissionComputer'),
-        Password = require('../Challenges/Password'),
-        Encryption = require('../Challenges/Encryption'),
+        Password = require('./Challenges/Password'),
+        Encryption = require('./Challenges/Encryption'),
         EventListener = require('../EventListener'),
         MissionDifficulty = require('./MissionDifficulty'),
         helpers = require('../Helpers');
@@ -6564,9 +6893,9 @@ class Mission extends EventListener
 
         // these values are all instantiated later.
         /**
-         * @type {MissionDifficulty}
+         * @type {number}
          */
-        this.difficulty = null;
+        this.difficulty = 0;
         /**
          *
          * @type {MissionComputer}
@@ -6582,12 +6911,7 @@ class Mission extends EventListener
 
     setDifficulty(difficulty)
     {
-        if(!difficulty instanceof MissionDifficulty)
-        {
-            throw new Error("Mission Difficulty unrecognised");
-        }
         this.difficulty = difficulty;
-        return this;
     }
 
     get challenges()
@@ -6609,30 +6933,23 @@ class Mission extends EventListener
             return this;
         }
 
-        this.computer = new MissionComputer(this.target, this.difficulty.serverType);
-        this.computer.on('accessed', ()=>{
-            this.signalComplete();
-        }).on('connectionStepTraced', (step)=>{
-            this.trigger("connectionStepTraced", step);
-        }).on('hackTracked', ()=>{
-            console.log("Connection traced");
-            this.target.detectHacking();
-        }).on('updateTracePercentage', (percentage)=>{
-            this.trigger('updateTracePercentage', percentage);
-        });
+        this.setDifficulty(this.target.securityLevel);
 
-        let password = null, encryption = null;
+        let missionChallengeDifficulty = Math.floor(this.difficulty);
 
-        /**
-         * This a hoist, not the end result
-         */
-        if(this.difficulty === MissionDifficulty.DIFFICULTIES.EASY)
-        {
-            password = Password.randomDictionaryPassword(Password.PASSWORD_DICTIONARY_DIFFICULTIES.EASIEST);
-            encryption = Encryption.getNewLinearEncryption();
-        }
-
-        this.computer.setPassword(password).setEncryption(encryption);
+        this.computer = new MissionComputer(this.target, this.difficulty.serverType)
+            .setPassword(Password.randomDictionaryPassword(missionChallengeDifficulty))
+            .setEncryption(new Encryption(missionChallengeDifficulty))
+            .on('accessed', ()=>{
+                this.signalComplete();
+            }).on('connectionStepTraced', (step)=>{
+                this.trigger("connectionStepTraced", step);
+            }).on('hackTracked', ()=>{
+                console.log("Connection traced");
+                this.target.traceHacker();
+            }).on('updateTracePercentage', (percentage)=>{
+                this.trigger('updateTracePercentage', percentage);
+            });
 
         this.status = MISSION_STATUSES.UNDERWAY;
         return this;
@@ -6643,13 +6960,14 @@ class Mission extends EventListener
      */
     get reward()
     {
-        return this.difficulty.modifier * this.computer.difficultyModifier * this.sponsor.playerRespectModifier;
+        return this.difficulty * this.computer.difficultyModifier * this.sponsor.playerRespectModifier;
     }
 
     signalComplete()
     {
         this.status = MISSION_STATUSES.COMPLETE;
         this.sponsor.finishMission(this);
+        this.target.increaseSecurityLevel();
         this.trigger('complete');
     }
 
@@ -6668,20 +6986,17 @@ class Mission extends EventListener
         this.computer.tick();
     }
 
-    static getNewSimpleMission()
+    static getNewMission()
     {
-        let companies = helpers.shuffleArray([...Company.allCompanies]);
-        return new Mission(
-            companies.shift(),
-            companies.shift()
-        ).setDifficulty(
-            MissionDifficulty.DIFFICULTIES.EASY
-        );
+        let companies = helpers.shuffleArray([...Company.allCompanies]),
+            source = companies.shift(),
+            target = companies.shift();
+        return new Mission(source, target);
     }
 }
 module.exports = Mission;
 
-},{"../Challenges/Encryption":8,"../Challenges/Password":9,"../Companies/Company":11,"../EventListener":22,"../Helpers":24,"./MissionComputer":26,"./MissionDifficulty":27}],26:[function(require,module,exports){
+},{"../Companies/Company":7,"../EventListener":21,"../Helpers":23,"./Challenges/Encryption":25,"./Challenges/Password":26,"./MissionComputer":29,"./MissionDifficulty":30}],29:[function(require,module,exports){
 const   Computer = require('../Computers/Computer');
 let  DIFFICULTY_EXPONENT = 1.8;
 
@@ -6871,7 +7186,7 @@ class MissionComputer extends Computer
 
 module.exports = MissionComputer;
 
-},{"../Computers/Computer":15}],27:[function(require,module,exports){
+},{"../Computers/Computer":11}],30:[function(require,module,exports){
 const Decimal = require('break_infinity.js');
 
 /**
@@ -6907,7 +7222,7 @@ MissionDifficulty.DIFFICULTIES = {
 
 module.exports = MissionDifficulty;
 
-},{"break_infinity.js":1}],28:[function(require,module,exports){
+},{"break_infinity.js":1}],31:[function(require,module,exports){
 const   Mission = require('./Mission'),
         MINIMUM_MISSIONS = 10;
 let availableMissions = [];
@@ -6919,7 +7234,7 @@ class MissionGenerator
         while(availableMissions.length < MINIMUM_MISSIONS)
         {
             availableMissions.push(
-                Mission.getNewSimpleMission()
+                Mission.getNewMission()
             );
         }
     }
@@ -6941,343 +7256,4 @@ class MissionGenerator
 
 module.exports = MissionGenerator;
 
-},{"./Mission":25}],29:[function(require,module,exports){
-const   Alphabet = require('../Alphabet'),
-        helpers = require('../Helpers'),
-        Task = require('./Task');
-
-
-const GRID_SIZE_DIFFICULTY_EXPONENT = 0.8;
-
-class EncryptionCell
-{
-    constructor()
-    {
-        this.solved = false;
-        this.letter = Alphabet.getRandomLetter();
-    }
-
-    solve()
-    {
-        this.solved = true;
-        this.letter = '0';
-    }
-
-    tick()
-    {
-        if(this.solved)
-        {
-            return;
-        }
-        this.letter = Alphabet.getRandomLetter();
-    }
-}
-
-class EncryptionCracker extends Task
-{
-    constructor(encryption)
-    {
-        super('EncryptionCracker', encryption, encryption.difficulty);
-        this.rows = encryption.rows;
-        this.cols = encryption.cols;
-        this.encryption = encryption;
-
-        /**
-         * This is just an arbitrary number representing how many clock cycles per tick are needed to solve each cell
-         */
-        this.encryptionDifficulty = encryption.difficulty;
-
-        /**
-         *
-         * @type {number}
-         */
-        this.cyclesPerTick = 0;
-        /**
-         * The amount of progress you have made on the current tick
-         */
-        this.currentTickPercentage = 0;
-
-        /**
-         * @type {Array.<Array.<EncryptionCell>>}
-         */
-        this.grid = [];
-        /**
-         * @type {Array.<EncryptionCell>}
-         */
-        this.cells = [];
-        this.unsolvedCells = [];
-        for(let i = 0; i < this.rows; i++)
-        {
-            let row = [];
-            this.grid.push(row);
-
-            for(let j = 0; j < this.cols; j++)
-            {
-                let cell = new EncryptionCell();
-                row[j] = cell;
-                this.cells.push(cell);
-                this.unsolvedCells.push(cell);
-            }
-        }
-    }
-
-
-    solveNCells(cellsToSolve)
-    {
-        this.trigger('start');
-        for(let i = 0; i < cellsToSolve; i++)
-        {
-            let cell = helpers.getRandomArrayElement(this.unsolvedCells);
-            if(cell)
-            {
-                cell.solve();
-                helpers.removeArrayElement(this.unsolvedCells, cell);
-            }
-        }
-        if(!this.unsolvedCells.length)
-        {
-            this.signalComplete();
-        }
-
-    }
-
-    /**
-     * This should hopefully update the graphic properly
-     * @returns {Array<EncryptionCell>}
-     */
-    get cellsForAnimating()
-    {
-        return this.cells;
-    }
-
-    get percentage()
-    {
-        return (this.cells.length - this.unsolvedCells.length) / (this.cells.length);
-    }
-
-    get solved()
-    {
-        return this.unsolvedCells.length == 0;
-    }
-
-    tick()
-    {
-        super.tick();
-
-        // Cycle through all of the cells and tick them.
-        for (let cell of this.unsolvedCells)
-        {
-            cell.tick();
-        }
-
-        // figure out how many cells to solve
-        // I'm trying to figure out how to make this longer
-        // this may lead to a number less than zero and so, this tick, nothing will happen
-        this.currentTickPercentage += (this.cyclesPerTick / this.encryptionDifficulty) / Math.pow(this.unsolvedCells.length, GRID_SIZE_DIFFICULTY_EXPONENT);
-
-        // if the currentTickPercentage is bigger than one, we solve that many cells
-        if(this.currentTickPercentage >= 1)
-        {
-            let fullCells = Math.floor(this.currentTickPercentage);
-            this.currentTickPercentage -= fullCells;
-            this.solveNCells(fullCells);
-        }
-    }
-
-    static fromJSON(json)
-    {
-        json = json?json:{rows:10,cols:10,difficulty:50};
-        return new EncryptionCracker(json.rows, json.cols, json.difficulty);
-    }
-
-    getRewardRatio()
-    {
-        return this.difficultyRatio / Math.pow(this.ticksTaken, 2);
-    }
-}
-
-module.exports = EncryptionCracker;
-
-},{"../Alphabet":6,"../Helpers":24,"./Task":31}],30:[function(require,module,exports){
-const   DICTIONARY_CRACKER_MINIMUM_CYCLES = 5,
-        SEQUENTIAL_CRACKER_MINIMUM_CYCLES = 20,
-        Task = require('./Task'),
-        Password = require('../Challenges/Password');
-
-class PasswordCracker extends Task
-{
-    constructor(password, name, minimumRequiredCycles)
-    {
-        super(name, password, minimumRequiredCycles);
-        this.password = password;
-        this.currentGuess = null;
-    }
-
-    attackPassword()
-    {
-        if(!this.password.solved)
-        {
-            let result = this.password.attack(this.currentGuess);
-            if (result)
-            {
-                this.signalComplete();
-            }
-            return result;
-        }
-    }
-
-}
-
-
-class DictionaryCracker extends PasswordCracker
-{
-    constructor(password)
-    {
-        super(password, 'Dictionary Cracker', DICTIONARY_CRACKER_MINIMUM_CYCLES);
-        this.dictionary = [...password.dictionary];
-        this.totalGuesses = 0;
-    }
-
-    get dictionaryEntriesLeft()
-    {
-        return this.dictionary.length;
-    }
-
-    tick()
-    {
-        super.tick();
-
-        if(!this.solved)
-        {
-            let attacking = true,
-                found = false,
-                guessesThisTick = 0;
-
-            while(attacking)
-            {
-                this.currentGuess = this.dictionary[this.totalGuesses++];
-
-                let guessSuccessful = this.attackPassword();
-                found = found || guessSuccessful;
-                if(guessSuccessful || guessesThisTick++ >= this.cyclesPerTick)
-                {
-                    attacking = false;
-                }
-            }
-        }
-    }
-}
-
-class SequentialAttacker extends PasswordCracker
-{
-    constructor(password)
-    {
-        super(password, 'Sequential Cracker', SEQUENTIAL_CRACKER_MINIMUM_CYCLES);
-    }
-
-    tick()
-    {
-
-    }
-}
-
-module.exports = {
-    PasswordCracker:PasswordCracker,
-    DictionaryCracker:DictionaryCracker,
-    SequentialAttacker:SequentialAttacker
-};
-
-},{"../Challenges/Password":9,"./Task":31}],31:[function(require,module,exports){
-const   EventListener = require('../EventListener'),
-        Decimal = require('break_infinity.js');
-
-class CPUOverloadError extends Error
-{
-    constructor(task, cycles)
-    {
-        super(`Trying to run a task (${task.name}) with fewer cycles ${cycles} than it requires ${task.minimumRequiredCycles}`);
-        this.task = task;
-        this.cycles = cycles;
-    }
-}
-
-class Task extends EventListener
-{
-    constructor(name, challenge, minimumRequiredCycles)
-    {
-        super();
-        this.name= name;
-        this.minimumRequiredCycles = minimumRequiredCycles?minimumRequiredCycles:10;
-        this.cyclesPerTick = 0;
-        this.weight = 1;
-        this.difficultyRatio = 0;
-        this.ticksTaken = 0;
-        this.working = false;
-        this.completed = false;
-        this.challenge = challenge.setTask(this);
-    }
-
-    setCyclesPerTick(cyclesPerTick)
-    {
-        if(cyclesPerTick < this.minimumRequiredCycles)
-        {
-            throw new CPUOverloadError(this, cyclesPerTick);
-        }
-        this.cyclesPerTick = cyclesPerTick;
-        return this;
-    }
-
-    addCycles(tickIncrease)
-    {
-        this.cyclesPerTick += tickIncrease;
-    }
-
-    /**
-     * Try to release a number of ticks from the task and return the number actually released
-     * @param {number} tickReduction
-     * @returns {number|*}
-     */
-    freeCycles(tickReduction)
-    {
-        // figure out how many freeable ticks we have
-        const freeableTicks = this.cyclesPerTick-this.minimumRequiredCycles;
-        // if it's one or less, free none and return 0
-        let ticksToFree = 0;
-        if(freeableTicks > 1)
-        {
-            if(freeableTicks > tickReduction)
-            {
-                ticksToFree = tickReduction;
-            }
-            else
-            {
-                ticksToFree = Math.floor(freeableTicks / 2);
-            }
-        }
-        this.cyclesPerTick -= ticksToFree;
-        return ticksToFree;
-    }
-
-    signalComplete()
-    {
-        this.working = false;
-        this.completed = true;
-        this.trigger('complete');
-        this.challenge.solve();
-    }
-
-    getRewardRatio()
-    {
-        return 0;
-        //return this.difficultyRatio / Math.pow(this.ticksTaken, 2.5);
-    }
-
-    tick()
-    {
-        this.ticksTaken++;
-    }
-}
-
-module.exports = Task;
-
-},{"../EventListener":22,"break_infinity.js":1}]},{},[23]);
+},{"./Mission":28}]},{},[22]);

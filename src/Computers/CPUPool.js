@@ -1,5 +1,5 @@
 const   CPU = require('./CPU'),
-        Task = require('../Tasks/Task'),
+        Task = require('./Tasks/Task'),
         helpers = require('../Helpers'),
         EventListener = require('../EventListener');
 

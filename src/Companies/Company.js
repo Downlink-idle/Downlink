@@ -30,6 +30,9 @@ class Company
         this.missionSuccessIncreaseExponent = 1.001;
 
         this.hackDetectedExponent = 1.002;
+        this.securityIncreaseExponent = 1.002;
+
+        this.securityLevel = 1;
     }
 
     setPublicServer(publicServer)
@@ -48,14 +51,14 @@ class Company
         this.playerRespectModifier *= this.missionSuccessIncreaseExponent;
     }
 
-    detectHacking()
+    traceHacker()
     {
         this.playerRespectModifier /= this.hackDetectedExponent;
     }
 
-    static getRandomCompany()
+    increaseSecurityLevel()
     {
-        return companies.randomElement();
+        this.securityLevel *= this.securityIncreaseExponent;
     }
 
     /**

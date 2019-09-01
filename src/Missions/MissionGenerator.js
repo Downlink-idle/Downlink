@@ -9,7 +9,7 @@ class MissionGenerator
         while(availableMissions.length < MINIMUM_MISSIONS)
         {
             availableMissions.push(
-                Mission.getNewSimpleMission()
+                Mission.getNewMission()
             );
         }
     }
