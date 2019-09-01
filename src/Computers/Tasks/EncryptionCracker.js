@@ -1,5 +1,5 @@
-const   Alphabet = require('../Alphabet'),
-        helpers = require('../Helpers'),
+const   Alphabet = require('../../Alphabet'),
+        helpers = require('../../Helpers'),
         Task = require('./Task');
 
 

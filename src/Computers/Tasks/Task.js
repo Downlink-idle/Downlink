@@ -1,4 +1,4 @@
-const   EventListener = require('../EventListener'),
+const   EventListener = require('../../EventListener'),
         Decimal = require('break_infinity.js');
 
 class CPUOverloadError extends Error

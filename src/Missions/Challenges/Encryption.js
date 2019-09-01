@@ -5,8 +5,7 @@ const   DIFFICULTIES = {
             'EASY':{name:'Linear', size:{min:7, max:10}},
             'MEDIUM':{name:'Quadratic', size:{min:10,max:15}},
             'HARD':{name:'Cubic', size:{min:15,max:20}}
-        },
-        DIFFICULTY_EXPONENT = 0.4;
+        };
 
 function getRandomIntBetween(min, max)
 {
@@ -19,7 +18,7 @@ class Encryption extends Challenge
     {
         let rows = getRandomIntBetween(difficulty.size.min, difficulty.size.max),
             cols = getRandomIntBetween(difficulty.size.min, difficulty.size.max),
-            difficultyRatio = Math.floor(Math.pow(rows * cols, DIFFICULTY_EXPONENT));
+            difficultyRatio = Math.floor(Math.pow(rows * cols, 0.4));
 
         super(difficulty.name + ' Encryption', difficultyRatio);
         this.rows = rows;

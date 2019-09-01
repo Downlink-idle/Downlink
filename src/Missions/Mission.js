@@ -1,7 +1,7 @@
 const   Company = require('../Companies/Company'),
         MissionComputer = require('./MissionComputer'),
-        Password = require('../Challenges/Password'),
-        Encryption = require('../Challenges/Encryption'),
+        Password = require('./Challenges/Password'),
+        Encryption = require('./Challenges/Encryption'),
         EventListener = require('../EventListener'),
         MissionDifficulty = require('./MissionDifficulty'),
         helpers = require('../Helpers');
@@ -87,7 +87,7 @@ class Mission extends EventListener
             this.trigger("connectionStepTraced", step);
         }).on('hackTracked', ()=>{
             console.log("Connection traced");
-            this.target.detectHacking();
+            this.target.traceHacker();
         }).on('updateTracePercentage', (percentage)=>{
             this.trigger('updateTracePercentage', percentage);
         });

@@ -1,7 +1,7 @@
 const   dictionary = require('./dictionary'),
         Challenge = require('./Challenge'),
-        Alphabet = require('../Alphabet'),
-        helpers = require('../Helpers');
+        Alphabet = require('../../Alphabet'),
+        helpers = require('../../Helpers');
 
 const PASSWORD_TYPES = {
     'DICTIONARY':'Dictionary',

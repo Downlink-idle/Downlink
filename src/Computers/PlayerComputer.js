@@ -1,7 +1,7 @@
-const   Password = require('../Challenges/Password'),
-        {DictionaryCracker, PasswordCracker} = require('../Tasks/PasswordCracker'),
-        Encryption = require('../Challenges/Encryption'),
-        EncryptionCracker = require('../Tasks/EncryptionCracker'),
+const   Password = require('../Missions/Challenges/Password'),
+        {DictionaryCracker, PasswordCracker} = require('./Tasks/PasswordCracker'),
+        Encryption = require('../Missions/Challenges/Encryption'),
+        EncryptionCracker = require('./Tasks/EncryptionCracker'),
         Computer = require('./Computer'),
         CPUPool = require('./CPUPool'),
         CPU = require('./CPU.js');
