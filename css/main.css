@@ -1,3 +1,8 @@
+#active-mission-encryption-grid
+{
+    display:grid;
+}
+
 .unsolved-encryption-cell
 {
     background-color:green;
@@ -7,6 +12,11 @@
 {
     background-color:black;
     color:green;
+}
+
+.encryption-cell
+{
+    width:30px;
 }
 
 
@@ -112,3 +122,4 @@
 {
     background-color: lightblue;
 }
+

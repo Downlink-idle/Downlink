@@ -353,11 +353,15 @@
                     .addClass('solved-password');
             }
         },
-        updateEncryptionGridUI(numberOfCols, numberOfCells)
+        updateEncryptionGridUI(numberOfCells, numberOfCols)
         {
-            this.$activeMissionEncryptionGrid.css('grid-template-columns', `repeat(${numberOfCols}, 1fr)`);
+            this.$activeMissionEncryptionGrid.css({
+                'grid-template-columns':`repeat(${numberOfCols}, 1fr)`,
+                "width":numberOfCols * 30+"px"
+            });
             const   numberOfExtantCells = this.$activeMissionEncryptionGrid.children().length,
                     diff = numberOfCells - numberOfExtantCells;
+            $('.solved-encryption-cell').removeClass('solved-encryption-cell').addClass('unsolved-encryption-cell');
 
             if(diff > 0)
             {
@@ -365,16 +369,20 @@
                 let htmlToAppend = '';
                 for (let i = 0; i < diff; i++)
                 {
-                    htmlToAppend += '<div class="encryption-cell"></div>';
+                    htmlToAppend += '<div class="encryption-cell unsolved-encryption-cell">*</div>';
                 }
-                this.$activeMissionEncryptionGrid.append(htmlToAppend);
+
+                this.$activeMissionEncryptionGrid.append($(htmlToAppend));
             }
             else if(diff < 0)
             {
                 // we need to remove cells
                 let cellsToRemove = Math.abs(diff);
-                $(`.encryption-cell:nth-child(n+${cellsToRemove})`).remove();
+                console.log(cellsToRemove);
+
+                $(`.encryption-cell:nth-last-child(-n+${cellsToRemove})`).remove();
             }
+
         },
         /**
          *
@@ -382,17 +390,13 @@
          */
         animateEncryptionGrid:function(encryptionCracker)
         {
-            let html = '';
-
             let cells = encryptionCracker.cellsForAnimating;
-            let height = this.$activeMissionEncryptionGrid.height();
-
             for(let i in cells)
             {
                 let cell = cells[i];
-                $(`.encryption-cell:nth-child(${i})`)
+                $(`.encryption-cell:nth-child(${parseInt(i) + 1})`)
                     .text(cell.letter)
-                    .removeClass('solve-encryption-cell unsolved-encryption-cell')
+                    .removeClass('solved-encryption-cell unsolved-encryption-cell')
                     .addClass((cell.solved?"":"un")+"solved-encryption-cell");
             }
         },
@@ -473,7 +477,6 @@
         updateCurrentMissionView:function(server){
             this.$activeMissionPassword.val('');
             this.updateEncryptionGridUI(server.encryption.size, server.encryption.cols);
-            this.$activeMissionEncryptionGrid.empty();
             this.$activeMissionEncryptionType.html(server.encryption.name);
             this.$activeMissionIPAddress.html(server.ipAddress);
             this.$activeMissionServerName.html(server.name);
