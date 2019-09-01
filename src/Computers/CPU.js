@@ -10,7 +10,7 @@ const CPU_COST_MODIFIER = 4000;
 
 class CPU extends EventListener
 {
-    constructor(name, speed, color, lifeCycle, lifeCycleUsed)
+    constructor(name, speed, img, lifeCycle, lifeCycleUsed)
     {
         super();
         let defaultCPU = cpus[0];
@@ -25,7 +25,7 @@ class CPU extends EventListener
         /**
          * @type {string} the rgb() color for the cpu
          */
-        this.color = color?color:defaultCPU.color;
+        this.img = img?img:defaultCPU.img;
         /**
          * @type {Array.<Task>}
          */

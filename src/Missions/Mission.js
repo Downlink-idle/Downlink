@@ -3,7 +3,6 @@ const   Company = require('../Companies/Company'),
         Password = require('./Challenges/Password'),
         Encryption = require('./Challenges/Encryption'),
         EventListener = require('../EventListener'),
-        MissionDifficulty = require('./MissionDifficulty'),
         helpers = require('../Helpers');
 
 const MISSION_STATUSES = {
@@ -78,8 +77,17 @@ class Mission extends EventListener
         this.setDifficulty(this.target.securityLevel);
 
         let missionChallengeDifficulty = Math.floor(this.difficulty);
+        let serverType = "Server";
+        if(missionChallengeDifficulty > 10)
+        {
+            serverType = 'Server Farm';
+        }
+        else if(missionChallengeDifficulty > 5)
+        {
+            serverType = 'Cluster';
+        }
 
-        this.computer = new MissionComputer(this.target, this.difficulty.serverType)
+        this.computer = new MissionComputer(this.target, serverType)
             .setPassword(Password.randomDictionaryPassword(missionChallengeDifficulty))
             .setEncryption(new Encryption(missionChallengeDifficulty))
             .on('accessed', ()=>{
