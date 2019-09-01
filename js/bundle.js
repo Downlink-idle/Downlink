@@ -3702,7 +3702,7 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.23a",
+        version:"0.3.24a",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
