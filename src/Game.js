@@ -41,10 +41,10 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.21a",
+        version:"0.3.23a",
         requiresHardReset:true,
         canTakeMissions:true,
-        requiresNewMission:false,
+        requiresNewMission:true,
         /**
          * jquery entities that are needed for updating
          */
@@ -121,7 +121,6 @@
                 this.takingMissions = !this.takingMissions;
                 if(this.takingMissions)
                 {
-                    this.requiresNewMission = true;
                     this.$missionToggleButton.text("Stop Taking Missions");
                 }
                 else
@@ -317,7 +316,7 @@
                 let tickResults = this.downlink.tick();
                 this.animateTasks(tickResults.tasks);
                 this.$settingsTimePlayed.html(this.getRunTime());
-                if (this.requiresNewMission)
+                if (this.takingMissions && this.requiresNewMission)
                 {
                     this.getNextMission();
                 }

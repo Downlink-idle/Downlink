@@ -30,6 +30,7 @@ class Company
         this.missionSuccessIncreaseExponent = 1.001;
 
         this.hackDetectedExponent = 1.002;
+        this.securityIncreaseExponent = 1.002;
 
         this.securityLevel = 1;
     }
@@ -55,14 +56,9 @@ class Company
         this.playerRespectModifier /= this.hackDetectedExponent;
     }
 
-    increaseSecurityLevel(amount)
+    increaseSecurityLevel()
     {
-        this.securityLevel += amount;
-    }
-
-    static getRandomCompany()
-    {
-        return companies.randomElement();
+        this.securityLevel *= this.securityIncreaseExponent;
     }
 
     /**

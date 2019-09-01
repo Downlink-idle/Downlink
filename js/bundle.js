@@ -1901,6 +1901,7 @@ class Company
         this.missionSuccessIncreaseExponent = 1.001;
 
         this.hackDetectedExponent = 1.002;
+        this.securityIncreaseExponent = 1.002;
 
         this.securityLevel = 1;
     }
@@ -1926,14 +1927,9 @@ class Company
         this.playerRespectModifier /= this.hackDetectedExponent;
     }
 
-    increaseSecurityLevel(amount)
+    increaseSecurityLevel()
     {
-        this.securityLevel += amount;
-    }
-
-    static getRandomCompany()
-    {
-        return companies.randomElement();
+        this.securityLevel *= this.securityIncreaseExponent;
     }
 
     /**
@@ -3706,10 +3702,10 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.21a",
+        version:"0.3.22a",
         requiresHardReset:true,
         canTakeMissions:true,
-        requiresNewMission:false,
+        requiresNewMission:true,
         /**
          * jquery entities that are needed for updating
          */
@@ -3786,7 +3782,6 @@ module.exports = EventListener;
                 this.takingMissions = !this.takingMissions;
                 if(this.takingMissions)
                 {
-                    this.requiresNewMission = true;
                     this.$missionToggleButton.text("Stop Taking Missions");
                 }
                 else
@@ -3982,7 +3977,7 @@ module.exports = EventListener;
                 let tickResults = this.downlink.tick();
                 this.animateTasks(tickResults.tasks);
                 this.$settingsTimePlayed.html(this.getRunTime());
-                if (this.requiresNewMission)
+                if (this.takingMissions && this.requiresNewMission)
                 {
                     this.getNextMission();
                 }
@@ -4421,6 +4416,10 @@ module.exports = {
             array.splice(index, 1);
         }
         return array;
+    },
+    getRandomIntegerBetween(min, max)
+    {
+
     }
 
 };
@@ -4473,14 +4472,7 @@ class Challenge extends EventListener
 module.exports = Challenge;
 
 },{"../../EventListener":21}],25:[function(require,module,exports){
-/**
- * @type {{}}
- */
-const   DIFFICULTIES = {
-            'EASY':{name:'Linear', size:{min:7, max:10}},
-            'MEDIUM':{name:'Quadratic', size:{min:10,max:15}},
-            'HARD':{name:'Cubic', size:{min:15,max:20}}
-        };
+const DIFFICULTY_EXPONENT = 0.4;
 
 function getRandomIntBetween(min, max)
 {
@@ -4489,33 +4481,29 @@ function getRandomIntBetween(min, max)
 const Challenge = require('./Challenge');
 class Encryption extends Challenge
 {
+    /**
+     *
+     * @param {number} difficulty
+     */
     constructor(difficulty)
     {
-        let rows = getRandomIntBetween(difficulty.size.min, difficulty.size.max),
-            cols = getRandomIntBetween(difficulty.size.min, difficulty.size.max),
-            difficultyRatio = Math.floor(Math.pow(rows * cols, 0.4));
+        let rows = Encryption.getDimensionForDifficulty(difficulty),
+            cols = Encryption.getDimensionForDifficulty(difficulty),
+            size = rows * cols,
+            difficultyRatio = Math.floor(Math.pow(size, DIFFICULTY_EXPONENT));
 
         super(difficulty.name + ' Encryption', difficultyRatio);
         this.rows = rows;
         this.cols = cols;
-        this.size = cols * rows;
+        this.size = size;
     }
 
-    static get DIFFICULTIES()
+    static getDimensionForDifficulty(difficulty)
     {
-        return DIFFICULTIES;
+        const min = 5 + difficulty,
+              max = 8 + difficulty * 2;
+        return getRandomIntBetween(5+difficulty, 9+difficulty);
     }
-
-    static getNewLinearEncryption()
-    {
-        return new Encryption(DIFFICULTIES.EASY);
-    }
-
-    static getNewQuadraticEncryption()
-    {
-        return new Encryption(DIFFICULTIES.MEDIUM);
-    }
-
 }
 
 module.exports = Encryption;
@@ -4564,8 +4552,6 @@ class Password extends Challenge
      */
     static randomDictionaryPassword(difficulty)
     {
-        // limit the difficulty to be between the easiest and hardest allowed difficulties
-        difficulty = Math.min(Math.max(difficulty, PASSWORD_DICTIONARY_DIFFICULTIES.EASIEST), PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST);
         // reduce the dictionary by a percentage of that amount
         let reduction = PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST - difficulty,
             usedDictionary = [];
@@ -6907,9 +6893,9 @@ class Mission extends EventListener
 
         // these values are all instantiated later.
         /**
-         * @type {MissionDifficulty}
+         * @type {number}
          */
-        this.difficulty = null;
+        this.difficulty = 0;
         /**
          *
          * @type {MissionComputer}
@@ -6925,12 +6911,7 @@ class Mission extends EventListener
 
     setDifficulty(difficulty)
     {
-        if(!difficulty instanceof MissionDifficulty)
-        {
-            throw new Error("Mission Difficulty unrecognised");
-        }
         this.difficulty = difficulty;
-        return this;
     }
 
     get challenges()
@@ -6952,30 +6933,23 @@ class Mission extends EventListener
             return this;
         }
 
-        this.computer = new MissionComputer(this.target, this.difficulty.serverType);
-        this.computer.on('accessed', ()=>{
-            this.signalComplete();
-        }).on('connectionStepTraced', (step)=>{
-            this.trigger("connectionStepTraced", step);
-        }).on('hackTracked', ()=>{
-            console.log("Connection traced");
-            this.target.traceHacker();
-        }).on('updateTracePercentage', (percentage)=>{
-            this.trigger('updateTracePercentage', percentage);
-        });
+        this.setDifficulty(this.target.securityLevel);
 
-        let password = null, encryption = null;
+        let missionChallengeDifficulty = Math.floor(this.difficulty);
 
-        /**
-         * This a hoist, not the end result
-         */
-        if(this.difficulty === MissionDifficulty.DIFFICULTIES.EASY)
-        {
-            password = Password.randomDictionaryPassword(Password.PASSWORD_DICTIONARY_DIFFICULTIES.EASIEST);
-            encryption = Encryption.getNewLinearEncryption();
-        }
-
-        this.computer.setPassword(password).setEncryption(encryption);
+        this.computer = new MissionComputer(this.target, this.difficulty.serverType)
+            .setPassword(Password.randomDictionaryPassword(missionChallengeDifficulty))
+            .setEncryption(new Encryption(missionChallengeDifficulty))
+            .on('accessed', ()=>{
+                this.signalComplete();
+            }).on('connectionStepTraced', (step)=>{
+                this.trigger("connectionStepTraced", step);
+            }).on('hackTracked', ()=>{
+                console.log("Connection traced");
+                this.target.traceHacker();
+            }).on('updateTracePercentage', (percentage)=>{
+                this.trigger('updateTracePercentage', percentage);
+            });
 
         this.status = MISSION_STATUSES.UNDERWAY;
         return this;
@@ -6986,13 +6960,14 @@ class Mission extends EventListener
      */
     get reward()
     {
-        return this.difficulty.modifier * this.computer.difficultyModifier * this.sponsor.playerRespectModifier;
+        return this.difficulty * this.computer.difficultyModifier * this.sponsor.playerRespectModifier;
     }
 
     signalComplete()
     {
         this.status = MISSION_STATUSES.COMPLETE;
         this.sponsor.finishMission(this);
+        this.target.increaseSecurityLevel();
         this.trigger('complete');
     }
 
@@ -7011,15 +6986,12 @@ class Mission extends EventListener
         this.computer.tick();
     }
 
-    static getNewSimpleMission()
+    static getNewMission()
     {
-        let companies = helpers.shuffleArray([...Company.allCompanies]);
-        return new Mission(
-            companies.shift(),
-            companies.shift()
-        ).setDifficulty(
-            MissionDifficulty.DIFFICULTIES.EASY
-        );
+        let companies = helpers.shuffleArray([...Company.allCompanies]),
+            source = companies.shift(),
+            target = companies.shift();
+        return new Mission(source, target);
     }
 }
 module.exports = Mission;
@@ -7262,7 +7234,7 @@ class MissionGenerator
         while(availableMissions.length < MINIMUM_MISSIONS)
         {
             availableMissions.push(
-                Mission.getNewSimpleMission()
+                Mission.getNewMission()
             );
         }
     }
