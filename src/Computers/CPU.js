@@ -61,7 +61,7 @@ class CPU extends EventListener
         let json = {
             name:this.name,
             speed:this.speed.toString(),
-            color:this.color,
+            img:this.img,
             lifeCycle:this.lifeCycle.toString(),
             lifeCycleUsed:this.lifeCycleUsed.toString()
         };
@@ -70,7 +70,7 @@ class CPU extends EventListener
 
     static fromJSON(json)
     {
-        return new CPU(json.name, json.speed, json.color, json.lifeCycle, json.lifeCycleUsed);
+        return new CPU(json.name, json.speed, json.img, json.lifeCycle, json.lifeCycleUsed);
     }
 
     static getCPUs()
