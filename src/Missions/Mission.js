@@ -124,7 +124,6 @@ class Mission extends EventListener
     set connection(connection)
     {
         this.computer.connect(connection);
-
     }
 
     tick()
