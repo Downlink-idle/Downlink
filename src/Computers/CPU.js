@@ -6,6 +6,8 @@ class CPUFullError extends Error{};
 class CPUDuplicateTaskError extends Error{};
 class InvalidTaskError extends Error{};
 
+const CPU_COST_MODIFIER = 4000;
+
 class CPU extends EventListener
 {
     constructor(name, speed, color, lifeCycle, lifeCycleUsed)
@@ -92,7 +94,7 @@ class CPU extends EventListener
      */
     static getPriceFor(cpuData)
     {
-        return cpuData.lifeCycle * cpuData.speed / 1000;
+        return cpuData.lifeCycle * cpuData.speed / CPU_COST_MODIFIER;
     }
 
     static get deadCPUColor()

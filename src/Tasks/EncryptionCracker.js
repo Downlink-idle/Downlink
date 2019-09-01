@@ -2,6 +2,9 @@ const   Alphabet = require('../Alphabet'),
         helpers = require('../Helpers'),
         Task = require('./Task');
 
+
+const GRID_SIZE_DIFFICULTY_EXPONENT = 0.8;
+
 class EncryptionCell
 {
     constructor()
@@ -124,9 +127,9 @@ class EncryptionCracker extends Task
         }
 
         // figure out how many cells to solve
-        // by determining how many cycles per tick we have divided by the difficulty of this task
+        // I'm trying to figure out how to make this longer
         // this may lead to a number less than zero and so, this tick, nothing will happen
-        this.currentTickPercentage += this.cyclesPerTick / this.encryptionDifficulty;
+        this.currentTickPercentage += (this.cyclesPerTick / this.encryptionDifficulty) / Math.pow(this.unsolvedCells.length, GRID_SIZE_DIFFICULTY_EXPONENT);
 
         // if the currentTickPercentage is bigger than one, we solve that many cells
         if(this.currentTickPercentage >= 1)

@@ -1,4 +1,6 @@
 const   Computer = require('../Computers/Computer');
+let  DIFFICULTY_EXPONENT = 1.8;
+
 class MissionComputer extends Computer
 {
     constructor(company, serverType)
@@ -64,12 +66,15 @@ class MissionComputer extends Computer
     {
         super.connect();
         let clone = connection.clone();
+        clone.setEndPoint(this);
 
         clone
             .once("connectionTraced", ()=>{
                 this.trigger('hackTracked');
-            }).on('stepTraced',(step, percentage)=>{
-                this.trigger('connectionStepTraced', step, percentage);
+            }).on('stepTraced',(step)=>{
+                this.trigger('connectionStepTraced', step);
+            }).on('updateTracePercentage', (percentage)=>{
+                this.trigger('updateTracePercentage', percentage);
             });
         this.currentPlayerConnection = clone;
 
@@ -126,7 +131,7 @@ class MissionComputer extends Computer
         let mod = 0;
         for(let challenge of this.challenges)
         {
-            mod += challenge.difficulty;
+            mod += Math.pow(challenge.difficulty, DIFFICULTY_EXPONENT);
         }
         return mod;
     }
@@ -160,6 +165,10 @@ class MissionComputer extends Computer
 
     startTraceBack()
     {
+        if(this.tracingConnection)
+        {
+            return;
+        }
         this.currentPlayerConnection.connect();
         this.tracingConnection = true;
     }

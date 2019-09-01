@@ -41,7 +41,7 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.16a",
+        version:"0.3.20a",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:false,
@@ -317,23 +317,16 @@
             this.stop().start();
         },
         tick:function() {
-            try
+            if (this.ticking)
             {
-                if (this.ticking)
+                let tickResults = this.downlink.tick();
+                this.animateTasks(tickResults.tasks);
+                this.$settingsTimePlayed.html(this.getRunTime());
+                if (this.requiresNewMission)
                 {
-                    let tickResults = this.downlink.tick();
-                    this.animateTasks(tickResults.tasks);
-                    this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
-                    this.$settingsTimePlayed.html(this.getRunTime());
-                    if(this.requiresNewMission)
-                    {
-                        this.getNextMission();
-                    }
+                    this.getNextMission();
                 }
-            }
-            catch(e)
-            {
-                console.log(e);
+                this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
             }
         },
         animateTasks:function(tasks)
@@ -441,11 +434,13 @@
 
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
-
+            // bind the mission events to the UI updates
             this.mission.on('complete', ()=>{
                 this.requiresNewMission = true;
-            }).on("connectionStepTraced", (stepsTraced, percentageTraced)=>{
+                this.save();
+            }).on("connectionStepTraced", (stepsTraced)=>{
                 this.$connectionTraced.html(stepsTraced);
+            }).on("updateTracePercentage", (percentageTraced)=>{
                 this.$connectionTracePercentage.html(percentageTraced);
             });
 

@@ -1919,7 +1919,7 @@ module.exports = Challenge;
 /**
  * @type {{}}
  */
-       DIFFICULTIES = {
+const   DIFFICULTIES = {
             'EASY':{name:'Linear', size:{min:7, max:10}},
             'MEDIUM':{name:'Quadratic', size:{min:10,max:15}},
             'HARD':{name:'Cubic', size:{min:15,max:20}}
@@ -4471,6 +4471,8 @@ class CPUFullError extends Error{};
 class CPUDuplicateTaskError extends Error{};
 class InvalidTaskError extends Error{};
 
+const CPU_COST_MODIFIER = 4000;
+
 class CPU extends EventListener
 {
     constructor(name, speed, color, lifeCycle, lifeCycleUsed)
@@ -4557,7 +4559,7 @@ class CPU extends EventListener
      */
     static getPriceFor(cpuData)
     {
-        return cpuData.lifeCycle * cpuData.speed / 1000;
+        return cpuData.lifeCycle * cpuData.speed / CPU_COST_MODIFIER;
     }
 
     static get deadCPUColor()
@@ -5159,10 +5161,10 @@ module.exports = PublicComputer;
 
 },{"./Computer":15}],19:[function(require,module,exports){
 let cpus = [
-    {name:"Garbo Processor", speed:20, lifeCycle:5000, color:'rgb(108, 140, 217)'},
-    {name:"Garbo Processor II", speed:40, lifeCycle:10000, color:'rgb(77, 98, 148)'},
-    {name:"Garbo Processor II.5", speed:80, lifeCycle:15000, color:'rgb(29, 45, 84)'},
-    {name:"Garbo Processor BLT", speed:133, lifeCycle: 20000, color:'rgb(1, 23, 74)'}
+    {name:"Garbo Processor", speed:20, lifeCycle:20000, color:'rgb(108, 140, 217)'},
+    {name:"Garbo Processor II", speed:40, lifeCycle:40000, color:'rgb(77, 98, 148)'},
+    {name:"Garbo Processor II.5", speed:80, lifeCycle:60000, color:'rgb(29, 45, 84)'},
+    {name:"Garbo Processor BLT", speed:133, lifeCycle: 100000, color:'rgb(1, 23, 74)'}
 ];
 module.exports = cpus;
 
@@ -5178,8 +5180,6 @@ class InvalidComputerError extends Error{}
 //class DuplicateComputerError extends Error{}
 
 let connections = 0;
-const DEFAULT_CONNECTION_DISTANCE = 10;
-
 
 /**
  * A class to encapsulate the points in between you and the target computer, excluding both
@@ -5193,25 +5193,49 @@ class Connection extends EventListener
         {
             connections++;
         }
+        /**
+         * This is used for easy comparison between two connections
+         * and will only be of import in later game because in early game the connections will be automated
+         * @type {string}
+         */
         this.hash = '';
+        /**
+         * * @type {Computer}
+         */
         this.startingPoint = null;
+        /**
+         * @type {Computer}
+         */
+        this.endPoint = null;
         this.name = name?name:`Connection ${connections}`;
         this.computers=[];
         this.connectionLength = 0;
-        this.connectionDistance = DEFAULT_CONNECTION_DISTANCE;
         this.computersTraced = 0;
         this.amountTraced = 0;
-        this.totalConnectionLength = 0;
+        this.traceTicks = 0;
     }
 
-    improveConnectionDistance(amount)
+    static improveConnectionDistance(amount)
     {
-        this.connectionDistance += amount;
+        Connection.connectionDistance += amount;
     }
 
-    setStartingPoint(playerComputer)
+    get totalConnectionLength()
     {
-        this.startingPoint = playerComputer;
+        return this.connectionLength * Connection.connectionDistance;
+    }
+
+    setStartingPoint(startingComputer)
+    {
+        this.startingPoint = startingComputer;
+        this.connectionLength ++;
+        return this;
+    }
+
+    setEndPoint(endPointComputer)
+    {
+        this.endPoint = endPointComputer;
+        this.connectionLength ++;
         return this;
     }
 
@@ -5264,21 +5288,28 @@ class Connection extends EventListener
     traceStep(stepTraceAmount)
     {
         this.amountTraced += stepTraceAmount;
-        if(this.amountTraced >= this.connectionDistance)
+        this.traceTicks++;
+        if(this.traceTicks % Connection.sensitivity === 0)
+        {
+            this.trigger('updateTracePercentage', this.tracePercent);
+        }
+
+        if(this.amountTraced >= Connection.connectionDistance)
         {
             this.computersTraced++;
-            this.trigger("stepTraced", this.computersTraced, this.tracePercent);
             this.amountTraced = 0;
             if(this.computersTraced >= this.connectionLength)
             {
                 this.trigger("connectionTraced");
             }
+            this.trigger("stepTraced", this.computersTraced);
         }
     }
 
     get totalAmountTraced()
     {
-        return this.computersTraced * this.connectionDistance + this.amountTraced;
+        let traceAmount = (this.computersTraced * Connection.connectionDistance) + this.amountTraced;
+        return traceAmount;
     }
 
     close()
@@ -5304,7 +5335,6 @@ class Connection extends EventListener
         }
         this.computers.push(computer);
         this.connectionLength ++;
-        this.totalConnectionLength += this.connectionLength;
         this.buildHash();
         return this;
     }
@@ -5371,6 +5401,9 @@ class Connection extends EventListener
         return connection;
     }
 }
+
+Connection.connectionDistance = 1300;
+Connection.sensitivity = 25;
 
 module.exports = Connection;
 
@@ -6049,23 +6082,16 @@ module.exports = EventListener;
             this.stop().start();
         },
         tick:function() {
-            try
+            if (this.ticking)
             {
-                if (this.ticking)
+                let tickResults = this.downlink.tick();
+                this.animateTasks(tickResults.tasks);
+                this.$settingsTimePlayed.html(this.getRunTime());
+                if (this.requiresNewMission)
                 {
-                    let tickResults = this.downlink.tick();
-                    this.animateTasks(tickResults.tasks);
-                    this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
-                    this.$settingsTimePlayed.html(this.getRunTime());
-                    if(this.requiresNewMission)
-                    {
-                        this.getNextMission();
-                    }
+                    this.getNextMission();
                 }
-            }
-            catch(e)
-            {
-                console.log(e);
+                this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
             }
         },
         animateTasks:function(tasks)
@@ -6173,11 +6199,13 @@ module.exports = EventListener;
 
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
-
+            // bind the mission events to the UI updates
             this.mission.on('complete', ()=>{
                 this.requiresNewMission = true;
-            }).on("connectionStepTraced", (stepsTraced, percentageTraced)=>{
+                this.save();
+            }).on("connectionStepTraced", (stepsTraced)=>{
                 this.$connectionTraced.html(stepsTraced);
+            }).on("updateTracePercentage", (percentageTraced)=>{
                 this.$connectionTracePercentage.html(percentageTraced);
             });
 
@@ -6584,10 +6612,13 @@ class Mission extends EventListener
         this.computer = new MissionComputer(this.target, this.difficulty.serverType);
         this.computer.on('accessed', ()=>{
             this.signalComplete();
-        }).on('connectionStepTraced', (step, percentage)=>{
-            this.trigger("connectionStepTraced", step, percentage);
+        }).on('connectionStepTraced', (step)=>{
+            this.trigger("connectionStepTraced", step);
         }).on('hackTracked', ()=>{
+            console.log("Connection traced");
             this.target.detectHacking();
+        }).on('updateTracePercentage', (percentage)=>{
+            this.trigger('updateTracePercentage', percentage);
         });
 
         let password = null, encryption = null;
@@ -6652,6 +6683,8 @@ module.exports = Mission;
 
 },{"../Challenges/Encryption":8,"../Challenges/Password":9,"../Companies/Company":11,"../EventListener":22,"../Helpers":24,"./MissionComputer":26,"./MissionDifficulty":27}],26:[function(require,module,exports){
 const   Computer = require('../Computers/Computer');
+let  DIFFICULTY_EXPONENT = 1.8;
+
 class MissionComputer extends Computer
 {
     constructor(company, serverType)
@@ -6717,12 +6750,15 @@ class MissionComputer extends Computer
     {
         super.connect();
         let clone = connection.clone();
+        clone.setEndPoint(this);
 
         clone
             .once("connectionTraced", ()=>{
                 this.trigger('hackTracked');
-            }).on('stepTraced',(step, percentage)=>{
-                this.trigger('connectionStepTraced', step, percentage);
+            }).on('stepTraced',(step)=>{
+                this.trigger('connectionStepTraced', step);
+            }).on('updateTracePercentage', (percentage)=>{
+                this.trigger('updateTracePercentage', percentage);
             });
         this.currentPlayerConnection = clone;
 
@@ -6779,7 +6815,7 @@ class MissionComputer extends Computer
         let mod = 0;
         for(let challenge of this.challenges)
         {
-            mod += challenge.difficulty;
+            mod += Math.pow(challenge.difficulty, DIFFICULTY_EXPONENT);
         }
         return mod;
     }
@@ -6813,6 +6849,10 @@ class MissionComputer extends Computer
 
     startTraceBack()
     {
+        if(this.tracingConnection)
+        {
+            return;
+        }
         this.currentPlayerConnection.connect();
         this.tracingConnection = true;
     }
@@ -6905,6 +6945,9 @@ module.exports = MissionGenerator;
 const   Alphabet = require('../Alphabet'),
         helpers = require('../Helpers'),
         Task = require('./Task');
+
+
+const GRID_SIZE_DIFFICULTY_EXPONENT = 0.8;
 
 class EncryptionCell
 {
@@ -7028,9 +7071,9 @@ class EncryptionCracker extends Task
         }
 
         // figure out how many cells to solve
-        // by determining how many cycles per tick we have divided by the difficulty of this task
+        // I'm trying to figure out how to make this longer
         // this may lead to a number less than zero and so, this tick, nothing will happen
-        this.currentTickPercentage += this.cyclesPerTick / this.encryptionDifficulty;
+        this.currentTickPercentage += (this.cyclesPerTick / this.encryptionDifficulty) / Math.pow(this.unsolvedCells.length, GRID_SIZE_DIFFICULTY_EXPONENT);
 
         // if the currentTickPercentage is bigger than one, we solve that many cells
         if(this.currentTickPercentage >= 1)

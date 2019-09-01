@@ -9,8 +9,6 @@ class InvalidComputerError extends Error{}
 //class DuplicateComputerError extends Error{}
 
 let connections = 0;
-const DEFAULT_CONNECTION_DISTANCE = 10;
-
 
 /**
  * A class to encapsulate the points in between you and the target computer, excluding both
@@ -24,25 +22,49 @@ class Connection extends EventListener
         {
             connections++;
         }
+        /**
+         * This is used for easy comparison between two connections
+         * and will only be of import in later game because in early game the connections will be automated
+         * @type {string}
+         */
         this.hash = '';
+        /**
+         * * @type {Computer}
+         */
         this.startingPoint = null;
+        /**
+         * @type {Computer}
+         */
+        this.endPoint = null;
         this.name = name?name:`Connection ${connections}`;
         this.computers=[];
         this.connectionLength = 0;
-        this.connectionDistance = DEFAULT_CONNECTION_DISTANCE;
         this.computersTraced = 0;
         this.amountTraced = 0;
-        this.totalConnectionLength = 0;
+        this.traceTicks = 0;
     }
 
-    improveConnectionDistance(amount)
+    static improveConnectionDistance(amount)
     {
-        this.connectionDistance += amount;
+        Connection.connectionDistance += amount;
     }
 
-    setStartingPoint(playerComputer)
+    get totalConnectionLength()
     {
-        this.startingPoint = playerComputer;
+        return this.connectionLength * Connection.connectionDistance;
+    }
+
+    setStartingPoint(startingComputer)
+    {
+        this.startingPoint = startingComputer;
+        this.connectionLength ++;
+        return this;
+    }
+
+    setEndPoint(endPointComputer)
+    {
+        this.endPoint = endPointComputer;
+        this.connectionLength ++;
         return this;
     }
 
@@ -95,21 +117,28 @@ class Connection extends EventListener
     traceStep(stepTraceAmount)
     {
         this.amountTraced += stepTraceAmount;
-        if(this.amountTraced >= this.connectionDistance)
+        this.traceTicks++;
+        if(this.traceTicks % Connection.sensitivity === 0)
+        {
+            this.trigger('updateTracePercentage', this.tracePercent);
+        }
+
+        if(this.amountTraced >= Connection.connectionDistance)
         {
             this.computersTraced++;
-            this.trigger("stepTraced", this.computersTraced, this.tracePercent);
             this.amountTraced = 0;
             if(this.computersTraced >= this.connectionLength)
             {
                 this.trigger("connectionTraced");
             }
+            this.trigger("stepTraced", this.computersTraced);
         }
     }
 
     get totalAmountTraced()
     {
-        return this.computersTraced * this.connectionDistance + this.amountTraced;
+        let traceAmount = (this.computersTraced * Connection.connectionDistance) + this.amountTraced;
+        return traceAmount;
     }
 
     close()
@@ -135,7 +164,6 @@ class Connection extends EventListener
         }
         this.computers.push(computer);
         this.connectionLength ++;
-        this.totalConnectionLength += this.connectionLength;
         this.buildHash();
         return this;
     }
@@ -202,5 +230,8 @@ class Connection extends EventListener
         return connection;
     }
 }
+
+Connection.connectionDistance = 1300;
+Connection.sensitivity = 25;
 
 module.exports = Connection;
