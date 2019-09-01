@@ -41,7 +41,7 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.22a",
+        version:"0.3.23a",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
@@ -422,8 +422,6 @@
             this.$connectionTracePercentage.html(0);
             this.mission = this.downlink.getNextMission();
             this.updateMissionInterface(this.mission);
-            this.updatePlayerDetails();
-            this.updateComputerPartsUI();
             this.requiresNewMission = false;
 
             this.downlink
@@ -431,6 +429,8 @@
             // bind the mission events to the UI updates
             this.mission.on('complete', ()=>{
                 this.requiresNewMission = true;
+                this.updatePlayerDetails();
+                this.updateComputerPartsUI();
                 this.save();
             }).on("connectionStepTraced", (stepsTraced)=>{
                 this.$connectionTraced.html(stepsTraced);
@@ -610,7 +610,7 @@
                 let cost = CPU.getPriceFor(cpu),
                     affordable = this.downlink.canAfford(cost);
                 let $node = $(`<div data-part-cost="${cost.toString()}" class="col-4 cpu part ${affordable?"":"un"}affordable-part">
-                        <div class="row"><div class="col" style="color:${cpu?cpu.color:'black'}"><i class="fas fa-microchip"></i></div></div>
+                        <div class="row"><div class="col">${cpu?'<img src="./img/'+cpu.img+'"/>':""}</div></div>
                         <div class="row"><div class="col">${cpu.name}</div></div>
                         <div class="row"><div class="col">${cpu.speed} MHz</div></div>
                         <div class="row"><div class="col">${cost.toString()}</div></div>
@@ -665,19 +665,12 @@
                 for(let j = 0; j < gridSize; j++)
                 {
                     let cpu = cpus[cpuIndex];
-                    let cpuColor = "black";
+                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" title="${cpu?cpu.name:''}">`;
                     if(cpu)
                     {
-                        if(cpu.living)
-                        {
-                            cpuColor = cpu.color;
-                        }
-                        else
-                        {
-                            cpuColor = CPU.deadCPUColor;
-                        }
+                        html += '<img src="./img/'+cpu.img+'"/>';
                     }
-                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" style="color:${cpuColor}" title="${cpu?cpu.name:''}">${cpu?'<i class="fas fa-microchip"></i>':''}</div>`;
+                    html += '</div>';
                     cpuIndex++;
                 }
                 html += '</div>';

@@ -30,7 +30,7 @@ class Company
         this.missionSuccessIncreaseExponent = 1.001;
 
         this.hackDetectedExponent = 1.002;
-        this.securityIncreaseExponent = 1.002;
+        this.securityIncreaseExponent = 1.05;
 
         this.securityLevel = 1;
     }

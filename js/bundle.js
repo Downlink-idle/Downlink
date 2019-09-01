@@ -1901,7 +1901,7 @@ class Company
         this.missionSuccessIncreaseExponent = 1.001;
 
         this.hackDetectedExponent = 1.002;
-        this.securityIncreaseExponent = 1.002;
+        this.securityIncreaseExponent = 1.05;
 
         this.securityLevel = 1;
     }
@@ -1930,6 +1930,7 @@ class Company
     increaseSecurityLevel()
     {
         this.securityLevel *= this.securityIncreaseExponent;
+        console.log(this.securityLevel);
     }
 
     /**
@@ -2033,7 +2034,7 @@ const CPU_COST_MODIFIER = 4000;
 
 class CPU extends EventListener
 {
-    constructor(name, speed, color, lifeCycle, lifeCycleUsed)
+    constructor(name, speed, img, lifeCycle, lifeCycleUsed)
     {
         super();
         let defaultCPU = cpus[0];
@@ -2048,7 +2049,7 @@ class CPU extends EventListener
         /**
          * @type {string} the rgb() color for the cpu
          */
-        this.color = color?color:defaultCPU.color;
+        this.img = img?img:defaultCPU.img;
         /**
          * @type {Array.<Task>}
          */
@@ -3057,10 +3058,10 @@ module.exports = Task;
 
 },{"../../EventListener":21,"break_infinity.js":1}],18:[function(require,module,exports){
 let cpus = [
-    {name:"Garbo Processor", speed:20, lifeCycle:20000, color:'rgb(108, 140, 217)'},
-    {name:"Garbo Processor II", speed:40, lifeCycle:40000, color:'rgb(77, 98, 148)'},
-    {name:"Garbo Processor II.5", speed:80, lifeCycle:60000, color:'rgb(38, 66, 136)'},
-    {name:"Garbo Processor BLT", speed:133, lifeCycle: 100000, color:'rgb(1, 23, 74)'}
+    {name:"Garbo Processor", speed:20, lifeCycle:20000, img:'cpu-i.png'},
+    {name:"Garbo Processor II", speed:40, lifeCycle:40000, img:'cpu-ii.png'},
+    {name:"Garbo Processor II.5", speed:80, lifeCycle:60000, img:'cpu-iii.png'},
+    {name:"Garbo Processor BLT", speed:133, lifeCycle: 100000, img:'cpu-iv.png'}
 ];
 module.exports = cpus;
 
@@ -3535,7 +3536,7 @@ class Downlink extends EventListener
 
 module.exports = Downlink;
 
-},{"./Companies/Company":7,"./Computers/CPU":9,"./Computers/ComputerGenerator":12,"./Connection":19,"./EventListener":21,"./Missions/MissionGenerator":31,"break_infinity.js":1}],21:[function(require,module,exports){
+},{"./Companies/Company":7,"./Computers/CPU":9,"./Computers/ComputerGenerator":12,"./Connection":19,"./EventListener":21,"./Missions/MissionGenerator":30,"break_infinity.js":1}],21:[function(require,module,exports){
 class Event
 {
     constructor(owner, name, once)
@@ -3702,7 +3703,7 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.22a",
+        version:"0.3.23a",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
@@ -4083,8 +4084,6 @@ module.exports = EventListener;
             this.$connectionTracePercentage.html(0);
             this.mission = this.downlink.getNextMission();
             this.updateMissionInterface(this.mission);
-            this.updatePlayerDetails();
-            this.updateComputerPartsUI();
             this.requiresNewMission = false;
 
             this.downlink
@@ -4092,6 +4091,8 @@ module.exports = EventListener;
             // bind the mission events to the UI updates
             this.mission.on('complete', ()=>{
                 this.requiresNewMission = true;
+                this.updatePlayerDetails();
+                this.updateComputerPartsUI();
                 this.save();
             }).on("connectionStepTraced", (stepsTraced)=>{
                 this.$connectionTraced.html(stepsTraced);
@@ -4271,7 +4272,7 @@ module.exports = EventListener;
                 let cost = CPU.getPriceFor(cpu),
                     affordable = this.downlink.canAfford(cost);
                 let $node = $(`<div data-part-cost="${cost.toString()}" class="col-4 cpu part ${affordable?"":"un"}affordable-part">
-                        <div class="row"><div class="col" style="color:${cpu?cpu.color:'black'}"><i class="fas fa-microchip"></i></div></div>
+                        <div class="row"><div class="col">${cpu?'<img src="./img/'+cpu.img+'"/>':""}</div></div>
                         <div class="row"><div class="col">${cpu.name}</div></div>
                         <div class="row"><div class="col">${cpu.speed} MHz</div></div>
                         <div class="row"><div class="col">${cost.toString()}</div></div>
@@ -4326,19 +4327,12 @@ module.exports = EventListener;
                 for(let j = 0; j < gridSize; j++)
                 {
                     let cpu = cpus[cpuIndex];
-                    let cpuColor = "black";
+                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" title="${cpu?cpu.name:''}">`;
                     if(cpu)
                     {
-                        if(cpu.living)
-                        {
-                            cpuColor = cpu.color;
-                        }
-                        else
-                        {
-                            cpuColor = CPU.deadCPUColor;
-                        }
+                        html += '<img src="./img/'+cpu.img+'"/>';
                     }
-                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" style="color:${cpuColor}" title="${cpu?cpu.name:''}">${cpu?'<i class="fas fa-microchip"></i>':''}</div>`;
+                    html += '</div>';
                     cpuIndex++;
                 }
                 html += '</div>';
@@ -6870,7 +6864,6 @@ const   Company = require('../Companies/Company'),
         Password = require('./Challenges/Password'),
         Encryption = require('./Challenges/Encryption'),
         EventListener = require('../EventListener'),
-        MissionDifficulty = require('./MissionDifficulty'),
         helpers = require('../Helpers');
 
 const MISSION_STATUSES = {
@@ -6945,8 +6938,17 @@ class Mission extends EventListener
         this.setDifficulty(this.target.securityLevel);
 
         let missionChallengeDifficulty = Math.floor(this.difficulty);
+        let serverType = "Server";
+        if(missionChallengeDifficulty > 10)
+        {
+            serverType = 'Server Farm';
+        }
+        else if(missionChallengeDifficulty > 5)
+        {
+            serverType = 'Cluster';
+        }
 
-        this.computer = new MissionComputer(this.target, this.difficulty.serverType)
+        this.computer = new MissionComputer(this.target, serverType)
             .setPassword(Password.randomDictionaryPassword(missionChallengeDifficulty))
             .setEncryption(new Encryption(missionChallengeDifficulty))
             .on('accessed', ()=>{
@@ -7005,7 +7007,7 @@ class Mission extends EventListener
 }
 module.exports = Mission;
 
-},{"../Companies/Company":7,"../EventListener":21,"../Helpers":23,"./Challenges/Encryption":25,"./Challenges/Password":26,"./MissionComputer":29,"./MissionDifficulty":30}],29:[function(require,module,exports){
+},{"../Companies/Company":7,"../EventListener":21,"../Helpers":23,"./Challenges/Encryption":25,"./Challenges/Password":26,"./MissionComputer":29}],29:[function(require,module,exports){
 const   Computer = require('../Computers/Computer');
 let  DIFFICULTY_EXPONENT = 1.8;
 
@@ -7196,42 +7198,6 @@ class MissionComputer extends Computer
 module.exports = MissionComputer;
 
 },{"../Computers/Computer":11}],30:[function(require,module,exports){
-const Decimal = require('break_infinity.js');
-
-/**
- * This class largely exists to make commenting cleaner
- */
-class MissionDifficulty
-{
-    /**
-     * @param {string} name         The name of the difficulty
-     * @param {number} modifier     The modifier of the difficulty
-     * @param {string} serverType   The server type this difficulty faces
-     */
-    constructor(name, modifier, serverType)
-    {
-        this.nanme = name;
-        /**
-         * @type {Decimal}   A modifier to the reward given for the mission as a number
-         */
-        this.modifier = modifier;
-        /**
-         * @type {Decimal}   A name for the type of server you are attacking
-         */
-        this.serverType = serverType;
-    }
-
-}
-
-MissionDifficulty.DIFFICULTIES = {
-    EASY:new MissionDifficulty("Easy", 1, "Server"),
-    MEDIUM:new MissionDifficulty("Medium", 5, "Cluster"),
-    HARD:new MissionDifficulty("Hard", 10, "Farm"),
-};
-
-module.exports = MissionDifficulty;
-
-},{"break_infinity.js":1}],31:[function(require,module,exports){
 const   Mission = require('./Mission'),
         MINIMUM_MISSIONS = 10;
 let availableMissions = [];
