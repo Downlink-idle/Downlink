@@ -317,23 +317,16 @@
             this.stop().start();
         },
         tick:function() {
-            try
+            if (this.ticking)
             {
-                if (this.ticking)
+                let tickResults = this.downlink.tick();
+                this.animateTasks(tickResults.tasks);
+                this.$settingsTimePlayed.html(this.getRunTime());
+                if (this.requiresNewMission)
                 {
-                    let tickResults = this.downlink.tick();
-                    this.animateTasks(tickResults.tasks);
-                    this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
-                    this.$settingsTimePlayed.html(this.getRunTime());
-                    if(this.requiresNewMission)
-                    {
-                        this.getNextMission();
-                    }
+                    this.getNextMission();
                 }
-            }
-            catch(e)
-            {
-                console.log(e);
+                this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
             }
         },
         animateTasks:function(tasks)

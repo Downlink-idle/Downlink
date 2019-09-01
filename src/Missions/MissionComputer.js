@@ -64,6 +64,7 @@ class MissionComputer extends Computer
     {
         super.connect();
         let clone = connection.clone();
+        clone.setEndPoint(this);
 
         clone
             .once("connectionTraced", ()=>{
