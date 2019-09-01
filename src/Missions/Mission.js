@@ -102,7 +102,6 @@ class Mission extends EventListener
 
         this.computer.setPassword(password).setEncryption(encryption);
 
-        this.target.addComputer(this.computer);
         this.status = MISSION_STATUSES.UNDERWAY;
         return this;
     }
