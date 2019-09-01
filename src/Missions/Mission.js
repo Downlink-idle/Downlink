@@ -83,10 +83,13 @@ class Mission extends EventListener
         this.computer = new MissionComputer(this.target, this.difficulty.serverType);
         this.computer.on('accessed', ()=>{
             this.signalComplete();
-        }).on('connectionStepTraced', (step, percentage)=>{
-            this.trigger("connectionStepTraced", step, percentage);
+        }).on('connectionStepTraced', (step)=>{
+            this.trigger("connectionStepTraced", step);
         }).on('hackTracked', ()=>{
+            console.log("Connection traced");
             this.target.detectHacking();
+        }).on('updateTracePercentage', (percentage)=>{
+            this.trigger('updateTracePercentage', percentage);
         });
 
         let password = null, encryption = null;

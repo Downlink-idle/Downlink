@@ -1,7 +1,7 @@
 /**
  * @type {{}}
  */
-       DIFFICULTIES = {
+const   DIFFICULTIES = {
             'EASY':{name:'Linear', size:{min:7, max:10}},
             'MEDIUM':{name:'Quadratic', size:{min:10,max:15}},
             'HARD':{name:'Cubic', size:{min:15,max:20}}

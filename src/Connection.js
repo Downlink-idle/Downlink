@@ -10,7 +10,6 @@ class InvalidComputerError extends Error{}
 
 let connections = 0;
 
-
 /**
  * A class to encapsulate the points in between you and the target computer, excluding both
  */
@@ -42,7 +41,7 @@ class Connection extends EventListener
         this.connectionLength = 0;
         this.computersTraced = 0;
         this.amountTraced = 0;
-
+        this.traceTicks = 0;
     }
 
     static improveConnectionDistance(amount)
@@ -118,6 +117,12 @@ class Connection extends EventListener
     traceStep(stepTraceAmount)
     {
         this.amountTraced += stepTraceAmount;
+        this.traceTicks++;
+        if(this.traceTicks % Connection.sensitivity === 0)
+        {
+            this.trigger('updateTracePercentage', this.tracePercent);
+        }
+
         if(this.amountTraced >= Connection.connectionDistance)
         {
             this.computersTraced++;
@@ -126,10 +131,7 @@ class Connection extends EventListener
             {
                 this.trigger("connectionTraced");
             }
-            else
-            {
-                this.trigger("stepTraced", this.computersTraced, this.tracePercent);
-            }
+            this.trigger("stepTraced", this.computersTraced);
         }
     }
 
@@ -168,7 +170,6 @@ class Connection extends EventListener
 
     get tracePercent()
     {
-        console.log(this.totalAmountTraced, this.totalConnectionLength, this.connectionLength);
         return (this.totalAmountTraced / this.totalConnectionLength * 100).toFixed(2);
     }
 
@@ -230,6 +231,7 @@ class Connection extends EventListener
     }
 }
 
-Connection.connectionDistance = 100;
+Connection.connectionDistance = 1300;
+Connection.sensitivity = 25;
 
 module.exports = Connection;

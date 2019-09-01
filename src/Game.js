@@ -41,7 +41,7 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.16a",
+        version:"0.3.20a",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:false,
@@ -434,11 +434,13 @@
 
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
-
+            // bind the mission events to the UI updates
             this.mission.on('complete', ()=>{
                 this.requiresNewMission = true;
-            }).on("connectionStepTraced", (stepsTraced, percentageTraced)=>{
+                this.save();
+            }).on("connectionStepTraced", (stepsTraced)=>{
                 this.$connectionTraced.html(stepsTraced);
+            }).on("updateTracePercentage", (percentageTraced)=>{
                 this.$connectionTracePercentage.html(percentageTraced);
             });
 
