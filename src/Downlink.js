@@ -28,7 +28,9 @@ class Downlink extends EventListener
         this.getNewConnection();
         this.runTime = 0;
         this.lastTickTime = Date.now();
-
+        /**
+         * @type {Decimal}
+         */
         this.currency = new Decimal(0);
     }
 

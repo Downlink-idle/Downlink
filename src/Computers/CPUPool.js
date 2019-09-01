@@ -1,5 +1,6 @@
 const   CPU = require('./CPU'),
         Task = require('../Tasks/Task'),
+        helpers = require('../Helpers'),
         EventListener = require('../EventListener');
 
 /*
@@ -180,7 +181,7 @@ class CPUPool extends EventListener
     completeTask(task)
     {
         let freedCycles = task.cyclesPerTick;
-        this.tasks.removeElement(task);
+        helpers.removeArrayElement(this.tasks, task);
         this.load -= task.minimumRequiredCycles;
 
         if(this.tasks.length >= 1)

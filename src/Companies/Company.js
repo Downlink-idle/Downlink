@@ -85,14 +85,10 @@ class Company
         let json = {
             name:this.name,
             publicServer:this.publicServer.toJSON(),
-            computers:[],
             playerRespectModifier:this.playerRespectModifier.toString(),
             missionSuccessIncreaseExponent:this.missionSuccessIncreaseExponent.toString()
         };
-        for(let computer of this.computers)
-        {
-            json.computers.push(computer.toJSON());
-        }
+
         return json;
     }
 
@@ -112,10 +108,6 @@ class Company
         company.playerRespectModifier = parseFloat(companyJSON.playerRespectModifier);
         company.missionSuccessIncreaseExponent = parseFloat(companyJSON.missionSuccessIncreaseExponent);
 
-        for(let computerJSON of company.computers)
-        {
-            company.addComputer(ComputerGenerator.fromJSON(computerJSON, company));
-        }
         locationsSet = true;
         return company;
     }

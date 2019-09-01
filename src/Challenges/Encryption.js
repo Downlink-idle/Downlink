@@ -24,6 +24,7 @@ class Encryption extends Challenge
         super(difficulty.name + ' Encryption', difficultyRatio);
         this.rows = rows;
         this.cols = cols;
+        this.size = cols * rows;
     }
 
     static get DIFFICULTIES()
