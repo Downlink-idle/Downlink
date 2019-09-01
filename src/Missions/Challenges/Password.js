@@ -41,6 +41,7 @@ class Password extends Challenge
      */
     static randomDictionaryPassword(difficulty)
     {
+        difficulty = Math.min(difficulty, PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST);
         // reduce the dictionary by a percentage of that amount
         let reduction = PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST - difficulty,
             usedDictionary = [];

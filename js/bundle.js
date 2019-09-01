@@ -3702,7 +3702,7 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.23a",
+        version:"0.3.22a",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
@@ -4491,8 +4491,16 @@ class Encryption extends Challenge
             cols = Encryption.getDimensionForDifficulty(difficulty),
             size = rows * cols,
             difficultyRatio = Math.floor(Math.pow(size, DIFFICULTY_EXPONENT));
-
-        super(difficulty.name + ' Encryption', difficultyRatio);
+        let name = "Linear";
+        if(difficulty > 10)
+        {
+            name = 'Cubic';
+        }
+        else if(difficulty > 5)
+        {
+            name = 'Quadratic';
+        }
+        super(name + ' Encryption', difficultyRatio);
         this.rows = rows;
         this.cols = cols;
         this.size = size;
@@ -4552,6 +4560,7 @@ class Password extends Challenge
      */
     static randomDictionaryPassword(difficulty)
     {
+        difficulty = Math.min(difficulty, PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST);
         // reduce the dictionary by a percentage of that amount
         let reduction = PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST - difficulty,
             usedDictionary = [];
