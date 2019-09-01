@@ -87,7 +87,10 @@ class EncryptionCracker extends Task
                 helpers.removeArrayElement(this.unsolvedCells, cell);
             }
         }
-
+        if(!this.unsolvedCells.length)
+        {
+            this.signalComplete();
+        }
 
     }
 
@@ -97,11 +100,6 @@ class EncryptionCracker extends Task
      */
     get cellsForAnimating()
     {
-        if(!this.unsolvedCells.length)
-        {
-            this.signalComplete();
-        }
-
         return this.cells;
     }
 

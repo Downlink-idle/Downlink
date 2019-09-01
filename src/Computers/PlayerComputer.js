@@ -61,37 +61,19 @@ class PlayerComputer extends Computer
     addTaskForChallenge(challenge)
     {
         let task = this.getTaskForChallenge(challenge);
+
         this.cpuPool.addTask(task);
     }
 
     tick()
     {
-        this.cpuPool.tick();
+        return this.cpuPool.tick();
     }
 
 
     get tasks()
     {
         return this.cpuPool.tasks;
-    }
-
-    get missionTasks()
-    {
-        let allTasks = Object.values(this.tasks),
-            missionTasks = {crackers:{}};
-        for(let task of allTasks)
-        {
-            if(task instanceof PasswordCracker)
-            {
-                missionTasks.crackers.password = task;
-            }
-            if(task instanceof EncryptionCracker)
-            {
-                missionTasks.crackers.encryption = task;
-            }
-        }
-        return missionTasks;
-
     }
 
     toJSON()
