@@ -1,5 +1,7 @@
 const   dictionary = require('./dictionary'),
-        Challenge = require('./Challenge');
+        Challenge = require('./Challenge'),
+        Alphabet = require('../Alphabet'),
+        helpers = require('../Helpers');
 
 const PASSWORD_TYPES = {
     'DICTIONARY':'Dictionary',
@@ -45,7 +47,7 @@ class Password extends Challenge
         let reduction = PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST - difficulty,
             usedDictionary = [];
         dictionary.forEach((entry, index)=>{if(index%PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST >= reduction){usedDictionary.push(entry);}});
-        let dictionaryPassword = new Password(usedDictionary.randomElement(), PASSWORD_TYPES.DICTIONARY, difficulty);
+        let dictionaryPassword = new Password(helpers.getRandomArrayElement(usedDictionary), PASSWORD_TYPES.DICTIONARY, difficulty);
         dictionaryPassword.dictionary = usedDictionary;
         return dictionaryPassword;
     }

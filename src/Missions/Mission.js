@@ -3,7 +3,8 @@ const   Company = require('../Companies/Company'),
         Password = require('../Challenges/Password'),
         Encryption = require('../Challenges/Encryption'),
         EventListener = require('../EventListener'),
-        MissionDifficulty = require('./MissionDifficulty');
+        MissionDifficulty = require('./MissionDifficulty'),
+        helpers = require('../Helpers');
 
 const MISSION_STATUSES = {
     UNDERWAY:'underway',
@@ -139,7 +140,7 @@ class Mission extends EventListener
 
     static getNewSimpleMission()
     {
-        let companies = [...Company.allCompanies].shuffle();
+        let companies = helpers.shuffleArray([...Company.allCompanies]);
         return new Mission(
             companies.shift(),
             companies.shift()

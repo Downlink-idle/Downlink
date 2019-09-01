@@ -1942,6 +1942,7 @@ class Encryption extends Challenge
         super(difficulty.name + ' Encryption', difficultyRatio);
         this.rows = rows;
         this.cols = cols;
+        this.size = cols * rows;
     }
 
     static get DIFFICULTIES()
@@ -1965,7 +1966,9 @@ module.exports = Encryption;
 
 },{"./Challenge":7}],9:[function(require,module,exports){
 const   dictionary = require('./dictionary'),
-        Challenge = require('./Challenge');
+        Challenge = require('./Challenge'),
+        Alphabet = require('../Alphabet'),
+        helpers = require('../Helpers');
 
 const PASSWORD_TYPES = {
     'DICTIONARY':'Dictionary',
@@ -2011,7 +2014,7 @@ class Password extends Challenge
         let reduction = PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST - difficulty,
             usedDictionary = [];
         dictionary.forEach((entry, index)=>{if(index%PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST >= reduction){usedDictionary.push(entry);}});
-        let dictionaryPassword = new Password(usedDictionary.randomElement(), PASSWORD_TYPES.DICTIONARY, difficulty);
+        let dictionaryPassword = new Password(helpers.getRandomArrayElement(usedDictionary), PASSWORD_TYPES.DICTIONARY, difficulty);
         dictionaryPassword.dictionary = usedDictionary;
         return dictionaryPassword;
     }
@@ -2041,7 +2044,7 @@ class Password extends Challenge
 
 module.exports = Password;
 
-},{"./Challenge":7,"./dictionary":10}],10:[function(require,module,exports){
+},{"../Alphabet":6,"../Helpers":24,"./Challenge":7,"./dictionary":10}],10:[function(require,module,exports){
 // stolen from Bart Busschot's xkpasswd JS github repo
 // See https://github.com/bbusschots/hsxkpasswd.js
 
@@ -4576,6 +4579,7 @@ module.exports = CPU;
 },{"../EventListener":22,"../Tasks/Task":31,"./cpus":19}],14:[function(require,module,exports){
 const   CPU = require('./CPU'),
         Task = require('../Tasks/Task'),
+        helpers = require('../Helpers'),
         EventListener = require('../EventListener');
 
 /*
@@ -4756,7 +4760,7 @@ class CPUPool extends EventListener
     completeTask(task)
     {
         let freedCycles = task.cyclesPerTick;
-        this.tasks.removeElement(task);
+        helpers.removeArrayElement(this.tasks, task);
         this.load -= task.minimumRequiredCycles;
 
         if(this.tasks.length >= 1)
@@ -4802,7 +4806,7 @@ class CPUPool extends EventListener
 
 module.exports = CPUPool;
 
-},{"../EventListener":22,"../Tasks/Task":31,"./CPU":13}],15:[function(require,module,exports){
+},{"../EventListener":22,"../Helpers":24,"../Tasks/Task":31,"./CPU":13}],15:[function(require,module,exports){
 const EventListener = require('../EventListener');
 
 class Computer extends EventListener
@@ -5182,6 +5186,7 @@ module.exports = cpus;
 const   Computer = require('./Computers/Computer'),
         PublicComputer = require('./Computers/PublicComputer'),
         EventListener = require('./EventListener'),
+        helpers = require('./Helpers'),
         md5 = require('md5');
 
 class InvalidTypeError extends Error{}
@@ -5332,7 +5337,7 @@ class Connection extends EventListener
             throw new InvalidComputerError("Computers not found in connection");
         }
         this.buildHash();
-        this.computers.removeElement(computer);
+        helpers.removeArrayElement(this.computers, computer);
         this.connectionLength --;
     }
 
@@ -5385,7 +5390,7 @@ class Connection extends EventListener
 
 module.exports = Connection;
 
-},{"./Computers/Computer":15,"./Computers/PublicComputer":18,"./EventListener":22,"md5":5}],21:[function(require,module,exports){
+},{"./Computers/Computer":15,"./Computers/PublicComputer":18,"./EventListener":22,"./Helpers":24,"md5":5}],21:[function(require,module,exports){
 const   MissionGenerator = require('./Missions/MissionGenerator'),
         EventListener = require('./EventListener'),
         Connection = require('./Connection'),
@@ -6090,6 +6095,29 @@ module.exports = EventListener;
                     .addClass('solved-password');
             }
         },
+        updateEncryptionGridUI(numberOfCols, numberOfCells)
+        {
+            this.$activeMissionEncryptionGrid.css('grid-template-columns', `repeat(${numberOfCols}, 1fr)`);
+            const   numberOfExtantCells = this.$activeMissionEncryptionGrid.children().length,
+                    diff = numberOfCells - numberOfExtantCells;
+
+            if(diff > 0)
+            {
+                // we need to add new cells
+                let htmlToAppend = '';
+                for (let i = 0; i < diff; i++)
+                {
+                    htmlToAppend += '<div class="encryption-cell"></div>';
+                }
+                this.$activeMissionEncryptionGrid.append(htmlToAppend);
+            }
+            else if(diff < 0)
+            {
+                // we need to remove cells
+                let cellsToRemove = Math.abs(diff);
+                $(`.encryption-cell:nth-child(n+${cellsToRemove})`).remove();
+            }
+        },
         /**
          *
          * @param {EncryptionCracker} encryptionCracker
@@ -6098,22 +6126,17 @@ module.exports = EventListener;
         {
             let html = '';
 
-            let grid = encryptionCracker.cellGridArrayForAnimating;
-            let height = this.$activeMissionEncryptionGrid.height(),
-                cellHeight = height / grid.length;
+            let cells = encryptionCracker.cellsForAnimating;
+            let height = this.$activeMissionEncryptionGrid.height();
 
-            for(let row of grid)
+            for(let i in cells)
             {
-                html += '<div class="row">';
-                for(let cell of row)
-                {
-                    html += `<div class="col encryption-cell ${cell.solved?"solved-encryption-cell":"unsolved-encryption-cell"}">${cell.letter}</div>`;
-                }
-                html += '</div>';
+                let cell = cells[i];
+                $(`.encryption-cell:nth-child(${i})`)
+                    .text(cell.letter)
+                    .removeClass('solve-encryption-cell unsolved-encryption-cell')
+                    .addClass((cell.solved?"":"un")+"solved-encryption-cell");
             }
-            this.$activeMissionEncryptionGrid.html(html);
-
-            $('.encryption-cell').css('max-width', cellHeight+'px');
         },
         getNextMission:function(){
             if(!this.takingMissions)
@@ -6191,6 +6214,7 @@ module.exports = EventListener;
         },
         updateCurrentMissionView:function(server){
             this.$activeMissionPassword.val('');
+            this.updateEncryptionGridUI(server.encryption.size, server.encryption.cols);
             this.$activeMissionEncryptionGrid.empty();
             this.$activeMissionEncryptionType.html(server.encryption.name);
             this.$activeMissionIPAddress.html(server.ipAddress);
@@ -6430,6 +6454,25 @@ module.exports = {
             const j = Math.floor(Math.random() * (i + 1));
             [array[i], array[j]] = [array[j], array[i]];
         }
+        return array;
+    },
+    popRandomArrayElement:function(array)
+    {
+        this.shuffleArray(array);
+        return array.pop();
+    },
+    getRandomArrayElement:function(array)
+    {
+        return array[Math.floor(Math.random() * array.length)];
+    },
+    removeArrayElement(array, element)
+    {
+        let index = array.indexOf(element);
+        if(index >= 0)
+        {
+            array.splice(index, 1);
+        }
+        return array;
     }
 
 };
@@ -6440,7 +6483,8 @@ const   Company = require('../Companies/Company'),
         Password = require('../Challenges/Password'),
         Encryption = require('../Challenges/Encryption'),
         EventListener = require('../EventListener'),
-        MissionDifficulty = require('./MissionDifficulty');
+        MissionDifficulty = require('./MissionDifficulty'),
+        helpers = require('../Helpers');
 
 const MISSION_STATUSES = {
     UNDERWAY:'underway',
@@ -6576,7 +6620,7 @@ class Mission extends EventListener
 
     static getNewSimpleMission()
     {
-        let companies = [...Company.allCompanies].shuffle();
+        let companies = helpers.shuffleArray([...Company.allCompanies]);
         return new Mission(
             companies.shift(),
             companies.shift()
@@ -6587,7 +6631,7 @@ class Mission extends EventListener
 }
 module.exports = Mission;
 
-},{"../Challenges/Encryption":8,"../Challenges/Password":9,"../Companies/Company":11,"../EventListener":22,"./MissionComputer":26,"./MissionDifficulty":27}],26:[function(require,module,exports){
+},{"../Challenges/Encryption":8,"../Challenges/Password":9,"../Companies/Company":11,"../EventListener":22,"../Helpers":24,"./MissionComputer":26,"./MissionDifficulty":27}],26:[function(require,module,exports){
 const   Computer = require('../Computers/Computer');
 class MissionComputer extends Computer
 {
@@ -6840,6 +6884,7 @@ module.exports = MissionGenerator;
 
 },{"./Mission":25}],29:[function(require,module,exports){
 const   Alphabet = require('../Alphabet'),
+        helpers = require('../Helpers'),
         Task = require('./Task');
 
 class EncryptionCell
@@ -6920,11 +6965,11 @@ class EncryptionCracker extends Task
         this.trigger('start');
         for(let i = 0; i < cellsToSolve; i++)
         {
-            let cell = this.unsolvedCells.randomElement();
+            let cell = helpers.getRandomArrayElement(this.unsolvedCells);
             if(cell)
             {
                 cell.solve();
-                this.unsolvedCells.removeElement(cell);
+                helpers.removeArrayElement(this.unsolvedCells, cell);
             }
         }
 
@@ -6933,16 +6978,16 @@ class EncryptionCracker extends Task
 
     /**
      * This should hopefully update the graphic properly
-     * @returns {Array<Array<EncryptionCell>>}
+     * @returns {Array<EncryptionCell>}
      */
-    get cellGridArrayForAnimating()
+    get cellsForAnimating()
     {
         if(!this.unsolvedCells.length)
         {
             this.signalComplete();
         }
 
-        return this.grid;
+        return this.cells;
     }
 
     get percentage()
@@ -6993,7 +7038,7 @@ class EncryptionCracker extends Task
 
 module.exports = EncryptionCracker;
 
-},{"../Alphabet":6,"./Task":31}],30:[function(require,module,exports){
+},{"../Alphabet":6,"../Helpers":24,"./Task":31}],30:[function(require,module,exports){
 const   DICTIONARY_CRACKER_MINIMUM_CYCLES = 5,
         SEQUENTIAL_CRACKER_MINIMUM_CYCLES = 20,
         Task = require('./Task'),

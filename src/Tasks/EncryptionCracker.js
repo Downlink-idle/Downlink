@@ -1,4 +1,5 @@
 const   Alphabet = require('../Alphabet'),
+        helpers = require('../Helpers'),
         Task = require('./Task');
 
 class EncryptionCell
@@ -79,11 +80,11 @@ class EncryptionCracker extends Task
         this.trigger('start');
         for(let i = 0; i < cellsToSolve; i++)
         {
-            let cell = this.unsolvedCells.randomElement();
+            let cell = helpers.getRandomArrayElement(this.unsolvedCells);
             if(cell)
             {
                 cell.solve();
-                this.unsolvedCells.removeElement(cell);
+                helpers.removeArrayElement(this.unsolvedCells, cell);
             }
         }
 
@@ -92,16 +93,16 @@ class EncryptionCracker extends Task
 
     /**
      * This should hopefully update the graphic properly
-     * @returns {Array<Array<EncryptionCell>>}
+     * @returns {Array<EncryptionCell>}
      */
-    get cellGridArrayForAnimating()
+    get cellsForAnimating()
     {
         if(!this.unsolvedCells.length)
         {
             this.signalComplete();
         }
 
-        return this.grid;
+        return this.cells;
     }
 
     get percentage()

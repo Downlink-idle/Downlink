@@ -353,6 +353,29 @@
                     .addClass('solved-password');
             }
         },
+        updateEncryptionGridUI(numberOfCols, numberOfCells)
+        {
+            this.$activeMissionEncryptionGrid.css('grid-template-columns', `repeat(${numberOfCols}, 1fr)`);
+            const   numberOfExtantCells = this.$activeMissionEncryptionGrid.children().length,
+                    diff = numberOfCells - numberOfExtantCells;
+
+            if(diff > 0)
+            {
+                // we need to add new cells
+                let htmlToAppend = '';
+                for (let i = 0; i < diff; i++)
+                {
+                    htmlToAppend += '<div class="encryption-cell"></div>';
+                }
+                this.$activeMissionEncryptionGrid.append(htmlToAppend);
+            }
+            else if(diff < 0)
+            {
+                // we need to remove cells
+                let cellsToRemove = Math.abs(diff);
+                $(`.encryption-cell:nth-child(n+${cellsToRemove})`).remove();
+            }
+        },
         /**
          *
          * @param {EncryptionCracker} encryptionCracker
@@ -361,22 +384,17 @@
         {
             let html = '';
 
-            let grid = encryptionCracker.cellGridArrayForAnimating;
-            let height = this.$activeMissionEncryptionGrid.height(),
-                cellHeight = height / grid.length;
+            let cells = encryptionCracker.cellsForAnimating;
+            let height = this.$activeMissionEncryptionGrid.height();
 
-            for(let row of grid)
+            for(let i in cells)
             {
-                html += '<div class="row">';
-                for(let cell of row)
-                {
-                    html += `<div class="col encryption-cell ${cell.solved?"solved-encryption-cell":"unsolved-encryption-cell"}">${cell.letter}</div>`;
-                }
-                html += '</div>';
+                let cell = cells[i];
+                $(`.encryption-cell:nth-child(${i})`)
+                    .text(cell.letter)
+                    .removeClass('solve-encryption-cell unsolved-encryption-cell')
+                    .addClass((cell.solved?"":"un")+"solved-encryption-cell");
             }
-            this.$activeMissionEncryptionGrid.html(html);
-
-            $('.encryption-cell').css('max-width', cellHeight+'px');
         },
         getNextMission:function(){
             if(!this.takingMissions)
@@ -454,6 +472,7 @@
         },
         updateCurrentMissionView:function(server){
             this.$activeMissionPassword.val('');
+            this.updateEncryptionGridUI(server.encryption.size, server.encryption.cols);
             this.$activeMissionEncryptionGrid.empty();
             this.$activeMissionEncryptionType.html(server.encryption.name);
             this.$activeMissionIPAddress.html(server.ipAddress);

@@ -1,6 +1,7 @@
 const   Computer = require('./Computers/Computer'),
         PublicComputer = require('./Computers/PublicComputer'),
         EventListener = require('./EventListener'),
+        helpers = require('./Helpers'),
         md5 = require('md5');
 
 class InvalidTypeError extends Error{}
@@ -151,7 +152,7 @@ class Connection extends EventListener
             throw new InvalidComputerError("Computers not found in connection");
         }
         this.buildHash();
-        this.computers.removeElement(computer);
+        helpers.removeArrayElement(this.computers, computer);
         this.connectionLength --;
     }
 
