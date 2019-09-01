@@ -62,12 +62,15 @@ class Downlink extends EventListener
         let now = Date.now();
         this.runTime += now - this.lastTickTime;
 
-        this.playerComputer.tick();
+        let tasks = this.playerComputer.tick();
         if(this.activeMission)
         {
             this.activeMission.tick();
         }
         this.lastTickTime = Date.now();
+        return {
+            tasks:tasks
+        }
     }
 
     getNextMission()
@@ -79,6 +82,7 @@ class Downlink extends EventListener
 
         this.activeMission = MissionGenerator.getFirstAvailableMission().on("complete", ()=>{
             this.finishCurrentMission(this.activeMission);
+            this.activeMission = null;
             this.trigger('missionComplete');
         });
         this.activeMission.computer.connect(this.playerConnection);

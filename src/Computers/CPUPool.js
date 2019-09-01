@@ -181,6 +181,7 @@ class CPUPool extends EventListener
     completeTask(task)
     {
         let freedCycles = task.cyclesPerTick;
+
         helpers.removeArrayElement(this.tasks, task);
         this.load -= task.minimumRequiredCycles;
 
@@ -209,11 +210,19 @@ class CPUPool extends EventListener
         return this.load / this.cpuCount;
     }
 
+    /**
+     *
+     * @returns {Array.<Task>}
+     */
     tick()
     {
+        let tasks = [];
         for(let task of this.tasks)
         {
             task.tick();
+            // we do this because the task could be removed from this.tasks after ticking
+            // so it would be lost reference wise and we would have no way of updating it later
+            tasks.push(task);
         }
         for(let cpu of this.cpus)
         {
@@ -222,6 +231,7 @@ class CPUPool extends EventListener
                 cpu.tick(this.averageLoad);
             }
         }
+        return tasks;
     }
 }
 

@@ -4752,6 +4752,7 @@ class CPUPool extends EventListener
     completeTask(task)
     {
         let freedCycles = task.cyclesPerTick;
+
         helpers.removeArrayElement(this.tasks, task);
         this.load -= task.minimumRequiredCycles;
 
@@ -4780,11 +4781,19 @@ class CPUPool extends EventListener
         return this.load / this.cpuCount;
     }
 
+    /**
+     *
+     * @returns {Array.<Task>}
+     */
     tick()
     {
+        let tasks = [];
         for(let task of this.tasks)
         {
             task.tick();
+            // we do this because the task could be removed from this.tasks after ticking
+            // so it would be lost reference wise and we would have no way of updating it later
+            tasks.push(task);
         }
         for(let cpu of this.cpus)
         {
@@ -4793,6 +4802,7 @@ class CPUPool extends EventListener
                 cpu.tick(this.averageLoad);
             }
         }
+        return tasks;
     }
 }
 
@@ -5061,37 +5071,19 @@ class PlayerComputer extends Computer
     addTaskForChallenge(challenge)
     {
         let task = this.getTaskForChallenge(challenge);
+
         this.cpuPool.addTask(task);
     }
 
     tick()
     {
-        this.cpuPool.tick();
+        return this.cpuPool.tick();
     }
 
 
     get tasks()
     {
         return this.cpuPool.tasks;
-    }
-
-    get missionTasks()
-    {
-        let allTasks = Object.values(this.tasks),
-            missionTasks = {crackers:{}};
-        for(let task of allTasks)
-        {
-            if(task instanceof PasswordCracker)
-            {
-                missionTasks.crackers.password = task;
-            }
-            if(task instanceof EncryptionCracker)
-            {
-                missionTasks.crackers.encryption = task;
-            }
-        }
-        return missionTasks;
-
     }
 
     toJSON()
@@ -5447,12 +5439,15 @@ class Downlink extends EventListener
         let now = Date.now();
         this.runTime += now - this.lastTickTime;
 
-        this.playerComputer.tick();
+        let tasks = this.playerComputer.tick();
         if(this.activeMission)
         {
             this.activeMission.tick();
         }
         this.lastTickTime = Date.now();
+        return {
+            tasks:tasks
+        }
     }
 
     getNextMission()
@@ -5464,6 +5459,7 @@ class Downlink extends EventListener
 
         this.activeMission = MissionGenerator.getFirstAvailableMission().on("complete", ()=>{
             this.finishCurrentMission(this.activeMission);
+            this.activeMission = null;
             this.trigger('missionComplete');
         });
         this.activeMission.computer.connect(this.playerConnection);
@@ -5739,6 +5735,8 @@ module.exports = EventListener;
 
     const   Downlink = require('./Downlink'),
             CPU = require('./Computers/CPU'),
+            EncryptionCracker = require('./Tasks/EncryptionCracker'),
+            {PasswordCracker} = require('./Tasks/PasswordCracker'),
             Decimal = require('break_infinity.js'),
             TICK_INTERVAL_LENGTH=100,
             MISSION_LIST_CLASS = 'mission-list-row',
@@ -5778,6 +5776,7 @@ module.exports = EventListener;
         version:"0.3.14a",
         requiresHardReset:true,
         canTakeMissions:true,
+        requiresNewMission:false,
         /**
          * jquery entities that are needed for updating
          */
@@ -5806,6 +5805,8 @@ module.exports = EventListener;
         $connectionWarningRow:null,
         $missionToggleButton:null,
         $connectionTracePercentage:null,
+        $encryptionCells:null,
+
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -5852,7 +5853,7 @@ module.exports = EventListener;
                 this.takingMissions = !this.takingMissions;
                 if(this.takingMissions)
                 {
-                    this.getNextMission();
+                    this.requiresNewMission = true;
                     this.$missionToggleButton.text("Stop Taking Missions");
                 }
                 else
@@ -6036,20 +6037,30 @@ module.exports = EventListener;
                     this.tick();
                 });
             }
+            return this;
         },
         stop:function(){
             this.ticking = false;
             window.clearTimeout(this.interval);
+            return this;
+        },
+        restart:function()
+        {
+            this.stop().start();
         },
         tick:function() {
             try
             {
                 if (this.ticking)
                 {
-                    this.downlink.tick();
-                    this.animateTick();
+                    let tickResults = this.downlink.tick();
+                    this.animateTasks(tickResults.tasks);
                     this.interval = window.setTimeout(() => {this.tick()}, TICK_INTERVAL_LENGTH);
                     this.$settingsTimePlayed.html(this.getRunTime());
+                    if(this.requiresNewMission)
+                    {
+                        this.getNextMission();
+                    }
                 }
             }
             catch(e)
@@ -6057,16 +6068,21 @@ module.exports = EventListener;
                 console.log(e);
             }
         },
-        animateTick:function()
+        animateTasks:function(tasks)
         {
-            let tasks = this.downlink.currentMissionTasks;
-            if(tasks.crackers.password)
+            if(tasks.length)
             {
-                this.animatePasswordField(tasks.crackers.password);
-            }
-            if(tasks.crackers.encryption)
-            {
-                this.animateEncryptionGrid(tasks.crackers.encryption);
+                for(let task of tasks)
+                {
+                    if(task instanceof EncryptionCracker)
+                    {
+                        this.animateEncryptionGrid(task);
+                    }
+                    else if(task instanceof PasswordCracker)
+                    {
+                        this.animatePasswordField(task);
+                    }
+                }
             }
         },
         /**
@@ -6097,7 +6113,6 @@ module.exports = EventListener;
             });
             const   numberOfExtantCells = this.$activeMissionEncryptionGrid.children().length,
                     diff = numberOfCells - numberOfExtantCells;
-            $('.solved-encryption-cell').removeClass('solved-encryption-cell').addClass('unsolved-encryption-cell');
 
             if(diff > 0)
             {
@@ -6114,11 +6129,10 @@ module.exports = EventListener;
             {
                 // we need to remove cells
                 let cellsToRemove = Math.abs(diff);
-                console.log(cellsToRemove);
-
                 $(`.encryption-cell:nth-last-child(-n+${cellsToRemove})`).remove();
             }
-
+            $('.encryption-cell').removeClass('solved-encryption-cell').addClass('unsolved-encryption-cell');
+            this.$encryptionCells = document.querySelectorAll('.encryption-cell');
         },
         /**
          *
@@ -6130,10 +6144,17 @@ module.exports = EventListener;
             for(let i in cells)
             {
                 let cell = cells[i];
-                $(`.encryption-cell:nth-child(${parseInt(i) + 1})`)
-                    .text(cell.letter)
-                    .removeClass('solved-encryption-cell unsolved-encryption-cell')
-                    .addClass((cell.solved?"":"un")+"solved-encryption-cell");
+                let elem = this.$encryptionCells[i];
+                let classes = elem.classList;
+                if(cell.solved && classes.contains('unsolved-encryption-cell'))
+                {
+                    classes.remove('unsolved-encryption-cell');
+                    classes.add('solved-encryption-cell');
+                }
+                if(elem.childNodes[0].nodeValue !== cell.letter)
+                {
+                    elem.childNodes[0].nodeValue = cell.letter;
+                }
             }
         },
         getNextMission:function(){
@@ -6144,19 +6165,22 @@ module.exports = EventListener;
             this.$activeMissionServer.show();
             this.$connectionTraced.html(0);
             this.$connectionTracePercentage.html(0);
-            this.mission = this.downlink.getNextMission()
-                .on('complete', ()=>{
-                    this.updatePlayerDetails();
-                    this.updateComputerPartsUI();
-                    this.save();
-                    this.getNextMission();
-                }).on("connectionStepTraced", (stepsTraced, percentageTraced)=>{
-                    this.$connectionTraced.html(stepsTraced);
-                    this.$connectionTracePercentage.html(percentageTraced);
-                });
+            this.mission = this.downlink.getNextMission();
+            this.updateMissionInterface(this.mission);
+            this.updatePlayerDetails();
+            this.updateComputerPartsUI();
+            this.requiresNewMission = false;
+
             this.downlink
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
-            this.updateMissionInterface(this.mission);
+
+            this.mission.on('complete', ()=>{
+                this.requiresNewMission = true;
+            }).on("connectionStepTraced", (stepsTraced, percentageTraced)=>{
+                this.$connectionTraced.html(stepsTraced);
+                this.$connectionTracePercentage.html(percentageTraced);
+            });
+
         },
         updatePlayerDetails:function()
         {
@@ -6208,9 +6232,9 @@ module.exports = EventListener;
         updateMissionInterface:function(mission){
             this.updateAvailableMissionList(mission);
             this.updateCurrentMissionView(mission.computer);
-
         },
         updateCurrentMissionView:function(server){
+
             this.$activeMissionPassword.val('');
             this.updateEncryptionGridUI(server.encryption.size, server.encryption.cols);
             this.$activeMissionEncryptionType.html(server.encryption.name);
@@ -6442,7 +6466,7 @@ module.exports = EventListener;
     window.game = game;
 })})(window.jQuery);
 
-},{"./Computers/CPU":13,"./Downlink":21,"break_infinity.js":1}],24:[function(require,module,exports){
+},{"./Computers/CPU":13,"./Downlink":21,"./Tasks/EncryptionCracker":29,"./Tasks/PasswordCracker":30,"break_infinity.js":1}],24:[function(require,module,exports){
 module.exports = {
     shuffleArray:function(array)
     {
@@ -6967,7 +6991,10 @@ class EncryptionCracker extends Task
                 helpers.removeArrayElement(this.unsolvedCells, cell);
             }
         }
-
+        if(!this.unsolvedCells.length)
+        {
+            this.signalComplete();
+        }
 
     }
 
@@ -6977,11 +7004,6 @@ class EncryptionCracker extends Task
      */
     get cellsForAnimating()
     {
-        if(!this.unsolvedCells.length)
-        {
-            this.signalComplete();
-        }
-
         return this.cells;
     }
 
