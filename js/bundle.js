@@ -5413,7 +5413,9 @@ class Downlink extends EventListener
         this.getNewConnection();
         this.runTime = 0;
         this.lastTickTime = Date.now();
-
+        /**
+         * @type {Decimal}
+         */
         this.currency = new Decimal(0);
     }
 
@@ -5773,7 +5775,7 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.12a",
+        version:"0.3.14a",
         requiresHardReset:true,
         canTakeMissions:true,
         /**
@@ -6599,7 +6601,6 @@ class Mission extends EventListener
     set connection(connection)
     {
         this.computer.connect(connection);
-
     }
 
     tick()
