@@ -116,6 +116,7 @@ class Connection extends EventListener
      */
     traceStep(stepTraceAmount)
     {
+        //console.log(stepTraceAmount);
         this.amountTraced += stepTraceAmount;
         this.traceTicks++;
         if(this.traceTicks % Connection.sensitivity === 0)

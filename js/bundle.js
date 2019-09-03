@@ -1899,10 +1899,6 @@ class Company
          * this is the increase exponent for successfully achieved missions
          */
         this.missionSuccessIncreaseExponent = 1.001;
-
-        this.hackDetectedExponent = 1.002;
-        this.securityIncreaseExponent = 1.05;
-
         this.securityLevel = 1;
     }
 
@@ -1924,12 +1920,22 @@ class Company
 
     traceHacker()
     {
-        this.playerRespectModifier /= this.hackDetectedExponent;
+        this.playerRespectModifier /= Company.hackDetectedExponent;
+    }
+
+    static get hackDetectedExponent()
+    {
+        return 1.02;
     }
 
     increaseSecurityLevel()
     {
-        this.securityLevel *= this.securityIncreaseExponent;
+        this.securityLevel *= Company.securityIncreaseExponent;
+    }
+
+    static get securityIncreaseExponent()
+    {
+        return 1.01;
     }
 
     /**
@@ -1959,8 +1965,8 @@ class Company
         let json = {
             name:this.name,
             publicServer:this.publicServer.toJSON(),
-            playerRespectModifier:this.playerRespectModifier.toString(),
-            missionSuccessIncreaseExponent:this.missionSuccessIncreaseExponent.toString()
+            playerRespectModifier:this.playerRespectModifier,
+            securityLevel:this.securityLevel
         };
 
         return json;
@@ -1980,8 +1986,7 @@ class Company
         let company = new Company(companyJSON.name);
         company.setPublicServer(ComputerGenerator.fromJSON(companyJSON.publicServer));
         company.playerRespectModifier = parseFloat(companyJSON.playerRespectModifier);
-        company.missionSuccessIncreaseExponent = parseFloat(companyJSON.missionSuccessIncreaseExponent);
-
+        company.securityLevel = parseFloat(companyJSON.securityLevel);
         locationsSet = true;
         return company;
     }
@@ -2122,7 +2127,7 @@ class CPU extends EventListener
 
     static get deadImage()
     {
-        return './img/cpu-dead.png';
+        return 'cpu-dead.png';
     }
 
     get healthImage()
@@ -3189,6 +3194,7 @@ class Connection extends EventListener
      */
     traceStep(stepTraceAmount)
     {
+        //console.log(stepTraceAmount);
         this.amountTraced += stepTraceAmount;
         this.traceTicks++;
         if(this.traceTicks % Connection.sensitivity === 0)
@@ -3676,6 +3682,8 @@ module.exports = EventListener;
             TICK_INTERVAL_LENGTH=100,
             MISSION_LIST_CLASS = 'mission-list-row',
             COMPANY_REP_CLASS = 'company-rep-row',
+            COMPANY_SECURITY_CLASS = 'company-security-col',
+            COMPANY_REP_VALUE_CLASS = 'company-rep-col',
             PLAYER_COMPUTER_CPU_ROW_CLASS = "cpu-row";
 
     function parseVersionNumber(versionNumberAsString)
@@ -3708,10 +3716,11 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.24a",
+        version:"0.3.27a",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
+        minimumVersion:"0.3.27a",
         /**
          * jquery entities that are needed for updating
          */
@@ -3741,7 +3750,7 @@ module.exports = EventListener;
         $missionToggleButton:null,
         $connectionTracePercentage:null,
         $encryptionCells:null,
-
+        $activeMissionTraceStrength:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -3773,6 +3782,7 @@ module.exports = EventListener;
             this.$connectionTraced = $('#connection-traced');
             this.$connectionTracePercentage = $('#connection-trace-percentage');
             this.$connectionWarningRow = $('#connection-warning-row');
+            this.$activeMissionTraceStrength = $('#active-mission-trace-strength');
             $('#settings-export-button').click(()=>{
                 this.$importExportTextarea.val(this.save());
             });
@@ -3880,7 +3890,9 @@ module.exports = EventListener;
             {
                 return true;
             }
-            return (this.requiresHardReset && saveIsOlder(saveFile.version, this.version));
+            let oldVersionAsInt = parseVersionNumber(saveFile.version),
+                minVersionAsInt = parseVersionNumber(this.minimumVersion);
+            return (oldVersionAsInt < minVersionAsInt);
         },
         initialise:function()
         {
@@ -3911,6 +3923,7 @@ module.exports = EventListener;
                 this.updateComputerBuild();
                 this.buildComputerPartsUI();
                 this.buildComputerGrid();
+                this.buildCompanyStateTable();
 
                 this.canTakeMissions = pc.cpuPool.cpuCount > 0;
                 this.updateMissionToggleButton();
@@ -4007,6 +4020,10 @@ module.exports = EventListener;
                 }
             }
         },
+        setTraceStrength:function(traceStrength)
+        {
+            this.$activeMissionTraceStrength.text(traceStrength);
+        },
         /**
          *
          * @param {PasswordCracker|undefined|null} passwordCracker
@@ -4088,6 +4105,7 @@ module.exports = EventListener;
             this.$connectionTraced.html(0);
             this.$connectionTracePercentage.html(0);
             this.mission = this.downlink.getNextMission();
+            this.$activeMissionTraceStrength.text(this.mission.computer.traceSpeed.toFixed(2));
             this.updateMissionInterface(this.mission);
             this.requiresNewMission = false;
 
@@ -4095,9 +4113,10 @@ module.exports = EventListener;
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
             // bind the mission events to the UI updates
             this.mission.on('complete', ()=>{
-                this.requiresNewMission = true;
                 this.updatePlayerDetails();
                 this.updateComputerPartsUI();
+                this.updateCompanyStates([this.mission.sponsor, this.mission.target]);
+                this.requiresNewMission = true;
                 this.save();
             }).on("connectionStepTraced", (stepsTraced)=>{
                 this.$connectionTraced.html(stepsTraced);
@@ -4109,15 +4128,27 @@ module.exports = EventListener;
         updatePlayerDetails:function()
         {
             this.$playerCurrencySpan.html(this.downlink.currency.toFixed(2));
-            this.updatePlayerReputations();
         },
-        updatePlayerReputations:function()
+        updateCompanyStates:function(companiesToUpdate)
+        {
+            for(let company of companiesToUpdate)
+            {
+                let $row = $(`.${COMPANY_REP_CLASS}[data-company-name="${company.name}"]`);
+                $(`.${COMPANY_REP_VALUE_CLASS}`, $row).text(company.playerRespectModifier.toFixed(2));
+                $(`.${COMPANY_SECURITY_CLASS}`, $row).text(company.securityLevel.toFixed(2));
+            }
+        },
+        buildCompanyStateTable:function()
         {
             $(`.${COMPANY_REP_CLASS}`).remove();
             let html = '';
             for(let company of this.downlink.companies)
             {
-                html += `<div class="row ${COMPANY_REP_CLASS}"><div class="col">${company.name}</div><div class="col-2">${company.playerRespectModifier.toFixed(2)}</div></div>`;
+                html += `<div class="row ${COMPANY_REP_CLASS}" data-company-name="${company.name}">
+                    <div class="col">${company.name}</div>
+                    <div class="col-3 ${COMPANY_REP_VALUE_CLASS}">${company.playerRespectModifier.toFixed(2)}</div>
+                    <div class="col-3 ${COMPANY_SECURITY_CLASS}">${company.securityLevel.toFixed(2)}</div>
+                </div>`;
             }
             this.$playerStandingsTitle.after(html);
         },
@@ -4205,7 +4236,7 @@ module.exports = EventListener;
         "hardReset":function()
         {
             this.stop();
-            localStorage.clear();
+            localStorage.removeItem('saveFile');
         },
         getJSON:function()
         {
@@ -4335,7 +4366,7 @@ module.exports = EventListener;
                     html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" title="${cpu?cpu.name:''}">`;
                     if(cpu)
                     {
-                        html += `<img src="${cpu.healthImage}"/>`;
+                        html += `<img src="./img/${cpu.healthImage}"/>`;
                     }
                     html += '</div>';
                     cpuIndex++;
@@ -7059,7 +7090,11 @@ class MissionComputer extends Computer
          * @type {Array.<Challenge>}
          */
         this.challenges = [];
-
+        /**
+         * We need this reference to determine how much the Mission Computer traces the connection each tick
+         */
+        this.company = company;
+        this.difficultyModifier = 0;
     }
 
     toJSON()
@@ -7112,43 +7147,31 @@ class MissionComputer extends Computer
         return this;
     }
 
+    addChallenge(challenge)
+    {
+        challenge
+            .on('solved', ()=>{
+                this.updateAccessStatus();
+                challenge.off();
+            })
+            .on('start', ()=>{this.startTraceBack();});
+        this.difficultyModifier += Math.pow(challenge.difficulty, DIFFICULTY_EXPONENT);
+        this.challenges.push(challenge);
+        this.traceSpeed = Math.pow(this.difficultyModifier, this.company.securityLevel);
+    }
+
     setEncryption(encryption)
     {
         this.encryption = encryption;
-        this.challenges.push(encryption);
-
-        encryption
-            .on('solved', ()=>{
-                this.updateAccessStatus();
-                encryption.off();
-            })
-            .on('start', ()=>{this.startTraceBack();});
+        this.addChallenge(encryption);
         return this;
     }
 
     setPassword(password)
     {
         this.password = password;
-        this.challenges.push(password);
-
-        // password is not handled the same as encryption
-        // because password is not a Tasks
-        // the PasswordCracker Tasks isn't
-        password.on('solved', ()=>{
-            this.updateAccessStatus();
-            password.off();
-        }).on('start', ()=>{this.startTraceBack();});
+        this.addChallenge(password);
         return this;
-    }
-
-    get difficultyModifier()
-    {
-        let mod = 0;
-        for(let challenge of this.challenges)
-        {
-            mod += Math.pow(challenge.difficulty, DIFFICULTY_EXPONENT);
-        }
-        return mod;
     }
 
     updateAccessStatus()
@@ -7174,7 +7197,7 @@ class MissionComputer extends Computer
     {
         if(this.tracingConnection)
         {
-            this.currentPlayerConnection.traceStep(this.difficultyModifier);
+            this.currentPlayerConnection.traceStep(this.traceSpeed);
         }
     }
 
