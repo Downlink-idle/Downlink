@@ -4146,8 +4146,8 @@ module.exports = EventListener;
             {
                 html += `<div class="row ${COMPANY_REP_CLASS}" data-company-name="${company.name}">
                     <div class="col">${company.name}</div>
-                    <div class="col-3 ${COMPANY_REP_VALUE_CLASS}">${company.playerRespectModifier.toFixed(2)}</div>
-                    <div class="col-3 ${COMPANY_SECURITY_CLASS}">${company.securityLevel.toFixed(2)}</div>
+                    <div class="col-2 ${COMPANY_REP_VALUE_CLASS}">${company.playerRespectModifier.toFixed(2)}</div>
+                    <div class="col-2 ${COMPANY_SECURITY_CLASS}">${company.securityLevel.toFixed(2)}</div>
                 </div>`;
             }
             this.$playerStandingsTitle.after(html);
