@@ -2120,11 +2120,17 @@ class CPU extends EventListener
         return cpuData.lifeCycle * cpuData.speed / CPU_COST_MODIFIER;
     }
 
-    static get deadCPUColor()
+    static get deadImage()
     {
-        return 'rgb(255, 0, 0)';
+        return './img/cpu-dead.png';
+    }
+
+    get healthImage()
+    {
+        return this.living?this.img:CPU.deadImage;
     }
 }
+
 
 module.exports = CPU;
 
@@ -4329,7 +4335,7 @@ module.exports = EventListener;
                     html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" title="${cpu?cpu.name:''}">`;
                     if(cpu)
                     {
-                        html += '<img src="./img/'+cpu.img+'"/>';
+                        html += `<img src="${cpu.healthImage}"/>`;
                     }
                     html += '</div>';
                     cpuIndex++;
