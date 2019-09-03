@@ -97,10 +97,11 @@ class CPU extends EventListener
         return cpuData.lifeCycle * cpuData.speed / CPU_COST_MODIFIER;
     }
 
-    static get deadCPUColor()
+    static get deadImage()
     {
-        return 'rgb(255, 0, 0)';
+        return './img/cpu-dead.png';
     }
 }
+
 
 module.exports = CPU;

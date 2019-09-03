@@ -668,7 +668,7 @@
                     html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" title="${cpu?cpu.name:''}">`;
                     if(cpu)
                     {
-                        html += '<img src="./img/'+cpu.img+'"/>';
+                        html += `<img src="./img/${cpu.living?cpu.img:CPU.deadImage}"/>`;
                     }
                     html += '</div>';
                     cpuIndex++;
