@@ -101,6 +101,11 @@ class CPU extends EventListener
     {
         return './img/cpu-dead.png';
     }
+
+    get healthImage()
+    {
+        return this.living?this.img:CPU.deadImage;
+    }
 }
 
 
