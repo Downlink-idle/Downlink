@@ -28,10 +28,6 @@ class Company
          * this is the increase exponent for successfully achieved missions
          */
         this.missionSuccessIncreaseExponent = 1.001;
-
-        this.hackDetectedExponent = 1.002;
-        this.securityIncreaseExponent = 1.05;
-
         this.securityLevel = 1;
     }
 
@@ -53,12 +49,22 @@ class Company
 
     traceHacker()
     {
-        this.playerRespectModifier /= this.hackDetectedExponent;
+        this.playerRespectModifier /= Company.hackDetectedExponent;
+    }
+
+    static get hackDetectedExponent()
+    {
+        return 1.02;
     }
 
     increaseSecurityLevel()
     {
-        this.securityLevel *= this.securityIncreaseExponent;
+        this.securityLevel *= Company.securityIncreaseExponent;
+    }
+
+    static get securityIncreaseExponent()
+    {
+        return 1.01;
     }
 
     /**
@@ -88,8 +94,8 @@ class Company
         let json = {
             name:this.name,
             publicServer:this.publicServer.toJSON(),
-            playerRespectModifier:this.playerRespectModifier.toString(),
-            missionSuccessIncreaseExponent:this.missionSuccessIncreaseExponent.toString()
+            playerRespectModifier:this.playerRespectModifier,
+            securityLevel:this.securityLevel
         };
 
         return json;
@@ -109,8 +115,7 @@ class Company
         let company = new Company(companyJSON.name);
         company.setPublicServer(ComputerGenerator.fromJSON(companyJSON.publicServer));
         company.playerRespectModifier = parseFloat(companyJSON.playerRespectModifier);
-        company.missionSuccessIncreaseExponent = parseFloat(companyJSON.missionSuccessIncreaseExponent);
-
+        company.securityLevel = parseFloat(companyJSON.securityLevel);
         locationsSet = true;
         return company;
     }

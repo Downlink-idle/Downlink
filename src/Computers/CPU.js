@@ -99,7 +99,7 @@ class CPU extends EventListener
 
     static get deadImage()
     {
-        return './img/cpu-dead.png';
+        return 'cpu-dead.png';
     }
 
     get healthImage()

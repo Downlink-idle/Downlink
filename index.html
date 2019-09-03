@@ -38,7 +38,12 @@
                     <strong class="col">Currency Units: </strong>
                     <div class="col-2" id="player-currency">0.00</div>
                 </div>
-                <h3 class="row" id="player-company-standings-title">Company Standings</h3>
+                <h3 class="row">Company Details</h3>
+                <div class="row" id="player-company-standings-title">
+                    <div class="col">Company name</div>
+                    <div class="col-2">Standing</div>
+                    <div class="col-2">Security</div>
+                </div>
                 <h3 class="row">Your PC</h3>
 
                 <div class="row">
@@ -87,10 +92,13 @@
                         <strong>ip address: </strong><span id="active-mission-server-ip-address"></span>
                     </div>
                     <h2 class="row">Server security:</h2>
-
-                    <div class="row" id="active-mission-password-task">
+                    <div class="row"><div class="col">
+                        <strong>Connection Trace Strength: </strong>
+                        <span id="active-mission-trace-strength"></span>
+                    </div></div>
+                    <div class="row" id="active-mission-password-task"><div class="col">
                         <strong>Password:</strong> <input type="text" autocomplete="off" value="" id="active-mission-password-input" disabled/>
-                    </div>
+                    </div></div>
 
                     <h1 class="row" id="active-mission-encryption-type"></h1>
                     <div class="row text-center" id="active-mission-encryption-task"><div class="col">

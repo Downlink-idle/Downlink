@@ -44,7 +44,11 @@ class MissionComputer extends Computer
          * @type {Array.<Challenge>}
          */
         this.challenges = [];
-
+        /**
+         * We need this reference to determine how much the Mission Computer traces the connection each tick
+         */
+        this.company = company;
+        this.difficultyModifier = 0;
     }
 
     toJSON()
@@ -97,43 +101,31 @@ class MissionComputer extends Computer
         return this;
     }
 
+    addChallenge(challenge)
+    {
+        challenge
+            .on('solved', ()=>{
+                this.updateAccessStatus();
+                challenge.off();
+            })
+            .on('start', ()=>{this.startTraceBack();});
+        this.difficultyModifier += Math.pow(challenge.difficulty, DIFFICULTY_EXPONENT);
+        this.challenges.push(challenge);
+        this.traceSpeed = Math.pow(this.difficultyModifier, this.company.securityLevel);
+    }
+
     setEncryption(encryption)
     {
         this.encryption = encryption;
-        this.challenges.push(encryption);
-
-        encryption
-            .on('solved', ()=>{
-                this.updateAccessStatus();
-                encryption.off();
-            })
-            .on('start', ()=>{this.startTraceBack();});
+        this.addChallenge(encryption);
         return this;
     }
 
     setPassword(password)
     {
         this.password = password;
-        this.challenges.push(password);
-
-        // password is not handled the same as encryption
-        // because password is not a Tasks
-        // the PasswordCracker Tasks isn't
-        password.on('solved', ()=>{
-            this.updateAccessStatus();
-            password.off();
-        }).on('start', ()=>{this.startTraceBack();});
+        this.addChallenge(password);
         return this;
-    }
-
-    get difficultyModifier()
-    {
-        let mod = 0;
-        for(let challenge of this.challenges)
-        {
-            mod += Math.pow(challenge.difficulty, DIFFICULTY_EXPONENT);
-        }
-        return mod;
     }
 
     updateAccessStatus()
@@ -159,7 +151,7 @@ class MissionComputer extends Computer
     {
         if(this.tracingConnection)
         {
-            this.currentPlayerConnection.traceStep(this.difficultyModifier);
+            this.currentPlayerConnection.traceStep(this.traceSpeed);
         }
     }
 

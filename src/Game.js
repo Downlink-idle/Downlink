@@ -9,6 +9,8 @@
             TICK_INTERVAL_LENGTH=100,
             MISSION_LIST_CLASS = 'mission-list-row',
             COMPANY_REP_CLASS = 'company-rep-row',
+            COMPANY_SECURITY_CLASS = 'company-security-col',
+            COMPANY_REP_VALUE_CLASS = 'company-rep-col',
             PLAYER_COMPUTER_CPU_ROW_CLASS = "cpu-row";
 
     function parseVersionNumber(versionNumberAsString)
@@ -41,10 +43,11 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.24a",
+        version:"0.3.27a",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
+        minimumVersion:"0.3.27a",
         /**
          * jquery entities that are needed for updating
          */
@@ -74,7 +77,7 @@
         $missionToggleButton:null,
         $connectionTracePercentage:null,
         $encryptionCells:null,
-
+        $activeMissionTraceStrength:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -106,6 +109,7 @@
             this.$connectionTraced = $('#connection-traced');
             this.$connectionTracePercentage = $('#connection-trace-percentage');
             this.$connectionWarningRow = $('#connection-warning-row');
+            this.$activeMissionTraceStrength = $('#active-mission-trace-strength');
             $('#settings-export-button').click(()=>{
                 this.$importExportTextarea.val(this.save());
             });
@@ -213,7 +217,9 @@
             {
                 return true;
             }
-            return (this.requiresHardReset && saveIsOlder(saveFile.version, this.version));
+            let oldVersionAsInt = parseVersionNumber(saveFile.version),
+                minVersionAsInt = parseVersionNumber(this.minimumVersion);
+            return (oldVersionAsInt < minVersionAsInt);
         },
         initialise:function()
         {
@@ -244,6 +250,7 @@
                 this.updateComputerBuild();
                 this.buildComputerPartsUI();
                 this.buildComputerGrid();
+                this.buildCompanyStateTable();
 
                 this.canTakeMissions = pc.cpuPool.cpuCount > 0;
                 this.updateMissionToggleButton();
@@ -340,6 +347,10 @@
                 }
             }
         },
+        setTraceStrength:function(traceStrength)
+        {
+            this.$activeMissionTraceStrength.text(traceStrength);
+        },
         /**
          *
          * @param {PasswordCracker|undefined|null} passwordCracker
@@ -421,6 +432,7 @@
             this.$connectionTraced.html(0);
             this.$connectionTracePercentage.html(0);
             this.mission = this.downlink.getNextMission();
+            this.$activeMissionTraceStrength.text(this.mission.computer.traceSpeed.toFixed(2));
             this.updateMissionInterface(this.mission);
             this.requiresNewMission = false;
 
@@ -428,9 +440,10 @@
                 .on("challengeSolved", (task)=>{this.updateChallenge(task)});
             // bind the mission events to the UI updates
             this.mission.on('complete', ()=>{
-                this.requiresNewMission = true;
                 this.updatePlayerDetails();
                 this.updateComputerPartsUI();
+                this.updateCompanyStates([this.mission.sponsor, this.mission.target]);
+                this.requiresNewMission = true;
                 this.save();
             }).on("connectionStepTraced", (stepsTraced)=>{
                 this.$connectionTraced.html(stepsTraced);
@@ -442,15 +455,27 @@
         updatePlayerDetails:function()
         {
             this.$playerCurrencySpan.html(this.downlink.currency.toFixed(2));
-            this.updatePlayerReputations();
         },
-        updatePlayerReputations:function()
+        updateCompanyStates:function(companiesToUpdate)
+        {
+            for(let company of companiesToUpdate)
+            {
+                let $row = $(`.${COMPANY_REP_CLASS}[data-company-name="${company.name}"]`);
+                $(`.${COMPANY_REP_VALUE_CLASS}`, $row).text(company.playerRespectModifier.toFixed(2));
+                $(`.${COMPANY_SECURITY_CLASS}`, $row).text(company.securityLevel.toFixed(2));
+            }
+        },
+        buildCompanyStateTable:function()
         {
             $(`.${COMPANY_REP_CLASS}`).remove();
             let html = '';
             for(let company of this.downlink.companies)
             {
-                html += `<div class="row ${COMPANY_REP_CLASS}"><div class="col">${company.name}</div><div class="col-2">${company.playerRespectModifier.toFixed(2)}</div></div>`;
+                html += `<div class="row ${COMPANY_REP_CLASS}" data-company-name="${company.name}">
+                    <div class="col">${company.name}</div>
+                    <div class="col-2 ${COMPANY_REP_VALUE_CLASS}">${company.playerRespectModifier.toFixed(2)}</div>
+                    <div class="col-2 ${COMPANY_SECURITY_CLASS}">${company.securityLevel.toFixed(2)}</div>
+                </div>`;
             }
             this.$playerStandingsTitle.after(html);
         },
@@ -538,7 +563,7 @@
         "hardReset":function()
         {
             this.stop();
-            localStorage.clear();
+            localStorage.removeItem('saveFile');
         },
         getJSON:function()
         {
@@ -668,7 +693,7 @@
                     html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" title="${cpu?cpu.name:''}">`;
                     if(cpu)
                     {
-                        html += `<img src="${cpu.healthImage}"/>`;
+                        html += `<img src="./img/${cpu.healthImage}"/>`;
                     }
                     html += '</div>';
                     cpuIndex++;
