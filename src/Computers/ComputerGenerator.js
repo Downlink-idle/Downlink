@@ -3,27 +3,8 @@ const   PlayerComputer = require('./PlayerComputer'),
         CPU = require('./CPU'),
         PublicComputer= require('./PublicComputer'),
         MissionComputer = require('../Missions/MissionComputer'),
-        constructors = {PlayerComputer:PlayerComputer, PublicComputer:PublicComputer, MissionComputer:MissionComputer};
-
-const LAND_COLOR = 0xf2efe9;
-
-function getRandomIntInclusive(min, max) {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min + 1)) + min; //The maximum is inclusive and the minimum is inclusive
-}
-
-function getRandomBoundInt(boundary)
-{
-    return getRandomIntInclusive(boundary.min, boundary.max);
-}
-
-function colorArrayToHex(colorArray)
-{
-    let [red, green, blue] = colorArray;
-    let rgb = red * 256 * 256 + green * 256 + blue;
-    return rgb;
-}
+        constructors = {PlayerComputer:PlayerComputer, PublicComputer:PublicComputer, MissionComputer:MissionComputer},
+        helpers = require('../Helpers');
 
 class ComputerGenerator
 {
@@ -32,37 +13,6 @@ class ComputerGenerator
         this.canvasContext = null;
         this.boundaries = {};
     }
-
-
-    /**
-     *
-     */
-    getRandomLandboundPoint()
-    {
-        let point = null;
-        while(point == null)
-        {
-            let testPoint= this.getRandomPointData();
-            if(testPoint.color === LAND_COLOR)
-            {
-                point = testPoint;
-            }
-        }
-        return point;
-    }
-
-    getRandomPointData()
-    {
-        let point = {
-            x:getRandomBoundInt(this.boundaries.x),
-            y:getRandomBoundInt(this.boundaries.y)
-        };
-        let color = this.canvasContext.getImageData(point.x, point.y, 1, 1).data;
-        point.color =  colorArrayToHex(color);
-
-        return point;
-    }
-
 
     /**
      * In order to determine valid locations for any new computer, the class needs a reference to the image so that
@@ -82,10 +32,10 @@ class ComputerGenerator
         return this;
     }
 
-    newPlayerComputer(location)
+    newPlayerComputer()
     {
         let potato = new PlayerComputer([new CPU()]);
-        potato.setLocation(location?location:this.getRandomLandboundPoint());
+        potato.setLocation(location);
         return potato;
     }
 

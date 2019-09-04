@@ -1,4 +1,5 @@
 const   ComputerGenerator = require('../Computers/ComputerGenerator'),
+        helper = require('../Helpers'),
         companyNames = require('./companies');
 
 /**
@@ -75,15 +76,16 @@ class Company
         return companies;
     }
 
-    static setAllPublicServerLocations()
+    static setAllPublicServerLocations(validWorldMapPoints)
     {
         if(locationsSet)
         {
             return;
         }
+
         for(let company of companies)
         {
-            company.publicServer.setLocation(ComputerGenerator.getRandomLandboundPoint());
+            company.publicServer.setLocation(helper.popRandomArrayElement(validWorldMapPoints));
         }
         locationsSet = true;
     }
