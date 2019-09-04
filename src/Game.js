@@ -44,11 +44,11 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.1b",
+        version:"0.4.2b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
-        minimumVersion:"0.4.0b",
+        minimumVersion:"0.4.2b",
         /**
          * jquery entities that are needed for updating
          */
