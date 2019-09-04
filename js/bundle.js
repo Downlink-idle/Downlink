@@ -1850,7 +1850,6 @@ class Alphabet
     static shuffle()
     {
         this.randomizedAlphabet = helpers.shuffleArray([...alphabetGrid]);
-
     }
 
     static getRandomLetter()
@@ -1861,6 +1860,16 @@ class Alphabet
         }
 
         return this.randomizedAlphabet.pop();
+    }
+
+    /**
+     * In the general case, we don't need to keep the state of a given alphabet that's being used, we just need a random
+     * letter. But in the case of, for example, the Alphanumeric password, we need the alphabet grid in its totality.
+     * We return a clone of the array for versatility's sake
+     */
+    static getAlphabetGrid()
+    {
+        return [...alphabetGrid];
     }
 };
 
@@ -2580,8 +2589,9 @@ class ComputerGenerator
 module.exports = new ComputerGenerator();
 
 },{"../Missions/MissionComputer":29,"./CPU":9,"./Computer":11,"./PlayerComputer":13,"./PublicComputer":14}],13:[function(require,module,exports){
-const   Password = require('../Missions/Challenges/Password'),
-        {DictionaryCracker, PasswordCracker} = require('./Tasks/PasswordCracker'),
+const   {Password, DictionaryPassword, AlphanumericPassword} = require('../Missions/Challenges/Password'),
+        helpers = require('../Helpers'),
+        {DictionaryCracker, PasswordCracker, SequentialAttacker} = require('./Tasks/PasswordCracker'),
         Encryption = require('../Missions/Challenges/Encryption'),
         EncryptionCracker = require('./Tasks/EncryptionCracker'),
         Computer = require('./Computer'),
@@ -2590,6 +2600,7 @@ const   Password = require('../Missions/Challenges/Password'),
 
 class InvalidTaskError extends Error{};
 const DEFAULT_MAX_CPUS = 4;
+
 
 class PlayerComputer extends Computer
 {
@@ -2624,22 +2635,32 @@ class PlayerComputer extends Computer
         this.cpuPool.setCPUSlot(slot, cpu);
     }
 
+    /**
+     * @param challenge
+     * @returns {Task}
+     */
     getTaskForChallenge(challenge)
     {
         let task = null;
-        if(challenge instanceof Password)
-        {
-            task = new DictionaryCracker(challenge);
-        }
-        if(challenge instanceof  Encryption)
+
+        if(challenge instanceof Encryption)
         {
             task = new EncryptionCracker(challenge);
         }
-
-        if(!task)
+        else if(challenge instanceof DictionaryPassword)
         {
-            throw new InvalidTaskError(`No task found for challenge ${challenge.constructor.name}`);
+            task = new DictionaryCracker(challenge);
         }
+        else if(challenge instanceof AlphanumericPassword)
+        {
+            task = new SequentialAttacker(challenge);
+        }
+        else
+        {
+            throw new InvalidTaskError('Unknown task');
+        }
+
+
         return task;
     }
 
@@ -2647,6 +2668,9 @@ class PlayerComputer extends Computer
     {
         let task = this.getTaskForChallenge(challenge);
         this.missionTasks.push(task);
+        task.on("complete", ()=>{
+            helpers.removeArrayElement(this.missionTasks, task);
+        });
         this.cpuPool.addTask(task);
     }
 
@@ -2701,7 +2725,7 @@ class PlayerComputer extends Computer
 
 module.exports = PlayerComputer;
 
-},{"../Missions/Challenges/Encryption":25,"../Missions/Challenges/Password":26,"./CPU.js":9,"./CPUPool":10,"./Computer":11,"./Tasks/EncryptionCracker":15,"./Tasks/PasswordCracker":16}],14:[function(require,module,exports){
+},{"../Helpers":23,"../Missions/Challenges/Encryption":25,"../Missions/Challenges/Password":26,"./CPU.js":9,"./CPUPool":10,"./Computer":11,"./Tasks/EncryptionCracker":15,"./Tasks/PasswordCracker":16}],14:[function(require,module,exports){
 let Computer = require('./Computer');
 
 let allPublicComputers = {};
@@ -2768,7 +2792,7 @@ class EncryptionCracker extends Task
 {
     constructor(encryption)
     {
-        super('EncryptionCracker', encryption, encryption.difficulty);
+        super('Encryption Cracker', encryption, encryption.difficulty);
         this.rows = encryption.rows;
         this.cols = encryption.cols;
         this.encryption = encryption;
@@ -2890,7 +2914,8 @@ module.exports = EncryptionCracker;
 },{"../../Alphabet":6,"../../Helpers":23,"./Task":17}],16:[function(require,module,exports){
 const   DICTIONARY_CRACKER_MINIMUM_CYCLES = 5,
         SEQUENTIAL_CRACKER_MINIMUM_CYCLES = 20,
-        Task = require('./Task');
+        Task = require('./Task')
+        Alphabet = require('../../Alphabet');
 
 class PasswordCracker extends Task
 {
@@ -2936,15 +2961,12 @@ class DictionaryCracker extends PasswordCracker
         if(!this.solved)
         {
             let attacking = true,
-                found = false,
                 guessesThisTick = 0;
 
             while(attacking)
             {
                 this.currentGuess = this.dictionary[this.totalGuesses++];
-
                 let guessSuccessful = this.attackPassword();
-                found = found || guessSuccessful;
                 if(guessSuccessful || guessesThisTick++ >= this.cyclesPerTick)
                 {
                     attacking = false;
@@ -2959,11 +2981,42 @@ class SequentialAttacker extends PasswordCracker
     constructor(password)
     {
         super(password, 'Sequential Cracker', SEQUENTIAL_CRACKER_MINIMUM_CYCLES);
+        this.currentGuess = '';
+        this.lettersSolved = 0;
+        console.log(password.length);
+        for(let i = 0; i < password.length; i++)
+        {
+            this.currentGuess += '*';
+        }
+        this.alphabetGrid = Alphabet.getAlphabetGrid();
     }
 
-    tick()
+    getNextLetter()
     {
+        if(!this.alphabetGrid.length)
+        {
+            this.alphabetGrid = Alphabet.getAlphabetGrid();
+        }
+        return this.alphabetGrid.pop();
+    }
 
+    processTick()
+    {
+        let attacking = true,
+            guessesThisTick = 0;
+        while(attacking)
+        {
+            let letterGuess = this.getNextLetter();
+            if(this.password.attackLetter(letterGuess))
+            {
+                this.currentGuess = this.currentGuess.substr(0, this.lettersSolved++) + letterGuess + this.currentGuess.substr(this.lettersSolved);
+            }
+            let guessSuccessful = this.attackPassword();
+            if(guessSuccessful || guessesThisTick++ >= this.cyclesPerTick)
+            {
+                attacking = false;
+            }
+        }
     }
 }
 
@@ -2973,7 +3026,7 @@ module.exports = {
     SequentialAttacker:SequentialAttacker
 };
 
-},{"./Task":17}],17:[function(require,module,exports){
+},{"../../Alphabet":6,"./Task":17}],17:[function(require,module,exports){
 const   EventListener = require('../../EventListener'),
         Decimal = require('break_infinity.js');
 
@@ -3722,6 +3775,7 @@ module.exports = EventListener;
             COMPANY_REP_CLASS = 'company-rep-row',
             COMPANY_SECURITY_CLASS = 'company-security-col',
             COMPANY_REP_VALUE_CLASS = 'company-rep-col',
+            CPU_MISSION_TASK = 'cpu-mission-task',
             PLAYER_COMPUTER_CPU_ROW_CLASS = "cpu-row";
 
     function parseVersionNumber(versionNumberAsString)
@@ -3791,6 +3845,7 @@ module.exports = EventListener;
         $encryptionCells:null,
         $activeMissionTraceStrength:null,
         $activeMissionDisconnectButton:null,
+        $cpuTasksCol:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -3824,6 +3879,7 @@ module.exports = EventListener;
             this.$connectionTraceBar = $('#connection-trace-bar');
             this.$connectionWarningRow = $('#connection-warning-row');
             this.$activeMissionTraceStrength = $('#active-mission-trace-strength');
+            this.$cpuTasksCol = $('#tasks-col');
             this.$activeMissionDisconnectButton = $('#disconnect-button').click(()=>{this.disconnect()});
             this.$missionToggleButton = $('#missions-toggle-button').click(()=>{this.toggleMissions();});
 
@@ -4258,8 +4314,26 @@ module.exports = EventListener;
             this.updateAvailableMissionList(mission);
             this.updateCurrentMissionView(mission.computer);
         },
+        updateCPULoadBalancer:function()
+        {
+            let totalCycles = this.downlink.playerComputer.cpuPool.totalSpeed;
+            $(`.${CPU_MISSION_TASK}`).remove();
+            for(let task of this.downlink.currentMissionTasks)
+            {
+                let loadPercentage = (task.cyclesPerTick / totalCycles * 100).toFixed(2);
+                let $node= $(`<div class="row ${CPU_MISSION_TASK}"/>`)
+                    .append($(`<div class="col-3 cpu-task-name">${task.name}</div>`))
+                    .append(
+                        $(`<div class="col cpu-task-bar"/>`)
+                            .append($(`<div class="reduce-cpu-load cpu-load-changer">&lt;</div>`))
+                            .append($(`<div class="percentage-bar-container"><div class="percentage-bar" style="width:${loadPercentage}%">&nbsp;</div><div class="percentage-text">${loadPercentage}</div></div>`))
+                            .append($(`<div class="increase-cpu-load cpu-load-changer">&gt;</div>`))
+                    ).appendTo(this.$cpuTasksCol);
+                task.on('complete', ()=>{this.updateCPULoadBalancer();});
+            }
+        },
         updateCurrentMissionView:function(server){
-
+            this.updateCPULoadBalancer();
             this.$activeMissionPassword.val('');
             this.updateEncryptionGridUI(server.encryption.size, server.encryption.cols);
             this.$activeMissionEncryptionType.html(server.encryption.name);
@@ -4514,7 +4588,7 @@ module.exports = {
     },
     getRandomIntegerBetween(min, max)
     {
-
+        return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
 };
@@ -4623,17 +4697,16 @@ const PASSWORD_TYPES = {
 };
 const PASSWORD_DICTIONARY_DIFFICULTIES = {
     'EASIEST':1,
-    'HARDEST':10
+    'HARDEST':3
 };
-
 
 class Password extends Challenge
 {
-    constructor(text, type, difficulty)
+    constructor(text, difficulty, type)
     {
         super(type + ' Password', difficulty) ;
         this.text = text;
-        this.type = type;
+        this.length = text.length;
     }
 
     attack(testPassword)
@@ -4647,48 +4720,76 @@ class Password extends Challenge
         return PASSWORD_DICTIONARY_DIFFICULTIES;
     }
 
-
-    /**
-     *
-     * @param {number} difficulty should be between one and 10
-     * @returns {Password}
-     */
-    static randomDictionaryPassword(difficulty)
+    static getPasswordForDifficulty(difficulty)
     {
-        difficulty = Math.min(difficulty, PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST);
-        // reduce the dictionary by a percentage of that amount
-        let reduction = PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST - difficulty,
-            usedDictionary = [];
-        dictionary.forEach((entry, index)=>{if(index%PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST >= reduction){usedDictionary.push(entry);}});
-        let dictionaryPassword = new Password(helpers.getRandomArrayElement(usedDictionary), PASSWORD_TYPES.DICTIONARY, difficulty);
-        dictionaryPassword.dictionary = usedDictionary;
-        return dictionaryPassword;
+        if(difficulty <= PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST)
+        {
+            return DictionaryPassword.getRandomPassword(difficulty);
+        }
+        return AlphanumericPassword.getRandomPassword(difficulty);
     }
 
-    static randomAlphanumericPassword()
+}
+
+class AlphanumericPassword extends Password
+{
+    constructor(text, difficulty)
     {
-        let stringLength = Math.floor(Math.random() * 5) + 5;
+        super(text, difficulty, 'Alphanumeric');
+        this.lettersSolved = 0;
+    }
+
+    attackLetter(letter)
+    {
+        if(this.text.charAt(this.lettersSolved) === letter)
+        {
+            this.lettersSolved ++;
+            return true;
+        }
+        return false;
+    }
+
+    static getRandomPassword(difficulty)
+    {
+        let stringLength = helpers.getRandomIntegerBetween(5, 10) + difficulty;
         let password = '';
         for (let i = 0; i < stringLength; i++)
         {
             password += Alphabet.getRandomLetter();
         }
-        return new Password(password, PASSWORD_TYPES.ALPHANUMERIC,  stringLength);
-    }
-
-
-    static get dictionary()
-    {
-        return dictionary;
-    }
-
-    static get PASSWORD_TYPES()
-    {
-        return PASSWORD_TYPES;
+        return new AlphanumericPassword(password, stringLength);
     }
 }
 
-module.exports = Password;
+class DictionaryPassword extends Password
+{
+    constructor(text, difficulty, dictionary)
+    {
+        super(text, difficulty, 'Dictionary');
+        this.dictionary = dictionary;
+    }
+
+    /**
+     *
+     * @param {number} difficulty should be between one and 10
+     * @returns {DictionaryPassword}
+     */
+    static getRandomPassword(difficulty)
+    {
+        let usedDictionary = DictionaryPassword.reduceDictionary(PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST - Math.min(difficulty, PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST)),
+            password = helpers.getRandomArrayElement(usedDictionary);
+        return new DictionaryPassword(password, difficulty, usedDictionary);
+    }
+
+    static reduceDictionary(reduction)
+    {
+        let reducedDictionary = [];
+        dictionary.forEach((entry, index)=>{if(index%PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST >= reduction){reducedDictionary.push(entry);}})
+        return reducedDictionary;
+    }
+}
+
+module.exports = {Password:Password, DictionaryPassword:DictionaryPassword, AlphanumericPassword:AlphanumericPassword};
 
 },{"../../Alphabet":6,"../../Helpers":23,"./Challenge":24,"./dictionary":27}],27:[function(require,module,exports){
 // stolen from Bart Busschot's xkpasswd JS github repo
@@ -6962,7 +7063,7 @@ module.exports = dictionary;
 },{}],28:[function(require,module,exports){
 const   Company = require('../Companies/Company'),
         MissionComputer = require('./MissionComputer'),
-        Password = require('./Challenges/Password'),
+        {Password} = require('./Challenges/Password'),
         Encryption = require('./Challenges/Encryption'),
         EventListener = require('../EventListener'),
         helpers = require('../Helpers');
@@ -7050,7 +7151,7 @@ class Mission extends EventListener
         }
 
         this.computer = new MissionComputer(this.target, serverType)
-            .setPassword(Password.randomDictionaryPassword(missionChallengeDifficulty))
+            .setPassword(Password.getPasswordForDifficulty(missionChallengeDifficulty))
             .setEncryption(new Encryption(missionChallengeDifficulty))
             .on('accessed', ()=>{
                 this.signalComplete();

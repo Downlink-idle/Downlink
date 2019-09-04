@@ -1,6 +1,6 @@
 const   Company = require('../Companies/Company'),
         MissionComputer = require('./MissionComputer'),
-        Password = require('./Challenges/Password'),
+        {Password} = require('./Challenges/Password'),
         Encryption = require('./Challenges/Encryption'),
         EventListener = require('../EventListener'),
         helpers = require('../Helpers');
@@ -88,7 +88,7 @@ class Mission extends EventListener
         }
 
         this.computer = new MissionComputer(this.target, serverType)
-            .setPassword(Password.randomDictionaryPassword(missionChallengeDifficulty))
+            .setPassword(Password.getPasswordForDifficulty(missionChallengeDifficulty))
             .setEncryption(new Encryption(missionChallengeDifficulty))
             .on('accessed', ()=>{
                 this.signalComplete();

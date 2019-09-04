@@ -137,12 +137,15 @@
 {
     border: 1px solid black;
     position:relative;
+    text-align: center !important;
+    width: 90%;
 }
 
 .percentage-bar
 {
     background-color: darkgreen;
     width:0%;
+    height:100%;
 }
 
 .percentage-text
@@ -150,4 +153,32 @@
     position:absolute;
     top:0;
     width:100%;
+}
+
+.cpu-load-changer
+{
+    width: 5%;
+    text-align: center;
+    border:1px solid black;
+}
+
+#tasks-row
+{
+    height: 50px;
+    overflow-y: auto;
+}
+
+.cpu-mission-task
+{
+    font-size:x-small;
+}
+
+.cpu-task-bar > div
+{
+    display: inline-block;
+}
+
+#connection-trace-progress > .percentage-bar-container
+{
+    width: 100%;
 }
