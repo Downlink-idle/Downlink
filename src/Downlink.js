@@ -94,6 +94,24 @@ class Downlink extends EventListener
         return this.activeMission;
     }
 
+    disconnectFromMissionServer()
+    {
+        this.activeMission.computer.disconnect();
+        for(let task of this.playerComputer.missionTasks)
+        {
+            task.pause();
+        }
+    }
+
+    reconnectToMissionServer()
+    {
+        this.activeMission.computer.reconnect(this.playerConnection);
+        for(let task of this.playerComputer.missionTasks)
+        {
+            task.resume();
+        }
+    }
+
     finishCurrentMission(mission)
     {
         this.currency = this.currency.add(mission.reward);

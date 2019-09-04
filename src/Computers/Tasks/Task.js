@@ -22,7 +22,7 @@ class Task extends EventListener
         this.weight = 1;
         this.difficultyRatio = 0;
         this.ticksTaken = 0;
-        this.working = false;
+        this.working = true;
         this.completed = false;
         this.challenge = challenge.setTask(this);
     }
@@ -76,15 +76,27 @@ class Task extends EventListener
         this.challenge.solve();
     }
 
-    getRewardRatio()
-    {
-        return 0;
-        //return this.difficultyRatio / Math.pow(this.ticksTaken, 2.5);
-    }
-
     tick()
     {
-        this.ticksTaken++;
+        if(this.working)
+        {
+            this.ticksTaken++;
+            this.processTick();
+            return this.minimumRequiredCycles;
+        }
+        return 0;
+    }
+
+    pause()
+    {
+        this.working = false;
+        return this;
+    }
+
+    resume()
+    {
+        this.working = true;
+        return this;
     }
 }
 

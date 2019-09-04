@@ -217,9 +217,10 @@ class CPUPool extends EventListener
     tick()
     {
         let tasks = [];
+        let averageLoad = 0;
         for(let task of this.tasks)
         {
-            task.tick();
+            averageLoad += task.tick();
             // we do this because the task could be removed from this.tasks after ticking
             // so it would be lost reference wise and we would have no way of updating it later
             tasks.push(task);
@@ -228,7 +229,7 @@ class CPUPool extends EventListener
         {
             if(cpu && cpu.remainingLifeCycle > 0)
             {
-                cpu.tick(this.averageLoad);
+                cpu.tick(averageLoad);
             }
         }
         return tasks;

@@ -96,8 +96,21 @@ class MissionComputer extends Computer
     {
         super.disconnect();
         this.currentPlayerConnection.close();
-        this.previousPlayerConnection = this.currentPlayerConnection;
         this.stopTraceBack();
+        return this;
+    }
+
+    reconnect(connection)
+    {
+        if(connection.equals(this.currentPlayerConnection))
+        {
+            this.resumeTraceback();
+        }
+        else
+        {
+            this.connect(connection);
+        }
+        this.currentPlayerConnection.open();
         return this;
     }
 
@@ -165,7 +178,7 @@ class MissionComputer extends Computer
         this.tracingConnection = true;
     }
 
-    resumeTraceBack()
+    resumeTraceback()
     {
         this.currentPlayerConnection.reconnect();
         this.tracingConnection = true;
