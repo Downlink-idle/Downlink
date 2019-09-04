@@ -18,6 +18,24 @@ class Challenge extends EventListener
         this.difficulty = difficulty;
         this.solved = false;
         this.task = null;
+        /**
+         * @type {MissionComputer}
+         */
+        this.computer = null;
+    }
+
+    get hash()
+    {
+        return `${this.computer.uniqueID}_${this.name}`;
+    }
+
+    /**
+     * @param {MissionComputer} computer
+     */
+    setComputer(computer)
+    {
+        this.computer = computer;
+        return this;
     }
 
     setTask(task)

@@ -1,6 +1,7 @@
 const   Computer = require('../Computers/Computer');
 let  DIFFICULTY_EXPONENT = 1.8;
 
+
 class MissionComputer extends Computer
 {
     constructor(company, serverType)
@@ -49,6 +50,12 @@ class MissionComputer extends Computer
          */
         this.company = company;
         this.difficultyModifier = 0;
+        MissionComputer.computersSpawned++;
+    }
+
+    get uniqueID()
+    {
+        return `${this.name}_${MissionComputer.computersSpawned}`;
     }
 
     toJSON()
@@ -117,11 +124,13 @@ class MissionComputer extends Computer
     addChallenge(challenge)
     {
         challenge
+            .setComputer(this)
             .on('solved', ()=>{
                 this.updateAccessStatus();
                 challenge.off();
             })
             .on('start', ()=>{this.startTraceBack();});
+
         this.difficultyModifier += Math.pow(challenge.difficulty, DIFFICULTY_EXPONENT);
         this.challenges.push(challenge);
         this.traceSpeed = Math.pow(this.difficultyModifier, this.company.securityLevel);
@@ -189,5 +198,6 @@ class MissionComputer extends Computer
         this.tracingConnection = false;
     }
 }
+MissionComputer.computersSpawned = 0;
 
 module.exports = MissionComputer;

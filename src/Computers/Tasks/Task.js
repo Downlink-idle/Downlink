@@ -27,6 +27,11 @@ class Task extends EventListener
         this.challenge = challenge.setTask(this);
     }
 
+    get hash()
+    {
+        return this.challenge.hash;
+    }
+
     setCyclesPerTick(cyclesPerTick)
     {
         if(cyclesPerTick < this.minimumRequiredCycles)

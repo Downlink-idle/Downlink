@@ -3056,6 +3056,11 @@ class Task extends EventListener
         this.challenge = challenge.setTask(this);
     }
 
+    get hash()
+    {
+        return this.challenge.hash;
+    }
+
     setCyclesPerTick(cyclesPerTick)
     {
         if(cyclesPerTick < this.minimumRequiredCycles)
@@ -4318,19 +4323,28 @@ module.exports = EventListener;
         {
             let totalCycles = this.downlink.playerComputer.cpuPool.totalSpeed;
             $(`.${CPU_MISSION_TASK}`).remove();
+            let html = '';
             for(let task of this.downlink.currentMissionTasks)
             {
                 let loadPercentage = (task.cyclesPerTick / totalCycles * 100).toFixed(2);
-                let $node= $(`<div class="row ${CPU_MISSION_TASK}"/>`)
-                    .append($(`<div class="col-3 cpu-task-name">${task.name}</div>`))
-                    .append(
-                        $(`<div class="col cpu-task-bar"/>`)
-                            .append($(`<div class="reduce-cpu-load cpu-load-changer">&lt;</div>`))
-                            .append($(`<div class="percentage-bar-container"><div class="percentage-bar" style="width:${loadPercentage}%">&nbsp;</div><div class="percentage-text">${loadPercentage}</div></div>`))
-                            .append($(`<div class="increase-cpu-load cpu-load-changer">&gt;</div>`))
-                    ).appendTo(this.$cpuTasksCol);
+                html += `<div class="row ${CPU_MISSION_TASK}" data-task-hash ="${task.hash}">`+
+                    `<div class="col-3 cpu-task-name">${task.name}</div>`+
+                    `<div class="col cpu-task-bar">`+
+                        `<div class="reduce-cpu-load cpu-load-changer">&lt;</div>`+
+                        `<div class="percentage-bar-container">`+
+                            `<div class="percentage-bar" style="width:${loadPercentage}%">&nbsp;</div>`+
+                            `<div class="percentage-text">${loadPercentage}</div>`+
+                        `</div>`+
+                        `<div class="increase-cpu-load cpu-load-changer">&gt;</div>`+
+                    `</div>`+
+                `</div>`;
                 task.on('complete', ()=>{this.updateCPULoadBalancer();});
             }
+            this.$cpuTasksCol.html(html);
+            $('.cpu-load-changer').click((evt)=>{
+                let rawDOMElement = evt.currentTarget,
+                    row = rawDOMElement.parentElement;
+            });
         },
         updateCurrentMissionView:function(server){
             this.updateCPULoadBalancer();
@@ -4614,6 +4628,24 @@ class Challenge extends EventListener
         this.difficulty = difficulty;
         this.solved = false;
         this.task = null;
+        /**
+         * @type {MissionComputer}
+         */
+        this.computer = null;
+    }
+
+    get hash()
+    {
+        return `${this.computer.uniqueID}_${this.name}`;
+    }
+
+    /**
+     * @param {MissionComputer} computer
+     */
+    setComputer(computer)
+    {
+        this.computer = computer;
+        return this;
     }
 
     setTask(task)
@@ -7213,6 +7245,7 @@ module.exports = Mission;
 const   Computer = require('../Computers/Computer');
 let  DIFFICULTY_EXPONENT = 1.8;
 
+
 class MissionComputer extends Computer
 {
     constructor(company, serverType)
@@ -7261,6 +7294,12 @@ class MissionComputer extends Computer
          */
         this.company = company;
         this.difficultyModifier = 0;
+        MissionComputer.computersSpawned++;
+    }
+
+    get uniqueID()
+    {
+        return `${this.name}_${MissionComputer.computersSpawned}`;
     }
 
     toJSON()
@@ -7329,11 +7368,13 @@ class MissionComputer extends Computer
     addChallenge(challenge)
     {
         challenge
+            .setComputer(this)
             .on('solved', ()=>{
                 this.updateAccessStatus();
                 challenge.off();
             })
             .on('start', ()=>{this.startTraceBack();});
+
         this.difficultyModifier += Math.pow(challenge.difficulty, DIFFICULTY_EXPONENT);
         this.challenges.push(challenge);
         this.traceSpeed = Math.pow(this.difficultyModifier, this.company.securityLevel);
@@ -7401,6 +7442,7 @@ class MissionComputer extends Computer
         this.tracingConnection = false;
     }
 }
+MissionComputer.computersSpawned = 0;
 
 module.exports = MissionComputer;
 
