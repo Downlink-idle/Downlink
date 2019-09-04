@@ -42,6 +42,7 @@ class Connection extends EventListener
         this.computersTraced = 0;
         this.amountTraced = 0;
         this.traceTicks = 0;
+        this.active = false;
     }
 
     static improveConnectionDistance(amount)
@@ -72,12 +73,14 @@ class Connection extends EventListener
     {
         this.computersTraced = 0;
         this.amountTraced = 0;
+        this.active = true;
         return this.open();
     }
 
     reconnect()
     {
-        this.open();
+        this.active = true;
+        return this.open();
     }
 
     open()
@@ -149,6 +152,7 @@ class Connection extends EventListener
         {
             computer.disconnect();
         }
+        this.active = false;
         return this;
     }
 
@@ -233,6 +237,6 @@ class Connection extends EventListener
 }
 
 Connection.connectionDistance = 1300;
-Connection.sensitivity = 25;
+Connection.sensitivity = 10;
 
 module.exports = Connection;

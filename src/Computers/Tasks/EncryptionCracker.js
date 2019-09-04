@@ -116,10 +116,8 @@ class EncryptionCracker extends Task
         return this.unsolvedCells.length == 0;
     }
 
-    tick()
+    processTick()
     {
-        super.tick();
-
         // Cycle through all of the cells and tick them.
         for (let cell of this.unsolvedCells)
         {

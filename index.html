@@ -22,7 +22,6 @@
 
     <!-- built game file.
         For the raw classes see the github repository -->
-    <script src="js/plugins.js"></script>
     <script src="js/bundle.js"></script>
 
     <div class="container-fluid min-vh-100">
@@ -55,10 +54,10 @@
             </div>
 
             <div class="col-6 col-lg-3" id="mission-list">
-                <div class="row"><h1>Missions</h1></div>
-                <div class="row" id="mission-controls">
+                <div class="row"><div class="col"><h1>Missions</h1></div></div>
+                <div class="row" id="mission-controls"><div class="col">
                     <button id="missions-toggle-button" class="btn btn-primary btn-sm">Start Taking Missions</button>
-                </div>
+                </div></div>
                 <!--<div class="row">
                     <label for="mission-difficulty-slider">Mission difficulty</label>
                     <input type="range" id="mission-difficulty-slider" min="1" max="100" step="1" value="1"/>
@@ -75,10 +74,17 @@
                     <div class="col"><b>Connection Trace:</b></div>
                     <div class="col"><span id="connection-traced">0</span> redirects.</div>
                 </div>
-                <div class="row">
-                    <div class="col"></div>
-                    <div class="col"><span id="connection-trace-percentage">0</span>% traced</div>
-                </div>
+                <div class="row"><div class="col">
+                    <div id="connection-trace-progress">
+                        <div class="percentage-bar-container text-center">
+                            <div class="percentage-bar" id="connection-trace-bar">&nbsp;</div>
+                            <div class="percentage-text"><span id="connection-trace-percentage">0</span>%</div>
+                        </div>
+                    </div>
+                </div></div>
+                <div class="row"><div class="col text-center">
+                    <button id="disconnect-button" class="btn btn-sm btn-danger" disabled autocomplete="off">Disconnect</button>
+                </div></div>
                 <div class="row"><div class="col"><b>Active Mission: </b><span id="active-mission"></span></div></div>
             </div>
 
@@ -111,6 +117,7 @@
         <div class="fixed-bottom text-right">
             <nav>
                 Version: <span id="game-version"></span> |
+                <a href="https://www.reddit.com/r/Downlink_Idle_Game/" target="_blank">Reddit</a> |
                 <a href="https://discord.gg/mmmuCNq" target="_blank">Discord</a> |
                 <a href="https://github.com/CuAnnan/Downlink" target="_blank">Github</a>
             </nav>

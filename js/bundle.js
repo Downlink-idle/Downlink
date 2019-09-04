@@ -2359,9 +2359,10 @@ class CPUPool extends EventListener
     tick()
     {
         let tasks = [];
+        let averageLoad = 0;
         for(let task of this.tasks)
         {
-            task.tick();
+            averageLoad += task.tick();
             // we do this because the task could be removed from this.tasks after ticking
             // so it would be lost reference wise and we would have no way of updating it later
             tasks.push(task);
@@ -2370,7 +2371,7 @@ class CPUPool extends EventListener
         {
             if(cpu && cpu.remainingLifeCycle > 0)
             {
-                cpu.tick(this.averageLoad);
+                cpu.tick(averageLoad);
             }
         }
         return tasks;
@@ -2601,7 +2602,10 @@ class PlayerComputer extends Computer
         }).on("cpuPoolEmpty", ()=>{
             this.trigger('cpuPoolEmpty');
         });
-        this.queuedTasks = [];
+        /**
+         * @type {Array.<Task>}
+         */
+        this.missionTasks = [];
         this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
     }
 
@@ -2642,7 +2646,7 @@ class PlayerComputer extends Computer
     addTaskForChallenge(challenge)
     {
         let task = this.getTaskForChallenge(challenge);
-
+        this.missionTasks.push(task);
         this.cpuPool.addTask(task);
     }
 
@@ -2847,10 +2851,8 @@ class EncryptionCracker extends Task
         return this.unsolvedCells.length == 0;
     }
 
-    tick()
+    processTick()
     {
-        super.tick();
-
         // Cycle through all of the cells and tick them.
         for (let cell of this.unsolvedCells)
         {
@@ -2929,10 +2931,8 @@ class DictionaryCracker extends PasswordCracker
         return this.dictionary.length;
     }
 
-    tick()
+    processTick()
     {
-        super.tick();
-
         if(!this.solved)
         {
             let attacking = true,
@@ -2998,7 +2998,7 @@ class Task extends EventListener
         this.weight = 1;
         this.difficultyRatio = 0;
         this.ticksTaken = 0;
-        this.working = false;
+        this.working = true;
         this.completed = false;
         this.challenge = challenge.setTask(this);
     }
@@ -3052,15 +3052,27 @@ class Task extends EventListener
         this.challenge.solve();
     }
 
-    getRewardRatio()
-    {
-        return 0;
-        //return this.difficultyRatio / Math.pow(this.ticksTaken, 2.5);
-    }
-
     tick()
     {
-        this.ticksTaken++;
+        if(this.working)
+        {
+            this.ticksTaken++;
+            this.processTick();
+            return this.minimumRequiredCycles;
+        }
+        return 0;
+    }
+
+    pause()
+    {
+        this.working = false;
+        return this;
+    }
+
+    resume()
+    {
+        this.working = true;
+        return this;
     }
 }
 
@@ -3120,6 +3132,7 @@ class Connection extends EventListener
         this.computersTraced = 0;
         this.amountTraced = 0;
         this.traceTicks = 0;
+        this.active = false;
     }
 
     static improveConnectionDistance(amount)
@@ -3150,12 +3163,14 @@ class Connection extends EventListener
     {
         this.computersTraced = 0;
         this.amountTraced = 0;
+        this.active = true;
         return this.open();
     }
 
     reconnect()
     {
-        this.open();
+        this.active = true;
+        return this.open();
     }
 
     open()
@@ -3227,6 +3242,7 @@ class Connection extends EventListener
         {
             computer.disconnect();
         }
+        this.active = false;
         return this;
     }
 
@@ -3311,7 +3327,7 @@ class Connection extends EventListener
 }
 
 Connection.connectionDistance = 1300;
-Connection.sensitivity = 25;
+Connection.sensitivity = 10;
 
 module.exports = Connection;
 
@@ -3410,6 +3426,24 @@ class Downlink extends EventListener
             this.playerComputer.addTaskForChallenge(challenge);
         }
         return this.activeMission;
+    }
+
+    disconnectFromMissionServer()
+    {
+        this.activeMission.computer.disconnect();
+        for(let task of this.playerComputer.missionTasks)
+        {
+            task.pause();
+        }
+    }
+
+    reconnectToMissionServer()
+    {
+        this.activeMission.computer.reconnect(this.playerConnection);
+        for(let task of this.playerComputer.missionTasks)
+        {
+            task.resume();
+        }
     }
 
     finishCurrentMission(mission)
@@ -3716,11 +3750,11 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.27a",
+        version:"0.4.0b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
-        minimumVersion:"0.3.27a",
+        minimumVersion:"0.4.0b",
         /**
          * jquery entities that are needed for updating
          */
@@ -3749,8 +3783,10 @@ module.exports = EventListener;
         $connectionWarningRow:null,
         $missionToggleButton:null,
         $connectionTracePercentage:null,
+        $connectionTraceBar:null,
         $encryptionCells:null,
         $activeMissionTraceStrength:null,
+        $activeMissionDisconnectButton:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -3781,11 +3817,13 @@ module.exports = EventListener;
             this.$connectionLength = $('#connection-length');
             this.$connectionTraced = $('#connection-traced');
             this.$connectionTracePercentage = $('#connection-trace-percentage');
+            this.$connectionTraceBar = $('#connection-trace-bar');
             this.$connectionWarningRow = $('#connection-warning-row');
             this.$activeMissionTraceStrength = $('#active-mission-trace-strength');
-            $('#settings-export-button').click(()=>{
-                this.$importExportTextarea.val(this.save());
-            });
+            this.$activeMissionDisconnectButton = $('#disconnect-button').click(()=>{this.disconnect()});
+            this.$missionToggleButton = $('#missions-toggle-button').click(()=>{this.toggleMissions();});
+
+            $('#settings-export-button').click(()=>{this.$importExportTextarea.val(this.save());});
             $('#settings-import-button').click(()=>{this.importFile(this.$importExportTextarea.val())});
             $('#settings-save-button').click(()=>{this.saveFile();});
             $('#connectionModalLink').click(()=>{this.showConnectionManager();});
@@ -3794,18 +3832,19 @@ module.exports = EventListener;
             $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
             $('#connection-auto-build-button').click(()=>{this.autoBuildConnection()});
 
-            this.$missionToggleButton = $('#missions-toggle-button').click(()=>{
-                this.takingMissions = !this.takingMissions;
-                if(this.takingMissions)
-                {
-                    this.$missionToggleButton.text("Stop Taking Missions");
-                }
-                else
-                {
-                    this.$missionToggleButton.text("Start Taking Missions");
-                }
-            });
-
+        },
+        toggleMissions:function()
+        {
+            this.takingMissions = !this.takingMissions;
+            if(this.takingMissions)
+            {
+                this.$missionToggleButton.text("Stop Taking Missions");
+                this.$activeMissionDisconnectButton.removeAttr('disabled');
+            }
+            else
+            {
+                this.$missionToggleButton.text("Start Taking Missions");
+            }
         },
         buildWorldMap:function()
         {
@@ -4020,7 +4059,7 @@ module.exports = EventListener;
                 }
             }
         },
-        setTraceStrength:function(traceStrength)
+        "setTraceStrength":function(traceStrength)
         {
             this.$activeMissionTraceStrength.text(traceStrength);
         },
@@ -4096,6 +4135,26 @@ module.exports = EventListener;
                 }
             }
         },
+        disconnect:function()
+        {
+            if(this.mission.computer.currentPlayerConnection.active)
+            {
+                this.downlink.disconnectFromMissionServer();
+                this.$activeMissionDisconnectButton
+                    .text('Reconnect')
+                    .removeClass('btn-danger')
+                    .addClass('btn-primary');
+            }
+            else
+            {
+                this.downlink.reconnectToMissionServer();
+                this.$activeMissionDisconnectButton
+                    .text('Disconnect')
+                    .removeClass('btn-primary')
+                    .addClass('btn-danger');
+
+            }
+        },
         getNextMission:function(){
             if(!this.takingMissions)
             {
@@ -4117,11 +4176,14 @@ module.exports = EventListener;
                 this.updateComputerPartsUI();
                 this.updateCompanyStates([this.mission.sponsor, this.mission.target]);
                 this.requiresNewMission = true;
+                this.$connectionTracePercentage.html(0);
+                this.$connectionTraceBar.css('width', '0%');
                 this.save();
             }).on("connectionStepTraced", (stepsTraced)=>{
                 this.$connectionTraced.html(stepsTraced);
             }).on("updateTracePercentage", (percentageTraced)=>{
                 this.$connectionTracePercentage.html(percentageTraced);
+                this.$connectionTraceBar.css('width', percentageTraced+'%');
             });
 
         },
@@ -4267,7 +4329,6 @@ module.exports = EventListener;
         },
         showConnectionManager:function()
         {
-            this.takingMissions = false;
             this.$worldMapModal.modal({keyboard:false, backdrop:"static"});
         },
         showOrHideConnectionWarning:function()
@@ -7142,8 +7203,21 @@ class MissionComputer extends Computer
     {
         super.disconnect();
         this.currentPlayerConnection.close();
-        this.previousPlayerConnection = this.currentPlayerConnection;
         this.stopTraceBack();
+        return this;
+    }
+
+    reconnect(connection)
+    {
+        if(connection.equals(this.currentPlayerConnection))
+        {
+            this.resumeTraceback();
+        }
+        else
+        {
+            this.connect(connection);
+        }
+        this.currentPlayerConnection.open();
         return this;
     }
 
@@ -7211,7 +7285,7 @@ class MissionComputer extends Computer
         this.tracingConnection = true;
     }
 
-    resumeTraceBack()
+    resumeTraceback()
     {
         this.currentPlayerConnection.reconnect();
         this.tracingConnection = true;

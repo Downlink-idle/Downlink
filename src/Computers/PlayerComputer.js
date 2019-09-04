@@ -20,7 +20,10 @@ class PlayerComputer extends Computer
         }).on("cpuPoolEmpty", ()=>{
             this.trigger('cpuPoolEmpty');
         });
-        this.queuedTasks = [];
+        /**
+         * @type {Array.<Task>}
+         */
+        this.missionTasks = [];
         this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
     }
 
@@ -61,7 +64,7 @@ class PlayerComputer extends Computer
     addTaskForChallenge(challenge)
     {
         let task = this.getTaskForChallenge(challenge);
-
+        this.missionTasks.push(task);
         this.cpuPool.addTask(task);
     }
 

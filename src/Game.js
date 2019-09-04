@@ -43,11 +43,11 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.3.27a",
+        version:"0.4.0b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
-        minimumVersion:"0.3.27a",
+        minimumVersion:"0.4.0b",
         /**
          * jquery entities that are needed for updating
          */
@@ -76,8 +76,10 @@
         $connectionWarningRow:null,
         $missionToggleButton:null,
         $connectionTracePercentage:null,
+        $connectionTraceBar:null,
         $encryptionCells:null,
         $activeMissionTraceStrength:null,
+        $activeMissionDisconnectButton:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -108,11 +110,13 @@
             this.$connectionLength = $('#connection-length');
             this.$connectionTraced = $('#connection-traced');
             this.$connectionTracePercentage = $('#connection-trace-percentage');
+            this.$connectionTraceBar = $('#connection-trace-bar');
             this.$connectionWarningRow = $('#connection-warning-row');
             this.$activeMissionTraceStrength = $('#active-mission-trace-strength');
-            $('#settings-export-button').click(()=>{
-                this.$importExportTextarea.val(this.save());
-            });
+            this.$activeMissionDisconnectButton = $('#disconnect-button').click(()=>{this.disconnect()});
+            this.$missionToggleButton = $('#missions-toggle-button').click(()=>{this.toggleMissions();});
+
+            $('#settings-export-button').click(()=>{this.$importExportTextarea.val(this.save());});
             $('#settings-import-button').click(()=>{this.importFile(this.$importExportTextarea.val())});
             $('#settings-save-button').click(()=>{this.saveFile();});
             $('#connectionModalLink').click(()=>{this.showConnectionManager();});
@@ -121,18 +125,19 @@
             $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
             $('#connection-auto-build-button').click(()=>{this.autoBuildConnection()});
 
-            this.$missionToggleButton = $('#missions-toggle-button').click(()=>{
-                this.takingMissions = !this.takingMissions;
-                if(this.takingMissions)
-                {
-                    this.$missionToggleButton.text("Stop Taking Missions");
-                }
-                else
-                {
-                    this.$missionToggleButton.text("Start Taking Missions");
-                }
-            });
-
+        },
+        toggleMissions:function()
+        {
+            this.takingMissions = !this.takingMissions;
+            if(this.takingMissions)
+            {
+                this.$missionToggleButton.text("Stop Taking Missions");
+                this.$activeMissionDisconnectButton.removeAttr('disabled');
+            }
+            else
+            {
+                this.$missionToggleButton.text("Start Taking Missions");
+            }
         },
         buildWorldMap:function()
         {
@@ -347,7 +352,7 @@
                 }
             }
         },
-        setTraceStrength:function(traceStrength)
+        "setTraceStrength":function(traceStrength)
         {
             this.$activeMissionTraceStrength.text(traceStrength);
         },
@@ -423,6 +428,26 @@
                 }
             }
         },
+        disconnect:function()
+        {
+            if(this.mission.computer.currentPlayerConnection.active)
+            {
+                this.downlink.disconnectFromMissionServer();
+                this.$activeMissionDisconnectButton
+                    .text('Reconnect')
+                    .removeClass('btn-danger')
+                    .addClass('btn-primary');
+            }
+            else
+            {
+                this.downlink.reconnectToMissionServer();
+                this.$activeMissionDisconnectButton
+                    .text('Disconnect')
+                    .removeClass('btn-primary')
+                    .addClass('btn-danger');
+
+            }
+        },
         getNextMission:function(){
             if(!this.takingMissions)
             {
@@ -444,11 +469,14 @@
                 this.updateComputerPartsUI();
                 this.updateCompanyStates([this.mission.sponsor, this.mission.target]);
                 this.requiresNewMission = true;
+                this.$connectionTracePercentage.html(0);
+                this.$connectionTraceBar.css('width', '0%');
                 this.save();
             }).on("connectionStepTraced", (stepsTraced)=>{
                 this.$connectionTraced.html(stepsTraced);
             }).on("updateTracePercentage", (percentageTraced)=>{
                 this.$connectionTracePercentage.html(percentageTraced);
+                this.$connectionTraceBar.css('width', percentageTraced+'%');
             });
 
         },
@@ -594,7 +622,6 @@
         },
         showConnectionManager:function()
         {
-            this.takingMissions = false;
             this.$worldMapModal.modal({keyboard:false, backdrop:"static"});
         },
         showOrHideConnectionWarning:function()

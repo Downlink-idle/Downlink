@@ -41,10 +41,8 @@ class DictionaryCracker extends PasswordCracker
         return this.dictionary.length;
     }
 
-    tick()
+    processTick()
     {
-        super.tick();
-
         if(!this.solved)
         {
             let attacking = true,

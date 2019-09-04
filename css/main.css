@@ -132,3 +132,22 @@
 {
     font-weight: bold;
 }
+
+.percentage-bar-container
+{
+    border: 1px solid black;
+    position:relative;
+}
+
+.percentage-bar
+{
+    background-color: darkgreen;
+    width:0%;
+}
+
+.percentage-text
+{
+    position:absolute;
+    top:0;
+    width:100%;
+}
