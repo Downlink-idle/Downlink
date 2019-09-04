@@ -44,11 +44,11 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.1b",
+        version:"0.4.2b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
-        minimumVersion:"0.4.0b",
+        minimumVersion:"0.4.2b",
         /**
          * jquery entities that are needed for updating
          */
@@ -554,19 +554,28 @@
         {
             let totalCycles = this.downlink.playerComputer.cpuPool.totalSpeed;
             $(`.${CPU_MISSION_TASK}`).remove();
+            let html = '';
             for(let task of this.downlink.currentMissionTasks)
             {
                 let loadPercentage = (task.cyclesPerTick / totalCycles * 100).toFixed(2);
-                let $node= $(`<div class="row ${CPU_MISSION_TASK}"/>`)
-                    .append($(`<div class="col-3 cpu-task-name">${task.name}</div>`))
-                    .append(
-                        $(`<div class="col cpu-task-bar"/>`)
-                            .append($(`<div class="reduce-cpu-load cpu-load-changer">&lt;</div>`))
-                            .append($(`<div class="percentage-bar-container"><div class="percentage-bar" style="width:${loadPercentage}%">&nbsp;</div><div class="percentage-text">${loadPercentage}</div></div>`))
-                            .append($(`<div class="increase-cpu-load cpu-load-changer">&gt;</div>`))
-                    ).appendTo(this.$cpuTasksCol);
+                html += `<div class="row ${CPU_MISSION_TASK}" data-task-hash ="${task.hash}">`+
+                    `<div class="col-3 cpu-task-name">${task.name}</div>`+
+                    `<div class="col cpu-task-bar">`+
+                        `<div class="reduce-cpu-load cpu-load-changer">&lt;</div>`+
+                        `<div class="percentage-bar-container">`+
+                            `<div class="percentage-bar" style="width:${loadPercentage}%">&nbsp;</div>`+
+                            `<div class="percentage-text">${loadPercentage}</div>`+
+                        `</div>`+
+                        `<div class="increase-cpu-load cpu-load-changer">&gt;</div>`+
+                    `</div>`+
+                `</div>`;
                 task.on('complete', ()=>{this.updateCPULoadBalancer();});
             }
+            this.$cpuTasksCol.html(html);
+            $('.cpu-load-changer').click((evt)=>{
+                let rawDOMElement = evt.currentTarget,
+                    row = rawDOMElement.parentElement;
+            });
         },
         updateCurrentMissionView:function(server){
             this.updateCPULoadBalancer();

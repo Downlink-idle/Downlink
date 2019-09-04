@@ -4,6 +4,7 @@ const   MissionGenerator = require('./Missions/MissionGenerator'),
         Company = require('./Companies/Company'),
         ComputerGenerator = require('./Computers/ComputerGenerator'),
         CPU = require('./Computers/CPU'),
+        helper = require('./Helpers'),
         Decimal = require('break_infinity.js');
 
 /**
@@ -25,7 +26,6 @@ class Downlink extends EventListener
          * @type {Connection}
          */
         this.playerConnection = null;
-        this.getNewConnection();
         this.runTime = 0;
         this.lastTickTime = Date.now();
         /**
@@ -34,16 +34,9 @@ class Downlink extends EventListener
         this.currency = new Decimal(0);
     }
 
-    getNewConnection()
-    {
-        this.playerConnection = new Connection("Player Connection");
-        return this.playerConnection;
-    }
-
     setPlayerComputer()
     {
         this.playerComputer = ComputerGenerator.newPlayerComputer();
-        this.playerConnection.setStartingPoint(this.playerComputer);
         return this.playerComputer;
     }
 
@@ -157,7 +150,11 @@ class Downlink extends EventListener
     performPostLoad(canvas)
     {
         this.buildComputerGenerator(canvas);
-        Company.setAllPublicServerLocations();
+        let allValidPoints = [...require('./validWorldMapPoints')];
+        this.getPlayerComputer(helper.popRandomArrayElement(allValidPoints));
+        this.autoBuildConnection();
+        Company.setAllPublicServerLocations(allValidPoints);
+
     }
 
     buildComputerGenerator(imageReference)
@@ -177,6 +174,7 @@ class Downlink extends EventListener
     autoBuildConnection()
     {
         this.playerConnection = Connection.fromAllPublicServers();
+        this.playerConnection.setStartingPoint(this.playerComputer);
         return this.playerConnection;
     }
 
