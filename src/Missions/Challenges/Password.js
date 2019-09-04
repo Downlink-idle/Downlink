@@ -9,17 +9,16 @@ const PASSWORD_TYPES = {
 };
 const PASSWORD_DICTIONARY_DIFFICULTIES = {
     'EASIEST':1,
-    'HARDEST':10
+    'HARDEST':3
 };
-
 
 class Password extends Challenge
 {
-    constructor(text, type, difficulty)
+    constructor(text, difficulty, type)
     {
         super(type + ' Password', difficulty) ;
         this.text = text;
-        this.type = type;
+        this.length = text.length;
     }
 
     attack(testPassword)
@@ -33,45 +32,73 @@ class Password extends Challenge
         return PASSWORD_DICTIONARY_DIFFICULTIES;
     }
 
-
-    /**
-     *
-     * @param {number} difficulty should be between one and 10
-     * @returns {Password}
-     */
-    static randomDictionaryPassword(difficulty)
+    static getPasswordForDifficulty(difficulty)
     {
-        difficulty = Math.min(difficulty, PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST);
-        // reduce the dictionary by a percentage of that amount
-        let reduction = PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST - difficulty,
-            usedDictionary = [];
-        dictionary.forEach((entry, index)=>{if(index%PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST >= reduction){usedDictionary.push(entry);}});
-        let dictionaryPassword = new Password(helpers.getRandomArrayElement(usedDictionary), PASSWORD_TYPES.DICTIONARY, difficulty);
-        dictionaryPassword.dictionary = usedDictionary;
-        return dictionaryPassword;
+        if(difficulty <= PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST)
+        {
+            return DictionaryPassword.getRandomPassword(difficulty);
+        }
+        return AlphanumericPassword.getRandomPassword(difficulty);
     }
 
-    static randomAlphanumericPassword()
+}
+
+class AlphanumericPassword extends Password
+{
+    constructor(text, difficulty)
     {
-        let stringLength = Math.floor(Math.random() * 5) + 5;
+        super(text, difficulty, 'Alphanumeric');
+        this.lettersSolved = 0;
+    }
+
+    attackLetter(letter)
+    {
+        if(this.text.charAt(this.lettersSolved) === letter)
+        {
+            this.lettersSolved ++;
+            return true;
+        }
+        return false;
+    }
+
+    static getRandomPassword(difficulty)
+    {
+        let stringLength = helpers.getRandomIntegerBetween(5, 10) + difficulty;
         let password = '';
         for (let i = 0; i < stringLength; i++)
         {
             password += Alphabet.getRandomLetter();
         }
-        return new Password(password, PASSWORD_TYPES.ALPHANUMERIC,  stringLength);
-    }
-
-
-    static get dictionary()
-    {
-        return dictionary;
-    }
-
-    static get PASSWORD_TYPES()
-    {
-        return PASSWORD_TYPES;
+        return new AlphanumericPassword(password, stringLength);
     }
 }
 
-module.exports = Password;
+class DictionaryPassword extends Password
+{
+    constructor(text, difficulty, dictionary)
+    {
+        super(text, difficulty, 'Dictionary');
+        this.dictionary = dictionary;
+    }
+
+    /**
+     *
+     * @param {number} difficulty should be between one and 10
+     * @returns {DictionaryPassword}
+     */
+    static getRandomPassword(difficulty)
+    {
+        let usedDictionary = DictionaryPassword.reduceDictionary(PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST - Math.min(difficulty, PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST)),
+            password = helpers.getRandomArrayElement(usedDictionary);
+        return new DictionaryPassword(password, difficulty, usedDictionary);
+    }
+
+    static reduceDictionary(reduction)
+    {
+        let reducedDictionary = [];
+        dictionary.forEach((entry, index)=>{if(index%PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST >= reduction){reducedDictionary.push(entry);}})
+        return reducedDictionary;
+    }
+}
+
+module.exports = {Password:Password, DictionaryPassword:DictionaryPassword, AlphanumericPassword:AlphanumericPassword};

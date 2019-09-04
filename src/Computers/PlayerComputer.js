@@ -1,5 +1,6 @@
-const   Password = require('../Missions/Challenges/Password'),
-        {DictionaryCracker, PasswordCracker} = require('./Tasks/PasswordCracker'),
+const   {Password, DictionaryPassword, AlphanumericPassword} = require('../Missions/Challenges/Password'),
+        helpers = require('../Helpers'),
+        {DictionaryCracker, PasswordCracker, SequentialAttacker} = require('./Tasks/PasswordCracker'),
         Encryption = require('../Missions/Challenges/Encryption'),
         EncryptionCracker = require('./Tasks/EncryptionCracker'),
         Computer = require('./Computer'),
@@ -8,6 +9,7 @@ const   Password = require('../Missions/Challenges/Password'),
 
 class InvalidTaskError extends Error{};
 const DEFAULT_MAX_CPUS = 4;
+
 
 class PlayerComputer extends Computer
 {
@@ -42,22 +44,32 @@ class PlayerComputer extends Computer
         this.cpuPool.setCPUSlot(slot, cpu);
     }
 
+    /**
+     * @param challenge
+     * @returns {Task}
+     */
     getTaskForChallenge(challenge)
     {
         let task = null;
-        if(challenge instanceof Password)
-        {
-            task = new DictionaryCracker(challenge);
-        }
-        if(challenge instanceof  Encryption)
+
+        if(challenge instanceof Encryption)
         {
             task = new EncryptionCracker(challenge);
         }
-
-        if(!task)
+        else if(challenge instanceof DictionaryPassword)
         {
-            throw new InvalidTaskError(`No task found for challenge ${challenge.constructor.name}`);
+            task = new DictionaryCracker(challenge);
         }
+        else if(challenge instanceof AlphanumericPassword)
+        {
+            task = new SequentialAttacker(challenge);
+        }
+        else
+        {
+            throw new InvalidTaskError('Unknown task');
+        }
+
+
         return task;
     }
 
@@ -65,6 +77,9 @@ class PlayerComputer extends Computer
     {
         let task = this.getTaskForChallenge(challenge);
         this.missionTasks.push(task);
+        task.on("complete", ()=>{
+            helpers.removeArrayElement(this.missionTasks, task);
+        });
         this.cpuPool.addTask(task);
     }
 

@@ -24,7 +24,6 @@ class Alphabet
     static shuffle()
     {
         this.randomizedAlphabet = helpers.shuffleArray([...alphabetGrid]);
-
     }
 
     static getRandomLetter()
@@ -35,6 +34,16 @@ class Alphabet
         }
 
         return this.randomizedAlphabet.pop();
+    }
+
+    /**
+     * In the general case, we don't need to keep the state of a given alphabet that's being used, we just need a random
+     * letter. But in the case of, for example, the Alphanumeric password, we need the alphabet grid in its totality.
+     * We return a clone of the array for versatility's sake
+     */
+    static getAlphabetGrid()
+    {
+        return [...alphabetGrid];
     }
 };
 

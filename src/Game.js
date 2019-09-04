@@ -11,6 +11,7 @@
             COMPANY_REP_CLASS = 'company-rep-row',
             COMPANY_SECURITY_CLASS = 'company-security-col',
             COMPANY_REP_VALUE_CLASS = 'company-rep-col',
+            CPU_MISSION_TASK = 'cpu-mission-task',
             PLAYER_COMPUTER_CPU_ROW_CLASS = "cpu-row";
 
     function parseVersionNumber(versionNumberAsString)
@@ -43,7 +44,7 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.0b",
+        version:"0.4.1b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
@@ -80,6 +81,7 @@
         $encryptionCells:null,
         $activeMissionTraceStrength:null,
         $activeMissionDisconnectButton:null,
+        $cpuTasksCol:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -113,6 +115,7 @@
             this.$connectionTraceBar = $('#connection-trace-bar');
             this.$connectionWarningRow = $('#connection-warning-row');
             this.$activeMissionTraceStrength = $('#active-mission-trace-strength');
+            this.$cpuTasksCol = $('#tasks-col');
             this.$activeMissionDisconnectButton = $('#disconnect-button').click(()=>{this.disconnect()});
             this.$missionToggleButton = $('#missions-toggle-button').click(()=>{this.toggleMissions();});
 
@@ -547,8 +550,26 @@
             this.updateAvailableMissionList(mission);
             this.updateCurrentMissionView(mission.computer);
         },
+        updateCPULoadBalancer:function()
+        {
+            let totalCycles = this.downlink.playerComputer.cpuPool.totalSpeed;
+            $(`.${CPU_MISSION_TASK}`).remove();
+            for(let task of this.downlink.currentMissionTasks)
+            {
+                let loadPercentage = (task.cyclesPerTick / totalCycles * 100).toFixed(2);
+                let $node= $(`<div class="row ${CPU_MISSION_TASK}"/>`)
+                    .append($(`<div class="col-3 cpu-task-name">${task.name}</div>`))
+                    .append(
+                        $(`<div class="col cpu-task-bar"/>`)
+                            .append($(`<div class="reduce-cpu-load cpu-load-changer">&lt;</div>`))
+                            .append($(`<div class="percentage-bar-container"><div class="percentage-bar" style="width:${loadPercentage}%">&nbsp;</div><div class="percentage-text">${loadPercentage}</div></div>`))
+                            .append($(`<div class="increase-cpu-load cpu-load-changer">&gt;</div>`))
+                    ).appendTo(this.$cpuTasksCol);
+                task.on('complete', ()=>{this.updateCPULoadBalancer();});
+            }
+        },
         updateCurrentMissionView:function(server){
-
+            this.updateCPULoadBalancer();
             this.$activeMissionPassword.val('');
             this.updateEncryptionGridUI(server.encryption.size, server.encryption.cols);
             this.$activeMissionEncryptionType.html(server.encryption.name);
