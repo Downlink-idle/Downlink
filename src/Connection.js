@@ -222,7 +222,11 @@ class Connection extends EventListener
 
     static fromAllPublicServers()
     {
-        return this.fromComputerArray(Object.values(PublicComputer.getAllKnownPublicServers()));
+        return this.fromComputerArray(
+            helpers.shuffleArray(
+                Object.values(PublicComputer.getAllKnownPublicServers())
+            )
+        );
     }
 
     static fromComputerArray(computerArray)
