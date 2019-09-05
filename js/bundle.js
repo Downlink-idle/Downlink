@@ -2354,18 +2354,13 @@ class CPUPool extends EventListener
             return;
         }
         let totalWeight = 0;
-        console.log(`Total CPU Pool cycles: ${this.totalSpeed}`);
-        console.log(`Total load: ${this.load}`);
-        console.log(`Total assignable cylces: ${this.availableCycles}`);
 
         for(let task of this.tasks)
         {
             totalWeight += task.weight;
         }
-        console.log(`Total Task Weight: ${totalWeight}`);
 
         let weightedFreeSpace = this.availableCycles / totalWeight;
-        console.log(`Each unit of weight amounts to ${weightedFreeSpace.toFixed(2)}`);
         let results = {};
 
         for(let task of this.tasks)
@@ -2373,9 +2368,6 @@ class CPUPool extends EventListener
             let weightedCycles = weightedFreeSpace * task.weight,
                 taskCycles = weightedCycles + task.minimumRequiredCycles,
                 cyclePercentage = (taskCycles / this.totalSpeed * 100).toFixed(2);
-            console.log(`Task specific weight ${task.weight}, amounting to ${(task.weight/totalWeight*100).toFixed(2)}% of assignable cycles`);
-            console.log(`Converts to ${weightedCycles} plus the minimum required cycles of ${task.minimumRequiredCycles}`);
-            console.log(`And adds up to ${taskCycles} out of ${this.totalSpeed}, which is ${cyclePercentage}%`);
             task.setCyclesPerTick(Math.floor(taskCycles));
             task.setLoadPercentage(cyclePercentage);
             results[task.hash] =cyclePercentage;
@@ -3851,7 +3843,7 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.5b",
+        version:"0.4.6b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
