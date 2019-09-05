@@ -3846,11 +3846,11 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.9b",
+        version:"0.4.10b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
-        minimumVersion:"0.4.8b",
+        minimumVersion:"0.4.10b",
         /**
          * jquery entities that are needed for updating
          */
@@ -4790,7 +4790,6 @@ class Encryption extends Challenge
 
     static getDimensionForDifficulty(difficulty)
     {
-        return 10;
         const   flooredDifficulty = Math.floor(difficulty),
                 min = 6 + flooredDifficulty,
                 max = 8 + flooredDifficulty * 2;

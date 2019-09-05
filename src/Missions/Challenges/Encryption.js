@@ -34,7 +34,6 @@ class Encryption extends Challenge
 
     static getDimensionForDifficulty(difficulty)
     {
-        return 10;
         const   flooredDifficulty = Math.floor(difficulty),
                 min = 6 + flooredDifficulty,
                 max = 8 + flooredDifficulty * 2;
