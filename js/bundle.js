@@ -3793,7 +3793,7 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.2b",
+        version:"0.4.3b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
@@ -4330,7 +4330,6 @@ module.exports = EventListener;
         alterCPULoad:function(taskHash, direction)
         {
             let cpuLoad = this.downlink.alterCPULoad(taskHash, direction);
-            console.log(cpuLoad);
             for(let hash in cpuLoad)
             {
                 $(`.percentage-bar[data-task-hash="${hash}"]`).css("width", `${cpuLoad[hash]}%`);
