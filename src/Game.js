@@ -28,14 +28,6 @@
         return partAsNumber
     }
 
-    function saveIsOlder(oldVersionString, currentVersionString)
-    {
-        let oldVersion = parseVersionNumber(oldVersionString),
-            currentVersion = parseVersionNumber(currentVersionString);
-
-        return oldVersion < currentVersion;
-    }
-
     let game = {
         interval:null,
         ticking:true,
@@ -559,7 +551,6 @@
         },
         updateCPULoadBalancer:function()
         {
-            let totalCycles = this.downlink.playerComputer.cpuPool.totalSpeed;
             $(`.${CPU_MISSION_TASK}`).remove();
             let html = '';
             for(let task of this.downlink.currentMissionTasks)
@@ -578,7 +569,7 @@
                 task.on('complete', ()=>{this.updateCPULoadBalancer();});
             }
             this.$cpuTasksCol.html(html);
-            $('.cpu-load-changer').click((evt)=>{
+            $('.cpu-load-changer').on("click", (evt)=>{
                 let rawDOMElement = evt.currentTarget,
                     row = rawDOMElement.parentElement.parentElement;
                 this.alterCPULoad(row.dataset.taskHash, parseInt(rawDOMElement.dataset.cpuLoadDirection));
@@ -587,7 +578,8 @@
         alterCPULoad:function(taskHash, direction)
         {
             let cpuLoad = this.downlink.alterCPULoad(taskHash, direction);
-            for(let hash in cpuLoad)
+            let hashes = Object.keys(cpuLoad);
+            for(let hash of hashes)
             {
                 $(`.percentage-bar[data-task-hash="${hash}"]`).css("width", `${cpuLoad[hash]}%`);
                 $(`.percentage-text[data-task-hash="${hash}"]`).text(`${cpuLoad[hash]}%`);
@@ -708,7 +700,7 @@
                 let cost = CPU.getPriceFor(cpu),
                     affordable = this.downlink.canAfford(cost);
                 let $node = $(`<div data-part-cost="${cost.toString()}" class="col-4 cpu part ${affordable?"":"un"}affordable-part">
-                        <div class="row"><div class="col">${cpu?'<img src="./img/'+cpu.img+'"/>':""}</div></div>
+                        <div class="row"><div class="col">${cpu?'<img src="./img/'+cpu.img+'" alt="'+cpu.name+'"/>':""}</div></div>
                         <div class="row"><div class="col">${cpu.name}</div></div>
                         <div class="row"><div class="col">${cpu.speed} MHz</div></div>
                         <div class="row"><div class="col">${cost.toString()}</div></div>
@@ -770,7 +762,7 @@
                 html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" title="${cpu?cpu.name:''}">`;
                 if(cpu)
                 {
-                    html += `<img src="./img/${cpu.healthImage}"/>`;
+                    html += `<img src="./img/${cpu.healthImage}" alt="${cpu.name}"/>`;
                 }
                 html += '</div>';
                 cpuIndex++;

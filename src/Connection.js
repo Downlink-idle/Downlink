@@ -240,7 +240,7 @@ class Connection extends EventListener
     }
 }
 
-Connection.connectionDistance = 150;
+Connection.connectionDistance = 250;
 Connection.sensitivity = 10;
 
 module.exports = Connection;
