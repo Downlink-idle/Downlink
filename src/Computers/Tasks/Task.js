@@ -32,6 +32,12 @@ class Task extends EventListener
         return this.challenge.hash;
     }
 
+    alterWeight(direction)
+    {
+        this.weight += direction;
+        this.weight = Math.max(1, this.weight);
+    }
+
     setCyclesPerTick(cyclesPerTick)
     {
         if(cyclesPerTick < this.minimumRequiredCycles)

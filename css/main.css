@@ -160,6 +160,7 @@
     width: 5%;
     text-align: center;
     border:1px solid black;
+    cursor:pointer;
 }
 
 #tasks-row

@@ -224,6 +224,17 @@ class Downlink extends EventListener
 
     }
 
+    getTaskByHash(hash)
+    {
+        for(let task of this.playerComputer.cpuPool.tasks)
+        {
+            if(task.hash === hash)
+            {
+                return task;
+            }
+        }
+    }
+
     get secondsRunning()
     {
         return Math.floor(this.runTime / 1000);
@@ -240,6 +251,11 @@ class Downlink extends EventListener
         this.currency = this.currency.minus(CPU.getPriceFor(cpuData));
         this.playerComputer.setCPUSlot(slot, cpu);
 
+    }
+
+    alterCPULoad(taskHash, direction)
+    {
+        return this.playerComputer.alterCPULoad(taskHash, direction);
     }
 }
 

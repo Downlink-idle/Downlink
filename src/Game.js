@@ -561,12 +561,12 @@
                 html += `<div class="row ${CPU_MISSION_TASK}" data-task-hash ="${task.hash}">`+
                     `<div class="col-3 cpu-task-name">${task.name}</div>`+
                     `<div class="col cpu-task-bar">`+
-                        `<div class="reduce-cpu-load cpu-load-changer">&lt;</div>`+
+                        `<div class="reduce-cpu-load cpu-load-changer" data-cpu-load-direction="-1">&lt;</div>`+
                         `<div class="percentage-bar-container">`+
-                            `<div class="percentage-bar" style="width:${loadPercentage}%">&nbsp;</div>`+
-                            `<div class="percentage-text">${loadPercentage}</div>`+
+                            `<div class="percentage-bar" style="width:${loadPercentage}%" data-task-hash ="${task.hash}">&nbsp;</div>`+
+                            `<div class="percentage-text" data-task-hash ="${task.hash}">${loadPercentage}</div>`+
                         `</div>`+
-                        `<div class="increase-cpu-load cpu-load-changer">&gt;</div>`+
+                        `<div class="increase-cpu-load cpu-load-changer" data-cpu-load-direction="+1">&gt;</div>`+
                     `</div>`+
                 `</div>`;
                 task.on('complete', ()=>{this.updateCPULoadBalancer();});
@@ -574,8 +574,19 @@
             this.$cpuTasksCol.html(html);
             $('.cpu-load-changer').click((evt)=>{
                 let rawDOMElement = evt.currentTarget,
-                    row = rawDOMElement.parentElement;
+                    row = rawDOMElement.parentElement.parentElement;
+                this.alterCPULoad(row.dataset.taskHash, parseInt(rawDOMElement.dataset.cpuLoadDirection));
             });
+        },
+        alterCPULoad:function(taskHash, direction)
+        {
+            let cpuLoad = this.downlink.alterCPULoad(taskHash, direction);
+            console.log(cpuLoad);
+            for(let hash in cpuLoad)
+            {
+                $(`.percentage-bar[data-task-hash="${hash}"]`).css("width", `${cpuLoad[hash]}%`);
+                $(`.percentage-text[data-task-hash="${hash}"]`).text(cpuLoad[hash]);
+            }
         },
         updateCurrentMissionView:function(server){
             this.updateCPULoadBalancer();

@@ -88,6 +88,11 @@ class PlayerComputer extends Computer
         return this.cpuPool.tick();
     }
 
+    alterCPULoad(taskHash, direction)
+    {
+        return this.cpuPool.alterCPULoad(taskHash, direction);
+    }
+
 
     get tasks()
     {
