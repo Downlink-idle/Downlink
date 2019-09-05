@@ -36,7 +36,7 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.7b",
+        version:"0.4.9b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,

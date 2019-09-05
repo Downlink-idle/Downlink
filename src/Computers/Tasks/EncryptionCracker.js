@@ -33,7 +33,7 @@ class EncryptionCracker extends Task
 {
     constructor(encryption)
     {
-        super('Encryption Cracker', encryption, encryption.difficulty);
+        super('Encryption Cracker', encryption);
         this.rows = encryption.rows;
         this.cols = encryption.cols;
 

@@ -1945,7 +1945,7 @@ class Company
 
     static get securityIncreaseExponent()
     {
-        return 1.02;
+        return 1.01;
     }
 
     /**
@@ -2775,7 +2775,7 @@ class EncryptionCracker extends Task
 {
     constructor(encryption)
     {
-        super('Encryption Cracker', encryption, encryption.difficulty);
+        super('Encryption Cracker', encryption);
         this.rows = encryption.rows;
         this.cols = encryption.cols;
 
@@ -3038,7 +3038,7 @@ class Task extends EventListener
     {
         super();
         this.name= name;
-        this.minimumRequiredCycles = minimumRequiredCycles?minimumRequiredCycles:10;
+        this.minimumRequiredCycles = minimumRequiredCycles?minimumRequiredCycles:challenge.difficulty;
         this.cyclesPerTick = 0;
         this.weight = 1;
         this.difficultyRatio = 0;
@@ -3840,7 +3840,7 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.7b",
+        version:"0.4.9b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
@@ -4748,7 +4748,7 @@ class Challenge extends EventListener
 module.exports = Challenge;
 
 },{"../../EventListener":21}],25:[function(require,module,exports){
-const DIFFICULTY_EXPONENT = 0.3;
+const DIFFICULTY_EXPONENT = 0.4;
 
 function getRandomIntBetween(min, max)
 {
@@ -4829,7 +4829,7 @@ class Password extends Challenge
 
     get calculatedDifficulty()
     {
-        return this.difficulty;
+        return Math.floor(Math.sqrt(this.length * this.difficulty));
     }
 
     static get PASSWORD_DICTIONARY_DIFFICULTIES()

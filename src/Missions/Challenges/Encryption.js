@@ -1,4 +1,4 @@
-const DIFFICULTY_EXPONENT = 0.3;
+const DIFFICULTY_EXPONENT = 0.4;
 
 function getRandomIntBetween(min, max)
 {

@@ -29,7 +29,7 @@ class Password extends Challenge
 
     get calculatedDifficulty()
     {
-        return this.difficulty;
+        return Math.floor(Math.sqrt(this.length * this.difficulty));
     }
 
     static get PASSWORD_DICTIONARY_DIFFICULTIES()
