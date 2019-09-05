@@ -257,6 +257,17 @@ class Downlink extends EventListener
     {
         return this.playerComputer.alterCPULoad(taskHash, direction);
     }
+
+    get cpuIncreaseCost()
+    {
+        return this.playerComputer.cpuPool.maxCPUs * 1000
+    }
+
+    buyMaxCPUIncrease()
+    {
+        this.currency = this.currency.minus(this.cpuIncreaseCost);
+        this.playerComputer.increaseCPUPoolSize();
+    }
 }
 
 module.exports = Downlink;

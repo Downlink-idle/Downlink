@@ -2165,13 +2165,28 @@ class InvalidTaskError extends Error{};
 
 class CPUPool extends EventListener
 {
-    constructor(cpus)
+    /**
+     * @param {Array.<CPU>>} cpus   The CPUs to add into the cpu pool
+     * @param {number} maxCPUs      The maximum number of CPUs in the pool
+     */
+    constructor(cpus, maxCPUs)
     {
         super();
         /**
          * @type {Array.<CPU>}
          */
         this.cpus = [];
+
+        /**
+         * @type {number}
+         */
+        this.maxCPUs = maxCPUs;
+
+        if(cpus.length > this.maxCPUs)
+        {
+            throw new Error("More CPUs than allotted amount");
+        }
+
         /**
          * @type {number} The average speed of all cpus in the pool
          */
@@ -2203,6 +2218,16 @@ class CPUPool extends EventListener
         {
             this.addCPU(cpu);
         }
+    }
+
+    get width()
+    {
+        return Math.ceil(Math.sqrt(this.maxCPUs));
+    }
+
+    increaseCPUSize()
+    {
+        this.maxCPUs += this.width;
     }
 
     /**
@@ -2556,7 +2581,7 @@ class PlayerComputer extends Computer
     constructor(cpus, maxCPUs)
     {
         super('Home', null, '127.0.0.1');
-        this.cpuPool = new CPUPool(cpus);
+        this.cpuPool = new CPUPool(cpus, maxCPUs?maxCPUs:DEFAULT_MAX_CPUS);
         this.cpuPool.on('cpuBurnedOut', ()=>{
             this.trigger('cpuBurnedOut');
         }).on("cpuPoolEmpty", ()=>{
@@ -2566,7 +2591,6 @@ class PlayerComputer extends Computer
          * @type {Array.<Task>}
          */
         this.missionTasks = [];
-        this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
     }
 
     get cpus()
@@ -2577,6 +2601,19 @@ class PlayerComputer extends Computer
     addCPU(cpu)
     {
         this.cpuPool.addCPU(cpu);
+    }
+
+    increaseCPUPoolSize()
+    {
+        this.cpuPool.increaseCPUSize();
+    }
+
+    /**
+     * Exposing the CPU pool width
+     */
+    get cpuWidth()
+    {
+        return this.cpuPool.width;
     }
 
     setCPUSlot(slot, cpu)
@@ -2642,6 +2679,7 @@ class PlayerComputer extends Computer
     toJSON()
     {
         let json = super.toJSON();
+        json.maxCPUs = this.cpuPool.maxCPUs;
         json.cpus = [];
         for(let cpu of this.cpus)
         {
@@ -2671,7 +2709,7 @@ class PlayerComputer extends Computer
                 cpus.push(null);
             }
         }
-        let pc = new PlayerComputer(cpus);
+        let pc = new PlayerComputer(cpus, json.maxCPUs);
         pc.setLocation(json.location);
         return pc;
     }
@@ -3619,6 +3657,17 @@ class Downlink extends EventListener
     {
         return this.playerComputer.alterCPULoad(taskHash, direction);
     }
+
+    get cpuIncreaseCost()
+    {
+        return this.playerComputer.cpuPool.maxCPUs * 1000
+    }
+
+    buyMaxCPUIncrease()
+    {
+        this.currency = this.currency.minus(this.cpuIncreaseCost);
+        this.playerComputer.increaseCPUPoolSize();
+    }
 }
 
 module.exports = Downlink;
@@ -3831,6 +3880,9 @@ module.exports = EventListener;
         $activeMissionTraceStrength:null,
         $activeMissionDisconnectButton:null,
         $cpuTasksCol:null,
+        $gridSizeIncreaseSpan:null,
+        $gridSizeCostSpan:null,
+        $gridSizeButton:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -3865,6 +3917,10 @@ module.exports = EventListener;
             this.$connectionWarningRow = $('#connection-warning-row');
             this.$activeMissionTraceStrength = $('#active-mission-trace-strength');
             this.$cpuTasksCol = $('#tasks-col');
+            this.$gridSizeIncreaseSpan = $('#grid-size-increase-amount');
+            this.$gridSizeCostSpan = $('#grid-size-increase-cost');
+
+            this.$gridSizeButton = $('#increase-cpu-grid-size').click(()=>{this.increaseCPUPoolSize()});
             this.$activeMissionDisconnectButton = $('#disconnect-button').click(()=>{this.disconnect()});
             this.$missionToggleButton = $('#missions-toggle-button').click(()=>{this.toggleMissions();});
 
@@ -4490,38 +4546,64 @@ module.exports = EventListener;
                 );
             });
         },
+        getCPUIncreaseCost:function()
+        {
+            return this.downlink.cpuIncreaseCost;
+        },
         buildComputerGrid:function()
         {
-            this.$computerBuild.empty();
-
             let pc = this.downlink.playerComputer,
                 cpus = pc.cpuPool.cpus,
-                gridSize = Math.floor(Math.sqrt(pc.maxCPUs)),
+                gridSize = pc.cpuWidth,
                 html = '',
+                width = `${(gridSize*31 + 1)}px`,
                 cpuIndex = 0;
-
-            for(let i = 0; i < gridSize; i++)
+            this.$computerBuild.css({
+                'grid-template-columns':`repeat(${gridSize}, 1fr)`,
+                'width':width
+            });
+            //for(let cpu of cpus)
+            for(let i = 0; i < pc.cpuPool.maxCPUs; i++)
             {
-                html += '<div class="row cpuRow">';
-                for(let j = 0; j < gridSize; j++)
+                let cpu = cpus[i];
+                html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" title="${cpu?cpu.name:''}">`;
+                if(cpu)
                 {
-                    let cpu = cpus[cpuIndex];
-                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" title="${cpu?cpu.name:''}">`;
-                    if(cpu)
-                    {
-                        html += `<img src="./img/${cpu.healthImage}"/>`;
-                    }
-                    html += '</div>';
-                    cpuIndex++;
+                    html += `<img src="./img/${cpu.healthImage}"/>`;
                 }
                 html += '</div>';
+                cpuIndex++;
             }
             this.$computerBuild.html(html);
+
+            this.$gridSizeIncreaseSpan.text(gridSize);
+            let increaseCost = this.getCPUIncreaseCost();
+            this.$gridSizeCostSpan.text(increaseCost);
+            if(this.downlink.canAfford(increaseCost))
+            {
+                this.$gridSizeButton.removeAttr('disabled');
+            }
+            else
+            {
+                this.$gridSizeButton.attr('disabled', 'disabled');
+            }
+
             $('.cpuHolder').click((evt)=> {
                 let cpuSlot = $(evt.currentTarget).data('cpuSlot');
                 this.buyCPU(cpuSlot)
             });
-            $('.cpuRow').css('width', gridSize * 30);
+        },
+        increaseCPUPoolSize:function()
+        {
+            if(!this.downlink.canAfford(this.getCPUIncreaseCost()))
+            {
+                return;
+            }
+            this.downlink.buyMaxCPUIncrease();
+            this.buildComputerGrid();
+            this.updatePlayerDetails();
+            this.updateComputerPartsUI();
+            this.save();
         },
         buyCPU:function(cpuSlot)
         {
@@ -4535,6 +4617,7 @@ module.exports = EventListener;
             this.buildComputerGrid();
             this.updateComputerBuild();
             this.updatePlayerDetails();
+            this.updateComputerPartsUI();
             this.save();
         },
         handleEmptyCPUPool:function()

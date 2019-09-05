@@ -44,7 +44,7 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.3b",
+        version:"0.4.4b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
@@ -82,6 +82,9 @@
         $activeMissionTraceStrength:null,
         $activeMissionDisconnectButton:null,
         $cpuTasksCol:null,
+        $gridSizeIncreaseSpan:null,
+        $gridSizeCostSpan:null,
+        $gridSizeButton:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -116,6 +119,10 @@
             this.$connectionWarningRow = $('#connection-warning-row');
             this.$activeMissionTraceStrength = $('#active-mission-trace-strength');
             this.$cpuTasksCol = $('#tasks-col');
+            this.$gridSizeIncreaseSpan = $('#grid-size-increase-amount');
+            this.$gridSizeCostSpan = $('#grid-size-increase-cost');
+
+            this.$gridSizeButton = $('#increase-cpu-grid-size').click(()=>{this.increaseCPUPoolSize()});
             this.$activeMissionDisconnectButton = $('#disconnect-button').click(()=>{this.disconnect()});
             this.$missionToggleButton = $('#missions-toggle-button').click(()=>{this.toggleMissions();});
 
@@ -741,38 +748,64 @@
                 );
             });
         },
+        getCPUIncreaseCost:function()
+        {
+            return this.downlink.cpuIncreaseCost;
+        },
         buildComputerGrid:function()
         {
-            this.$computerBuild.empty();
-
             let pc = this.downlink.playerComputer,
                 cpus = pc.cpuPool.cpus,
-                gridSize = Math.floor(Math.sqrt(pc.maxCPUs)),
+                gridSize = pc.cpuWidth,
                 html = '',
+                width = `${(gridSize*31 + 1)}px`,
                 cpuIndex = 0;
-
-            for(let i = 0; i < gridSize; i++)
+            this.$computerBuild.css({
+                'grid-template-columns':`repeat(${gridSize}, 1fr)`,
+                'width':width
+            });
+            //for(let cpu of cpus)
+            for(let i = 0; i < pc.cpuPool.maxCPUs; i++)
             {
-                html += '<div class="row cpuRow">';
-                for(let j = 0; j < gridSize; j++)
+                let cpu = cpus[i];
+                html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" title="${cpu?cpu.name:''}">`;
+                if(cpu)
                 {
-                    let cpu = cpus[cpuIndex];
-                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" title="${cpu?cpu.name:''}">`;
-                    if(cpu)
-                    {
-                        html += `<img src="./img/${cpu.healthImage}"/>`;
-                    }
-                    html += '</div>';
-                    cpuIndex++;
+                    html += `<img src="./img/${cpu.healthImage}"/>`;
                 }
                 html += '</div>';
+                cpuIndex++;
             }
             this.$computerBuild.html(html);
+
+            this.$gridSizeIncreaseSpan.text(gridSize);
+            let increaseCost = this.getCPUIncreaseCost();
+            this.$gridSizeCostSpan.text(increaseCost);
+            if(this.downlink.canAfford(increaseCost))
+            {
+                this.$gridSizeButton.removeAttr('disabled');
+            }
+            else
+            {
+                this.$gridSizeButton.attr('disabled', 'disabled');
+            }
+
             $('.cpuHolder').click((evt)=> {
                 let cpuSlot = $(evt.currentTarget).data('cpuSlot');
                 this.buyCPU(cpuSlot)
             });
-            $('.cpuRow').css('width', gridSize * 30);
+        },
+        increaseCPUPoolSize:function()
+        {
+            if(!this.downlink.canAfford(this.getCPUIncreaseCost()))
+            {
+                return;
+            }
+            this.downlink.buyMaxCPUIncrease();
+            this.buildComputerGrid();
+            this.updatePlayerDetails();
+            this.updateComputerPartsUI();
+            this.save();
         },
         buyCPU:function(cpuSlot)
         {
@@ -786,6 +819,7 @@
             this.buildComputerGrid();
             this.updateComputerBuild();
             this.updatePlayerDetails();
+            this.updateComputerPartsUI();
             this.save();
         },
         handleEmptyCPUPool:function()

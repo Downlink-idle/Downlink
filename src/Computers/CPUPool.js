@@ -12,13 +12,28 @@ class InvalidTaskError extends Error{};
 
 class CPUPool extends EventListener
 {
-    constructor(cpus)
+    /**
+     * @param {Array.<CPU>>} cpus   The CPUs to add into the cpu pool
+     * @param {number} maxCPUs      The maximum number of CPUs in the pool
+     */
+    constructor(cpus, maxCPUs)
     {
         super();
         /**
          * @type {Array.<CPU>}
          */
         this.cpus = [];
+
+        /**
+         * @type {number}
+         */
+        this.maxCPUs = maxCPUs;
+
+        if(cpus.length > this.maxCPUs)
+        {
+            throw new Error("More CPUs than allotted amount");
+        }
+
         /**
          * @type {number} The average speed of all cpus in the pool
          */
@@ -50,6 +65,16 @@ class CPUPool extends EventListener
         {
             this.addCPU(cpu);
         }
+    }
+
+    get width()
+    {
+        return Math.ceil(Math.sqrt(this.maxCPUs));
+    }
+
+    increaseCPUSize()
+    {
+        this.maxCPUs += this.width;
     }
 
     /**
