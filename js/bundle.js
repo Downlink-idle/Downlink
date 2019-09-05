@@ -2610,6 +2610,7 @@ class PlayerComputer extends Computer
     setCPUSlot(slot, cpu)
     {
         this.cpuPool.setCPUSlot(slot, cpu);
+        return this;
     }
 
     /**
@@ -2659,6 +2660,11 @@ class PlayerComputer extends Computer
     alterCPULoad(taskHash, direction)
     {
         return this.cpuPool.alterCPULoad(taskHash, direction);
+    }
+
+    updateLoadBalance()
+    {
+        return this.cpuPool.updateLoadBalance();
     }
 
 
@@ -3659,8 +3665,9 @@ class Downlink extends EventListener
     {
         let cpu = CPU.fromJSON(cpuData);
         this.currency = this.currency.minus(CPU.getPriceFor(cpuData));
-        this.playerComputer.setCPUSlot(slot, cpu);
-
+        this.playerComputer
+            .setCPUSlot(slot, cpu)
+            .updateLoadBalance();
     }
 
     alterCPULoad(taskHash, direction)
@@ -3844,11 +3851,11 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.10b",
+        version:"0.4.11b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
-        minimumVersion:"0.4.10b",
+        minimumVersion:"0.4.11b",
         /**
          * jquery entities that are needed for updating
          */

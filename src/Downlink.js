@@ -249,8 +249,9 @@ class Downlink extends EventListener
     {
         let cpu = CPU.fromJSON(cpuData);
         this.currency = this.currency.minus(CPU.getPriceFor(cpuData));
-        this.playerComputer.setCPUSlot(slot, cpu);
-
+        this.playerComputer
+            .setCPUSlot(slot, cpu)
+            .updateLoadBalance();
     }
 
     alterCPULoad(taskHash, direction)
