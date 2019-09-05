@@ -16,7 +16,7 @@ class PlayerComputer extends Computer
     constructor(cpus, maxCPUs)
     {
         super('Home', null, '127.0.0.1');
-        this.cpuPool = new CPUPool(cpus);
+        this.cpuPool = new CPUPool(cpus, maxCPUs?maxCPUs:DEFAULT_MAX_CPUS);
         this.cpuPool.on('cpuBurnedOut', ()=>{
             this.trigger('cpuBurnedOut');
         }).on("cpuPoolEmpty", ()=>{
@@ -26,7 +26,6 @@ class PlayerComputer extends Computer
          * @type {Array.<Task>}
          */
         this.missionTasks = [];
-        this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
     }
 
     get cpus()
@@ -37,6 +36,19 @@ class PlayerComputer extends Computer
     addCPU(cpu)
     {
         this.cpuPool.addCPU(cpu);
+    }
+
+    increaseCPUPoolSize()
+    {
+        this.cpuPool.increaseCPUSize();
+    }
+
+    /**
+     * Exposing the CPU pool width
+     */
+    get cpuWidth()
+    {
+        return this.cpuPool.width;
     }
 
     setCPUSlot(slot, cpu)
@@ -88,6 +100,11 @@ class PlayerComputer extends Computer
         return this.cpuPool.tick();
     }
 
+    alterCPULoad(taskHash, direction)
+    {
+        return this.cpuPool.alterCPULoad(taskHash, direction);
+    }
+
 
     get tasks()
     {
@@ -97,6 +114,7 @@ class PlayerComputer extends Computer
     toJSON()
     {
         let json = super.toJSON();
+        json.maxCPUs = this.cpuPool.maxCPUs;
         json.cpus = [];
         for(let cpu of this.cpus)
         {
@@ -126,7 +144,7 @@ class PlayerComputer extends Computer
                 cpus.push(null);
             }
         }
-        let pc = new PlayerComputer(cpus);
+        let pc = new PlayerComputer(cpus, json.maxCPUs);
         pc.setLocation(json.location);
         return pc;
     }

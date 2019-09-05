@@ -12,13 +12,28 @@ class InvalidTaskError extends Error{};
 
 class CPUPool extends EventListener
 {
-    constructor(cpus)
+    /**
+     * @param {Array.<CPU>>} cpus   The CPUs to add into the cpu pool
+     * @param {number} maxCPUs      The maximum number of CPUs in the pool
+     */
+    constructor(cpus, maxCPUs)
     {
         super();
         /**
          * @type {Array.<CPU>}
          */
         this.cpus = [];
+
+        /**
+         * @type {number}
+         */
+        this.maxCPUs = maxCPUs;
+
+        if(cpus.length > this.maxCPUs)
+        {
+            throw new Error("More CPUs than allotted amount");
+        }
+
         /**
          * @type {number} The average speed of all cpus in the pool
          */
@@ -35,6 +50,12 @@ class CPUPool extends EventListener
          * * @type {Array.<Task>}
          */
         this.tasks = [];
+
+        /**
+         * @type {Object.<string, <Task>>}
+         */
+        this.tasksByHash = {};
+
         /**
          * @type {number} The number of CPUs. Because entries can be null, this needs to be counted
          */
@@ -44,6 +65,16 @@ class CPUPool extends EventListener
         {
             this.addCPU(cpu);
         }
+    }
+
+    get width()
+    {
+        return Math.ceil(Math.sqrt(this.maxCPUs));
+    }
+
+    increaseCPUSize()
+    {
+        this.maxCPUs += this.width;
     }
 
     /**
@@ -97,51 +128,6 @@ class CPUPool extends EventListener
     }
 
     /**
-     * figure out how many cycles to assign the task. This number will be the larger of the minimum required cycles
-     * and 1/nth of the total cycles available to the pool (where n is the number of total tasks being run, including
-     * this task).
-     * @param {Task} task   The task to figure out the cycles for
-     * @returns {number}   The number of cycles to assign the task
-     */
-    getCyclesForTask(task)
-    {
-        return Math.max(task.minimumRequiredCycles, Math.floor(this.totalSpeed / (this.tasks.length + 1)));
-    }
-
-    /**
-     * Figure out how many cycles to remove from all of the current tasks in the pool and do so.
-     * This method will keep a tally of the freed cycles, as no task will lower its assigned cycles below the minimum
-     * required amount.
-     * @param task
-     * @returns {number}
-     */
-    balanceTaskLoadForNewTask(task)
-    {
-        // get the number of cycles to assign
-        let cyclesToAssign = this.getCyclesForTask(task);
-        if(this.tasks.length === 0)
-        {
-            return cyclesToAssign;
-        }
-
-        let idealCyclesToAssign = cyclesToAssign;
-        if(this.tasks.length > 0)
-        {
-            // average that out
-            let cyclesToTryToTakeAwayFromEachProcess = Math.ceil(idealCyclesToAssign /this.tasks.length),
-                cyclesFreedUp = 0;
-
-            for(let task of this.tasks)
-            {
-                // add the actual amount freed up to the total freed
-                cyclesFreedUp += task.freeCycles(cyclesToTryToTakeAwayFromEachProcess);
-            }
-            cyclesToAssign = cyclesFreedUp;
-        }
-        return cyclesToAssign;
-    }
-
-    /**
      * Add a task to the cpu pool
      * @param {Task} task   The task to be added
      */
@@ -164,14 +150,12 @@ class CPUPool extends EventListener
             throw new NoFreeCPUCyclesError(`CPU pool does not have the required cycles for ${task.name}. Need ${task.minimumRequiredCycles.toString()} but only have ${freeCycles}.`);
         }
 
-        // figure out how many cycles to assign
-        let cyclesToAssign = this.balanceTaskLoadForNewTask(task);
-
-        task.setCyclesPerTick(cyclesToAssign);
         task.on('complete', ()=>{ this.completeTask(task); });
 
         this.load += task.minimumRequiredCycles;
         this.tasks.push(task);
+        this.tasksByHash[task.hash] = task;
+        this.updateLoadBalance();
     }
 
     /**
@@ -183,6 +167,7 @@ class CPUPool extends EventListener
         let freedCycles = task.cyclesPerTick;
 
         helpers.removeArrayElement(this.tasks, task);
+        delete this.tasksByHash[task.hash];
         this.load -= task.minimumRequiredCycles;
 
         if(this.tasks.length >= 1)
@@ -197,6 +182,7 @@ class CPUPool extends EventListener
                 i++;
             }
         }
+        this.updateLoadBalance();
         this.trigger('taskComplete');
     }
 
@@ -208,6 +194,42 @@ class CPUPool extends EventListener
     get averageLoad()
     {
         return this.load / this.cpuCount;
+    }
+
+    alterCPULoad(taskHash, direction)
+    {
+        let task = this.tasksByHash[taskHash];
+        if(task)
+        {
+            task.alterWeight(direction);
+        }
+        return this.updateLoadBalance();
+    }
+
+    updateLoadBalance()
+    {
+        if(this.tasks.length === 0)
+        {
+            return;
+        }
+        let totalWeight = 0;
+
+        for(let task of this.tasks)
+        {
+            totalWeight += task.weight;
+        }
+
+        let weightedFreeSpace = this.availableCycles / totalWeight;
+        let results = {};
+
+        for(let task of this.tasks)
+        {
+            let taskCycles = Math.floor(weightedFreeSpace * task.weight) + task.minimumRequiredCycles;
+            task.setCyclesPerTick(taskCycles);
+            results[task.hash] = (taskCycles / this.totalSpeed * 100).toFixed(2);
+        }
+
+        return results;
     }
 
     /**

@@ -2165,13 +2165,28 @@ class InvalidTaskError extends Error{};
 
 class CPUPool extends EventListener
 {
-    constructor(cpus)
+    /**
+     * @param {Array.<CPU>>} cpus   The CPUs to add into the cpu pool
+     * @param {number} maxCPUs      The maximum number of CPUs in the pool
+     */
+    constructor(cpus, maxCPUs)
     {
         super();
         /**
          * @type {Array.<CPU>}
          */
         this.cpus = [];
+
+        /**
+         * @type {number}
+         */
+        this.maxCPUs = maxCPUs;
+
+        if(cpus.length > this.maxCPUs)
+        {
+            throw new Error("More CPUs than allotted amount");
+        }
+
         /**
          * @type {number} The average speed of all cpus in the pool
          */
@@ -2188,6 +2203,12 @@ class CPUPool extends EventListener
          * * @type {Array.<Task>}
          */
         this.tasks = [];
+
+        /**
+         * @type {Object.<string, <Task>>}
+         */
+        this.tasksByHash = {};
+
         /**
          * @type {number} The number of CPUs. Because entries can be null, this needs to be counted
          */
@@ -2197,6 +2218,16 @@ class CPUPool extends EventListener
         {
             this.addCPU(cpu);
         }
+    }
+
+    get width()
+    {
+        return Math.ceil(Math.sqrt(this.maxCPUs));
+    }
+
+    increaseCPUSize()
+    {
+        this.maxCPUs += this.width;
     }
 
     /**
@@ -2250,51 +2281,6 @@ class CPUPool extends EventListener
     }
 
     /**
-     * figure out how many cycles to assign the task. This number will be the larger of the minimum required cycles
-     * and 1/nth of the total cycles available to the pool (where n is the number of total tasks being run, including
-     * this task).
-     * @param {Task} task   The task to figure out the cycles for
-     * @returns {number}   The number of cycles to assign the task
-     */
-    getCyclesForTask(task)
-    {
-        return Math.max(task.minimumRequiredCycles, Math.floor(this.totalSpeed / (this.tasks.length + 1)));
-    }
-
-    /**
-     * Figure out how many cycles to remove from all of the current tasks in the pool and do so.
-     * This method will keep a tally of the freed cycles, as no task will lower its assigned cycles below the minimum
-     * required amount.
-     * @param task
-     * @returns {number}
-     */
-    balanceTaskLoadForNewTask(task)
-    {
-        // get the number of cycles to assign
-        let cyclesToAssign = this.getCyclesForTask(task);
-        if(this.tasks.length === 0)
-        {
-            return cyclesToAssign;
-        }
-
-        let idealCyclesToAssign = cyclesToAssign;
-        if(this.tasks.length > 0)
-        {
-            // average that out
-            let cyclesToTryToTakeAwayFromEachProcess = Math.ceil(idealCyclesToAssign /this.tasks.length),
-                cyclesFreedUp = 0;
-
-            for(let task of this.tasks)
-            {
-                // add the actual amount freed up to the total freed
-                cyclesFreedUp += task.freeCycles(cyclesToTryToTakeAwayFromEachProcess);
-            }
-            cyclesToAssign = cyclesFreedUp;
-        }
-        return cyclesToAssign;
-    }
-
-    /**
      * Add a task to the cpu pool
      * @param {Task} task   The task to be added
      */
@@ -2317,14 +2303,12 @@ class CPUPool extends EventListener
             throw new NoFreeCPUCyclesError(`CPU pool does not have the required cycles for ${task.name}. Need ${task.minimumRequiredCycles.toString()} but only have ${freeCycles}.`);
         }
 
-        // figure out how many cycles to assign
-        let cyclesToAssign = this.balanceTaskLoadForNewTask(task);
-
-        task.setCyclesPerTick(cyclesToAssign);
         task.on('complete', ()=>{ this.completeTask(task); });
 
         this.load += task.minimumRequiredCycles;
         this.tasks.push(task);
+        this.tasksByHash[task.hash] = task;
+        this.updateLoadBalance();
     }
 
     /**
@@ -2336,6 +2320,7 @@ class CPUPool extends EventListener
         let freedCycles = task.cyclesPerTick;
 
         helpers.removeArrayElement(this.tasks, task);
+        delete this.tasksByHash[task.hash];
         this.load -= task.minimumRequiredCycles;
 
         if(this.tasks.length >= 1)
@@ -2350,6 +2335,7 @@ class CPUPool extends EventListener
                 i++;
             }
         }
+        this.updateLoadBalance();
         this.trigger('taskComplete');
     }
 
@@ -2361,6 +2347,42 @@ class CPUPool extends EventListener
     get averageLoad()
     {
         return this.load / this.cpuCount;
+    }
+
+    alterCPULoad(taskHash, direction)
+    {
+        let task = this.tasksByHash[taskHash];
+        if(task)
+        {
+            task.alterWeight(direction);
+        }
+        return this.updateLoadBalance();
+    }
+
+    updateLoadBalance()
+    {
+        if(this.tasks.length === 0)
+        {
+            return;
+        }
+        let totalWeight = 0;
+
+        for(let task of this.tasks)
+        {
+            totalWeight += task.weight;
+        }
+
+        let weightedFreeSpace = this.availableCycles / totalWeight;
+        let results = {};
+
+        for(let task of this.tasks)
+        {
+            let taskCycles = Math.floor(weightedFreeSpace * task.weight) + task.minimumRequiredCycles;
+            task.setCyclesPerTick(taskCycles);
+            results[task.hash] = (taskCycles / this.totalSpeed * 100).toFixed(2);
+        }
+
+        return results;
     }
 
     /**
@@ -2559,7 +2581,7 @@ class PlayerComputer extends Computer
     constructor(cpus, maxCPUs)
     {
         super('Home', null, '127.0.0.1');
-        this.cpuPool = new CPUPool(cpus);
+        this.cpuPool = new CPUPool(cpus, maxCPUs?maxCPUs:DEFAULT_MAX_CPUS);
         this.cpuPool.on('cpuBurnedOut', ()=>{
             this.trigger('cpuBurnedOut');
         }).on("cpuPoolEmpty", ()=>{
@@ -2569,7 +2591,6 @@ class PlayerComputer extends Computer
          * @type {Array.<Task>}
          */
         this.missionTasks = [];
-        this.maxCPUs = maxCPUs?maxCPUs:DEFAULT_MAX_CPUS;
     }
 
     get cpus()
@@ -2580,6 +2601,19 @@ class PlayerComputer extends Computer
     addCPU(cpu)
     {
         this.cpuPool.addCPU(cpu);
+    }
+
+    increaseCPUPoolSize()
+    {
+        this.cpuPool.increaseCPUSize();
+    }
+
+    /**
+     * Exposing the CPU pool width
+     */
+    get cpuWidth()
+    {
+        return this.cpuPool.width;
     }
 
     setCPUSlot(slot, cpu)
@@ -2631,6 +2665,11 @@ class PlayerComputer extends Computer
         return this.cpuPool.tick();
     }
 
+    alterCPULoad(taskHash, direction)
+    {
+        return this.cpuPool.alterCPULoad(taskHash, direction);
+    }
+
 
     get tasks()
     {
@@ -2640,6 +2679,7 @@ class PlayerComputer extends Computer
     toJSON()
     {
         let json = super.toJSON();
+        json.maxCPUs = this.cpuPool.maxCPUs;
         json.cpus = [];
         for(let cpu of this.cpus)
         {
@@ -2669,7 +2709,7 @@ class PlayerComputer extends Computer
                 cpus.push(null);
             }
         }
-        let pc = new PlayerComputer(cpus);
+        let pc = new PlayerComputer(cpus, json.maxCPUs);
         pc.setLocation(json.location);
         return pc;
     }
@@ -3011,6 +3051,18 @@ class Task extends EventListener
     get hash()
     {
         return this.challenge.hash;
+    }
+
+    alterWeight(direction)
+    {
+        if(direction > 0)
+        {
+            this.weight *= 2;
+        }
+        else
+        {
+            this.weight /= 2;
+        }
     }
 
     setCyclesPerTick(cyclesPerTick)
@@ -3572,6 +3624,17 @@ class Downlink extends EventListener
 
     }
 
+    getTaskByHash(hash)
+    {
+        for(let task of this.playerComputer.cpuPool.tasks)
+        {
+            if(task.hash === hash)
+            {
+                return task;
+            }
+        }
+    }
+
     get secondsRunning()
     {
         return Math.floor(this.runTime / 1000);
@@ -3588,6 +3651,22 @@ class Downlink extends EventListener
         this.currency = this.currency.minus(CPU.getPriceFor(cpuData));
         this.playerComputer.setCPUSlot(slot, cpu);
 
+    }
+
+    alterCPULoad(taskHash, direction)
+    {
+        return this.playerComputer.alterCPULoad(taskHash, direction);
+    }
+
+    get cpuIncreaseCost()
+    {
+        return this.playerComputer.cpuPool.maxCPUs * 1000
+    }
+
+    buyMaxCPUIncrease()
+    {
+        this.currency = this.currency.minus(this.cpuIncreaseCost);
+        this.playerComputer.increaseCPUPoolSize();
     }
 }
 
@@ -3763,7 +3842,7 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.2b",
+        version:"0.4.5b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
@@ -3801,6 +3880,9 @@ module.exports = EventListener;
         $activeMissionTraceStrength:null,
         $activeMissionDisconnectButton:null,
         $cpuTasksCol:null,
+        $gridSizeIncreaseSpan:null,
+        $gridSizeCostSpan:null,
+        $gridSizeButton:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -3835,6 +3917,10 @@ module.exports = EventListener;
             this.$connectionWarningRow = $('#connection-warning-row');
             this.$activeMissionTraceStrength = $('#active-mission-trace-strength');
             this.$cpuTasksCol = $('#tasks-col');
+            this.$gridSizeIncreaseSpan = $('#grid-size-increase-amount');
+            this.$gridSizeCostSpan = $('#grid-size-increase-cost');
+
+            this.$gridSizeButton = $('#increase-cpu-grid-size').click(()=>{this.increaseCPUPoolSize()});
             this.$activeMissionDisconnectButton = $('#disconnect-button').click(()=>{this.disconnect()});
             this.$missionToggleButton = $('#missions-toggle-button').click(()=>{this.toggleMissions();});
 
@@ -4280,12 +4366,12 @@ module.exports = EventListener;
                 html += `<div class="row ${CPU_MISSION_TASK}" data-task-hash ="${task.hash}">`+
                     `<div class="col-3 cpu-task-name">${task.name}</div>`+
                     `<div class="col cpu-task-bar">`+
-                        `<div class="reduce-cpu-load cpu-load-changer">&lt;</div>`+
+                        `<div class="reduce-cpu-load cpu-load-changer" data-cpu-load-direction="-1">&lt;</div>`+
                         `<div class="percentage-bar-container">`+
-                            `<div class="percentage-bar" style="width:${loadPercentage}%">&nbsp;</div>`+
-                            `<div class="percentage-text">${loadPercentage}</div>`+
+                            `<div class="percentage-bar" style="width:${loadPercentage}%" data-task-hash ="${task.hash}">&nbsp;</div>`+
+                            `<div class="percentage-text" data-task-hash ="${task.hash}">${loadPercentage}</div>`+
                         `</div>`+
-                        `<div class="increase-cpu-load cpu-load-changer">&gt;</div>`+
+                        `<div class="increase-cpu-load cpu-load-changer" data-cpu-load-direction="+1">&gt;</div>`+
                     `</div>`+
                 `</div>`;
                 task.on('complete', ()=>{this.updateCPULoadBalancer();});
@@ -4293,8 +4379,18 @@ module.exports = EventListener;
             this.$cpuTasksCol.html(html);
             $('.cpu-load-changer').click((evt)=>{
                 let rawDOMElement = evt.currentTarget,
-                    row = rawDOMElement.parentElement;
+                    row = rawDOMElement.parentElement.parentElement;
+                this.alterCPULoad(row.dataset.taskHash, parseInt(rawDOMElement.dataset.cpuLoadDirection));
             });
+        },
+        alterCPULoad:function(taskHash, direction)
+        {
+            let cpuLoad = this.downlink.alterCPULoad(taskHash, direction);
+            for(let hash in cpuLoad)
+            {
+                $(`.percentage-bar[data-task-hash="${hash}"]`).css("width", `${cpuLoad[hash]}%`);
+                $(`.percentage-text[data-task-hash="${hash}"]`).text(cpuLoad[hash]);
+            }
         },
         updateCurrentMissionView:function(server){
             this.updateCPULoadBalancer();
@@ -4450,38 +4546,64 @@ module.exports = EventListener;
                 );
             });
         },
+        getCPUIncreaseCost:function()
+        {
+            return this.downlink.cpuIncreaseCost;
+        },
         buildComputerGrid:function()
         {
-            this.$computerBuild.empty();
-
             let pc = this.downlink.playerComputer,
                 cpus = pc.cpuPool.cpus,
-                gridSize = Math.floor(Math.sqrt(pc.maxCPUs)),
+                gridSize = pc.cpuWidth,
                 html = '',
+                width = `${(gridSize*31 + 1)}px`,
                 cpuIndex = 0;
-
-            for(let i = 0; i < gridSize; i++)
+            this.$computerBuild.css({
+                'grid-template-columns':`repeat(${gridSize}, 1fr)`,
+                'width':width
+            });
+            //for(let cpu of cpus)
+            for(let i = 0; i < pc.cpuPool.maxCPUs; i++)
             {
-                html += '<div class="row cpuRow">';
-                for(let j = 0; j < gridSize; j++)
+                let cpu = cpus[i];
+                html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" title="${cpu?cpu.name:''}">`;
+                if(cpu)
                 {
-                    let cpu = cpus[cpuIndex];
-                    html += `<div data-cpu-slot="${cpuIndex}" class="col cpuHolder" title="${cpu?cpu.name:''}">`;
-                    if(cpu)
-                    {
-                        html += `<img src="./img/${cpu.healthImage}"/>`;
-                    }
-                    html += '</div>';
-                    cpuIndex++;
+                    html += `<img src="./img/${cpu.healthImage}"/>`;
                 }
                 html += '</div>';
+                cpuIndex++;
             }
             this.$computerBuild.html(html);
+
+            this.$gridSizeIncreaseSpan.text(gridSize);
+            let increaseCost = this.getCPUIncreaseCost();
+            this.$gridSizeCostSpan.text(increaseCost);
+            if(this.downlink.canAfford(increaseCost))
+            {
+                this.$gridSizeButton.removeAttr('disabled');
+            }
+            else
+            {
+                this.$gridSizeButton.attr('disabled', 'disabled');
+            }
+
             $('.cpuHolder').click((evt)=> {
                 let cpuSlot = $(evt.currentTarget).data('cpuSlot');
                 this.buyCPU(cpuSlot)
             });
-            $('.cpuRow').css('width', gridSize * 30);
+        },
+        increaseCPUPoolSize:function()
+        {
+            if(!this.downlink.canAfford(this.getCPUIncreaseCost()))
+            {
+                return;
+            }
+            this.downlink.buyMaxCPUIncrease();
+            this.buildComputerGrid();
+            this.updatePlayerDetails();
+            this.updateComputerPartsUI();
+            this.save();
         },
         buyCPU:function(cpuSlot)
         {
@@ -4495,6 +4617,7 @@ module.exports = EventListener;
             this.buildComputerGrid();
             this.updateComputerBuild();
             this.updatePlayerDetails();
+            this.updateComputerPartsUI();
             this.save();
         },
         handleEmptyCPUPool:function()
