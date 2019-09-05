@@ -54,6 +54,7 @@ class PlayerComputer extends Computer
     setCPUSlot(slot, cpu)
     {
         this.cpuPool.setCPUSlot(slot, cpu);
+        return this;
     }
 
     /**
@@ -103,6 +104,11 @@ class PlayerComputer extends Computer
     alterCPULoad(taskHash, direction)
     {
         return this.cpuPool.alterCPULoad(taskHash, direction);
+    }
+
+    updateLoadBalance()
+    {
+        return this.cpuPool.updateLoadBalance();
     }
 
 

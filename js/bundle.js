@@ -2610,6 +2610,7 @@ class PlayerComputer extends Computer
     setCPUSlot(slot, cpu)
     {
         this.cpuPool.setCPUSlot(slot, cpu);
+        return this;
     }
 
     /**
@@ -2659,6 +2660,11 @@ class PlayerComputer extends Computer
     alterCPULoad(taskHash, direction)
     {
         return this.cpuPool.alterCPULoad(taskHash, direction);
+    }
+
+    updateLoadBalance()
+    {
+        return this.cpuPool.updateLoadBalance();
     }
 
 
@@ -2744,8 +2750,6 @@ const   Alphabet = require('../../Alphabet'),
         helpers = require('../../Helpers'),
         Task = require('./Task');
 
-
-const GRID_SIZE_DIFFICULTY_MANTISSA = 2;
 
 class EncryptionCell
 {
@@ -3661,8 +3665,9 @@ class Downlink extends EventListener
     {
         let cpu = CPU.fromJSON(cpuData);
         this.currency = this.currency.minus(CPU.getPriceFor(cpuData));
-        this.playerComputer.setCPUSlot(slot, cpu);
-
+        this.playerComputer
+            .setCPUSlot(slot, cpu)
+            .updateLoadBalance();
     }
 
     alterCPULoad(taskHash, direction)
@@ -3846,11 +3851,11 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.10b",
+        version:"0.4.11b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
-        minimumVersion:"0.4.10b",
+        minimumVersion:"0.4.11b",
         /**
          * jquery entities that are needed for updating
          */
@@ -4749,13 +4754,17 @@ class Challenge extends EventListener
     {
         throw new Error('Unimplemented abstract method');
     }
+
+    static get difficultyExponent()
+    {
+        return 0.25;
+    }
 }
 
 module.exports = Challenge;
 
 },{"../../EventListener":21}],25:[function(require,module,exports){
-const   DIFFICULTY_EXPONENT = 0.3;
-        Challenge = require('./Challenge'),
+const   Challenge = require('./Challenge'),
         helper = require('../../Helpers');
 class Encryption extends Challenge
 {
@@ -4785,7 +4794,7 @@ class Encryption extends Challenge
 
     get calculatedDifficulty()
     {
-        return Math.floor(Math.pow(this.size, DIFFICULTY_EXPONENT));
+        return Math.pow(Math.min(this.rows, this.cols), Challenge.difficultyExponent);
     }
 
     static getDimensionForDifficulty(difficulty)
@@ -4831,7 +4840,7 @@ class Password extends Challenge
 
     get calculatedDifficulty()
     {
-        return Math.floor(Math.sqrt(this.length * this.difficulty));
+        return Math.pow(this.length, Challenge.difficultyExponent);
     }
 
     static get PASSWORD_DICTIONARY_DIFFICULTIES()
