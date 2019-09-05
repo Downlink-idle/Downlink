@@ -63,6 +63,11 @@ class Challenge extends EventListener
     {
         throw new Error('Unimplemented abstract method');
     }
+
+    static get difficultyExponent()
+    {
+        return 0.25;
+    }
 }
 
 module.exports = Challenge;

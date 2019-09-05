@@ -1,5 +1,4 @@
-const   DIFFICULTY_EXPONENT = 0.3;
-        Challenge = require('./Challenge'),
+const   Challenge = require('./Challenge'),
         helper = require('../../Helpers');
 class Encryption extends Challenge
 {
@@ -29,7 +28,7 @@ class Encryption extends Challenge
 
     get calculatedDifficulty()
     {
-        return Math.floor(Math.pow(this.size, DIFFICULTY_EXPONENT));
+        return Math.pow(Math.min(this.rows, this.cols), Challenge.difficultyExponent);
     }
 
     static getDimensionForDifficulty(difficulty)

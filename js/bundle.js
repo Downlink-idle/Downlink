@@ -2745,8 +2745,6 @@ const   Alphabet = require('../../Alphabet'),
         Task = require('./Task');
 
 
-const GRID_SIZE_DIFFICULTY_MANTISSA = 2;
-
 class EncryptionCell
 {
     constructor()
@@ -4749,13 +4747,17 @@ class Challenge extends EventListener
     {
         throw new Error('Unimplemented abstract method');
     }
+
+    static get difficultyExponent()
+    {
+        return 0.25;
+    }
 }
 
 module.exports = Challenge;
 
 },{"../../EventListener":21}],25:[function(require,module,exports){
-const   DIFFICULTY_EXPONENT = 0.3;
-        Challenge = require('./Challenge'),
+const   Challenge = require('./Challenge'),
         helper = require('../../Helpers');
 class Encryption extends Challenge
 {
@@ -4785,7 +4787,7 @@ class Encryption extends Challenge
 
     get calculatedDifficulty()
     {
-        return Math.floor(Math.pow(this.size, DIFFICULTY_EXPONENT));
+        return Math.pow(Math.min(this.rows, this.cols), Challenge.difficultyExponent);
     }
 
     static getDimensionForDifficulty(difficulty)
@@ -4831,7 +4833,7 @@ class Password extends Challenge
 
     get calculatedDifficulty()
     {
-        return Math.floor(Math.sqrt(this.length * this.difficulty));
+        return Math.pow(this.length, Challenge.difficultyExponent);
     }
 
     static get PASSWORD_DICTIONARY_DIFFICULTIES()

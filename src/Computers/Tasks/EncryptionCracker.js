@@ -3,8 +3,6 @@ const   Alphabet = require('../../Alphabet'),
         Task = require('./Task');
 
 
-const GRID_SIZE_DIFFICULTY_MANTISSA = 2;
-
 class EncryptionCell
 {
     constructor()
