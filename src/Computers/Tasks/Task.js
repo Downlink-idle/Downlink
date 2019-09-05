@@ -34,8 +34,14 @@ class Task extends EventListener
 
     alterWeight(direction)
     {
-        this.weight += direction;
-        this.weight = Math.max(1, this.weight);
+        if(direction > 0)
+        {
+            this.weight *= 2;
+        }
+        else
+        {
+            this.weight /= 2;
+        }
     }
 
     setCyclesPerTick(cyclesPerTick)

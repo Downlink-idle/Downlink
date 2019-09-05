@@ -581,7 +581,6 @@
         alterCPULoad:function(taskHash, direction)
         {
             let cpuLoad = this.downlink.alterCPULoad(taskHash, direction);
-            console.log(cpuLoad);
             for(let hash in cpuLoad)
             {
                 $(`.percentage-bar[data-task-hash="${hash}"]`).css("width", `${cpuLoad[hash]}%`);
