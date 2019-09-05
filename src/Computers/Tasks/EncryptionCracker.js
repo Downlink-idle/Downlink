@@ -3,7 +3,7 @@ const   Alphabet = require('../../Alphabet'),
         Task = require('./Task');
 
 
-const GRID_SIZE_DIFFICULTY_MANTISSA = 1.4;
+const GRID_SIZE_DIFFICULTY_MANTISSA = 2;
 
 class EncryptionCell
 {
@@ -120,8 +120,13 @@ class EncryptionCracker extends Task
     setCyclesPerTick(cyclesPerTick)
     {
         super.setCyclesPerTick(cyclesPerTick);
-        this.attacksPerTick = cyclesPerTick / (this.unsolvedCells.length * Math.pow(GRID_SIZE_DIFFICULTY_MANTISSA, this.challenge.difficulty));
         return this;
+    }
+
+    get attacksPerTick()
+    {
+        let attacksPerTick = this.cyclesPerTick / (this.unsolvedCells.length * Math.pow(GRID_SIZE_DIFFICULTY_MANTISSA, Math.pow(this.challenge.difficulty, 2)));
+        return attacksPerTick;
     }
 
     processTick()

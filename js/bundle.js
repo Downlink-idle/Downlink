@@ -1945,7 +1945,7 @@ class Company
 
     static get securityIncreaseExponent()
     {
-        return 1.01;
+        return 1.02;
     }
 
     /**
@@ -2745,7 +2745,7 @@ const   Alphabet = require('../../Alphabet'),
         Task = require('./Task');
 
 
-const GRID_SIZE_DIFFICULTY_MANTISSA = 1.4;
+const GRID_SIZE_DIFFICULTY_MANTISSA = 2;
 
 class EncryptionCell
 {
@@ -2862,8 +2862,13 @@ class EncryptionCracker extends Task
     setCyclesPerTick(cyclesPerTick)
     {
         super.setCyclesPerTick(cyclesPerTick);
-        this.attacksPerTick = cyclesPerTick / (this.unsolvedCells.length * Math.pow(GRID_SIZE_DIFFICULTY_MANTISSA, this.challenge.difficulty));
         return this;
+    }
+
+    get attacksPerTick()
+    {
+        let attacksPerTick = this.cyclesPerTick / (this.unsolvedCells.length * Math.pow(GRID_SIZE_DIFFICULTY_MANTISSA, Math.pow(this.challenge.difficulty, 2)));
+        return attacksPerTick;
     }
 
     processTick()
@@ -3393,7 +3398,7 @@ class Connection extends EventListener
     }
 }
 
-Connection.connectionDistance = 1300;
+Connection.connectionDistance = 150;
 Connection.sensitivity = 10;
 
 module.exports = Connection;
@@ -4751,7 +4756,7 @@ class Challenge extends EventListener
 module.exports = Challenge;
 
 },{"../../EventListener":21}],25:[function(require,module,exports){
-const DIFFICULTY_EXPONENT = 0.4;
+const DIFFICULTY_EXPONENT = 0.3;
 
 function getRandomIntBetween(min, max)
 {
@@ -4768,8 +4773,7 @@ class Encryption extends Challenge
     {
         let rows = Encryption.getDimensionForDifficulty(difficulty),
             cols = Encryption.getDimensionForDifficulty(difficulty),
-            size = rows * cols,
-            difficultyRatio = Math.floor(Math.pow(size, DIFFICULTY_EXPONENT));
+            size = rows * cols;
         let name = "Linear";
         if(difficulty > 10)
         {
@@ -4793,7 +4797,7 @@ class Encryption extends Challenge
     static getDimensionForDifficulty(difficulty)
     {
         const   flooredDifficulty = Math.floor(difficulty),
-                min = 5 + flooredDifficulty,
+                min = 6 + flooredDifficulty,
                 max = 8 + flooredDifficulty * 2;
         return getRandomIntBetween(min, max);
     }

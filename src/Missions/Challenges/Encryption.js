@@ -1,4 +1,4 @@
-const DIFFICULTY_EXPONENT = 0.4;
+const DIFFICULTY_EXPONENT = 0.3;
 
 function getRandomIntBetween(min, max)
 {
@@ -15,8 +15,7 @@ class Encryption extends Challenge
     {
         let rows = Encryption.getDimensionForDifficulty(difficulty),
             cols = Encryption.getDimensionForDifficulty(difficulty),
-            size = rows * cols,
-            difficultyRatio = Math.floor(Math.pow(size, DIFFICULTY_EXPONENT));
+            size = rows * cols;
         let name = "Linear";
         if(difficulty > 10)
         {
@@ -40,7 +39,7 @@ class Encryption extends Challenge
     static getDimensionForDifficulty(difficulty)
     {
         const   flooredDifficulty = Math.floor(difficulty),
-                min = 5 + flooredDifficulty,
+                min = 6 + flooredDifficulty,
                 max = 8 + flooredDifficulty * 2;
         return getRandomIntBetween(min, max);
     }
