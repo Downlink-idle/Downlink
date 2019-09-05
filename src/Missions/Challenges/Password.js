@@ -27,6 +27,11 @@ class Password extends Challenge
         return testPassword === this.text;
     }
 
+    get calculatedDifficulty()
+    {
+        return this.difficulty;
+    }
+
     static get PASSWORD_DICTIONARY_DIFFICULTIES()
     {
         return PASSWORD_DICTIONARY_DIFFICULTIES;
@@ -63,13 +68,13 @@ class AlphanumericPassword extends Password
 
     static getRandomPassword(difficulty)
     {
-        let stringLength = helpers.getRandomIntegerBetween(5, 10) + difficulty;
+        let stringLength = helpers.getRandomIntegerBetween(5, 10) + Math.floor(difficulty);
         let password = '';
         for (let i = 0; i < stringLength; i++)
         {
             password += Alphabet.getRandomLetter();
         }
-        return new AlphanumericPassword(password, stringLength);
+        return new AlphanumericPassword(password, difficulty);
     }
 }
 
@@ -88,7 +93,7 @@ class DictionaryPassword extends Password
      */
     static getRandomPassword(difficulty)
     {
-        let usedDictionary = DictionaryPassword.reduceDictionary(PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST - Math.min(difficulty, PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST)),
+        let usedDictionary = DictionaryPassword.reduceDictionary(PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST - Math.min(Math.floor(difficulty), PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST)),
             password = helpers.getRandomArrayElement(usedDictionary);
         return new DictionaryPassword(password, difficulty, usedDictionary);
     }

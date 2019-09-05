@@ -58,6 +58,11 @@ class Challenge extends EventListener
         this.trigger('solved');
         return this;
     }
+
+    get calculatedDifficulty()
+    {
+        throw new Error('Unimplemented abstract method');
+    }
 }
 
 module.exports = Challenge;

@@ -25,6 +25,7 @@ class Task extends EventListener
         this.working = true;
         this.completed = false;
         this.challenge = challenge.setTask(this);
+        this.loadPercentage = 0;
     }
 
     get hash()
@@ -52,6 +53,11 @@ class Task extends EventListener
         }
         this.cyclesPerTick = cyclesPerTick;
         return this;
+    }
+
+    setLoadPercentage(loadPercentage)
+    {
+        this.loadPercentage = loadPercentage;
     }
 
     addCycles(tickIncrease)

@@ -3,7 +3,7 @@ const   Alphabet = require('../../Alphabet'),
         Task = require('./Task');
 
 
-const GRID_SIZE_DIFFICULTY_EXPONENT = 0.8;
+const GRID_SIZE_DIFFICULTY_MANTISSA = 1.4;
 
 class EncryptionCell
 {
@@ -36,12 +36,6 @@ class EncryptionCracker extends Task
         super('Encryption Cracker', encryption, encryption.difficulty);
         this.rows = encryption.rows;
         this.cols = encryption.cols;
-        this.encryption = encryption;
-
-        /**
-         * This is just an arbitrary number representing how many clock cycles per tick are needed to solve each cell
-         */
-        this.encryptionDifficulty = encryption.difficulty;
 
         /**
          *
@@ -61,6 +55,9 @@ class EncryptionCracker extends Task
          * @type {Array.<EncryptionCell>}
          */
         this.cells = [];
+        /**
+         * @type {Array.<EncryptionCell>}
+         */
         this.unsolvedCells = [];
         for(let i = 0; i < this.rows; i++)
         {
@@ -113,7 +110,18 @@ class EncryptionCracker extends Task
 
     get solved()
     {
-        return this.unsolvedCells.length == 0;
+        return this.unsolvedCells.length === 0;
+    }
+
+    // figure out how many cells to solve
+    // I'm trying to figure out how to make this longer
+    // this may lead to a number less than zero and so, this tick, nothing will happen
+
+    setCyclesPerTick(cyclesPerTick)
+    {
+        super.setCyclesPerTick(cyclesPerTick);
+        this.attacksPerTick = cyclesPerTick / (this.unsolvedCells.length * Math.pow(GRID_SIZE_DIFFICULTY_MANTISSA, this.challenge.difficulty));
+        return this;
     }
 
     processTick()
@@ -124,10 +132,7 @@ class EncryptionCracker extends Task
             cell.tick();
         }
 
-        // figure out how many cells to solve
-        // I'm trying to figure out how to make this longer
-        // this may lead to a number less than zero and so, this tick, nothing will happen
-        this.currentTickPercentage += (this.cyclesPerTick / this.encryptionDifficulty) / Math.pow(this.unsolvedCells.length, GRID_SIZE_DIFFICULTY_EXPONENT);
+        this.currentTickPercentage += this.attacksPerTick;
 
         // if the currentTickPercentage is bigger than one, we solve that many cells
         if(this.currentTickPercentage >= 1)
@@ -142,11 +147,6 @@ class EncryptionCracker extends Task
     {
         json = json?json:{rows:10,cols:10,difficulty:50};
         return new EncryptionCracker(json.rows, json.cols, json.difficulty);
-    }
-
-    getRewardRatio()
-    {
-        return this.difficultyRatio / Math.pow(this.ticksTaken, 2);
     }
 }
 

@@ -76,20 +76,19 @@ class Mission extends EventListener
 
         this.setDifficulty(this.target.securityLevel);
 
-        let missionChallengeDifficulty = Math.floor(this.difficulty);
         let serverType = "Server";
-        if(missionChallengeDifficulty > 10)
+        if(this.difficulty > 10)
         {
             serverType = 'Server Farm';
         }
-        else if(missionChallengeDifficulty > 5)
+        else if(this.difficulty > 5)
         {
             serverType = 'Cluster';
         }
 
         this.computer = new MissionComputer(this.target, serverType)
-            .setPassword(Password.getPasswordForDifficulty(missionChallengeDifficulty))
-            .setEncryption(new Encryption(missionChallengeDifficulty))
+            .setPassword(Password.getPasswordForDifficulty(this.difficulty))
+            .setEncryption(new Encryption(this.difficulty))
             .on('accessed', ()=>{
                 this.signalComplete();
             }).on('connectionStepTraced', (step)=>{

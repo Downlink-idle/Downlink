@@ -6,14 +6,14 @@ const   CPU = require('./CPU'),
 /*
  * Custom exceptions
  */
-class NoFreeCPUCyclesError extends Error{};
-class CPUDuplicateTaskError extends Error{};
-class InvalidTaskError extends Error{};
+class NoFreeCPUCyclesError extends Error{}
+class CPUDuplicateTaskError extends Error{}
+class InvalidTaskError extends Error{}
 
 class CPUPool extends EventListener
 {
     /**
-     * @param {Array.<CPU>>} cpus   The CPUs to add into the cpu pool
+     * @param {Array.<CPU>} cpus   The CPUs to add into the cpu pool
      * @param {number} maxCPUs      The maximum number of CPUs in the pool
      */
     constructor(cpus, maxCPUs)
@@ -33,11 +33,6 @@ class CPUPool extends EventListener
         {
             throw new Error("More CPUs than allotted amount");
         }
-
-        /**
-         * @type {number} The average speed of all cpus in the pool
-         */
-        this.averageSpeed = 0;
         /**
          * @type {number} The average speed of all cpus in the pool
          */
@@ -52,7 +47,7 @@ class CPUPool extends EventListener
         this.tasks = [];
 
         /**
-         * @type {Object.<string, <Task>>}
+         * @type {Object.<string, Task>}
          */
         this.tasksByHash = {};
 
@@ -101,7 +96,7 @@ class CPUPool extends EventListener
         }
     }
 
-    flagCPUDead(slot, cpu)
+    flagCPUDead()
     {
         this.trigger('cpuBurnedOut');
         this.update();
@@ -113,7 +108,6 @@ class CPUPool extends EventListener
 
     update()
     {
-        this.averageSpeed = 0;
         this.totalSpeed = 0;
         this.cpuCount = 0;
         for(let cpu of this.cpus)
@@ -124,7 +118,6 @@ class CPUPool extends EventListener
                 this.cpuCount ++;
             }
         }
-        this.averageSpeed = this.totalSpeed / this.cpuCount;
     }
 
     /**
@@ -191,11 +184,6 @@ class CPUPool extends EventListener
         return this.totalSpeed - this.load;
     }
 
-    get averageLoad()
-    {
-        return this.load / this.cpuCount;
-    }
-
     alterCPULoad(taskHash, direction)
     {
         let task = this.tasksByHash[taskHash];
@@ -224,9 +212,12 @@ class CPUPool extends EventListener
 
         for(let task of this.tasks)
         {
-            let taskCycles = Math.floor(weightedFreeSpace * task.weight) + task.minimumRequiredCycles;
-            task.setCyclesPerTick(taskCycles);
-            results[task.hash] = (taskCycles / this.totalSpeed * 100).toFixed(2);
+            let weightedCycles = weightedFreeSpace * task.weight,
+                taskCycles = weightedCycles + task.minimumRequiredCycles,
+                cyclePercentage = (taskCycles / this.totalSpeed * 100).toFixed(2);
+            task.setCyclesPerTick(Math.floor(taskCycles));
+            task.setLoadPercentage(cyclePercentage);
+            results[task.hash] =cyclePercentage;
         }
 
         return results;

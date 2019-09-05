@@ -131,7 +131,7 @@ class MissionComputer extends Computer
             })
             .on('start', ()=>{this.startTraceBack();});
 
-        this.difficultyModifier += Math.pow(challenge.difficulty, DIFFICULTY_EXPONENT);
+        this.difficultyModifier += challenge.calculatedDifficulty;
         this.challenges.push(challenge);
         this.traceSpeed = Math.pow(this.difficultyModifier, this.company.securityLevel);
     }
