@@ -564,14 +564,13 @@
             let html = '';
             for(let task of this.downlink.currentMissionTasks)
             {
-                let loadPercentage = (task.cyclesPerTick / totalCycles * 100).toFixed(2);
                 html += `<div class="row ${CPU_MISSION_TASK}" data-task-hash ="${task.hash}">`+
                     `<div class="col-3 cpu-task-name">${task.name}</div>`+
                     `<div class="col cpu-task-bar">`+
                         `<div class="reduce-cpu-load cpu-load-changer" data-cpu-load-direction="-1">&lt;</div>`+
                         `<div class="percentage-bar-container">`+
-                            `<div class="percentage-bar" style="width:${loadPercentage}%" data-task-hash ="${task.hash}">&nbsp;</div>`+
-                            `<div class="percentage-text" data-task-hash ="${task.hash}">${loadPercentage}</div>`+
+                            `<div class="percentage-bar" style="width:${task.loadPercentage}%" data-task-hash ="${task.hash}">&nbsp;</div>`+
+                            `<div class="percentage-text" data-task-hash ="${task.hash}">${task.loadPercentage}%</div>`+
                         `</div>`+
                         `<div class="increase-cpu-load cpu-load-changer" data-cpu-load-direction="+1">&gt;</div>`+
                     `</div>`+
@@ -591,7 +590,7 @@
             for(let hash in cpuLoad)
             {
                 $(`.percentage-bar[data-task-hash="${hash}"]`).css("width", `${cpuLoad[hash]}%`);
-                $(`.percentage-text[data-task-hash="${hash}"]`).text(cpuLoad[hash]);
+                $(`.percentage-text[data-task-hash="${hash}"]`).text(`${cpuLoad[hash]}%`);
             }
         },
         updateCurrentMissionView:function(server){

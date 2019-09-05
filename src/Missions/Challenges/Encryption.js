@@ -26,17 +26,23 @@ class Encryption extends Challenge
         {
             name = 'Quadratic';
         }
-        super(name + ' Encryption', difficultyRatio);
+        super(name + ' Encryption', difficulty);
         this.rows = rows;
         this.cols = cols;
         this.size = size;
     }
 
+    get calculatedDifficulty()
+    {
+        return Math.floor(Math.pow(this.size, DIFFICULTY_EXPONENT));
+    }
+
     static getDimensionForDifficulty(difficulty)
     {
-        const min = 5 + difficulty,
-              max = 8 + difficulty * 2;
-        return getRandomIntBetween(5+difficulty, 9+difficulty);
+        const   flooredDifficulty = Math.floor(difficulty),
+                min = 5 + flooredDifficulty,
+                max = 8 + flooredDifficulty * 2;
+        return getRandomIntBetween(min, max);
     }
 }
 

@@ -2159,14 +2159,14 @@ const   CPU = require('./CPU'),
 /*
  * Custom exceptions
  */
-class NoFreeCPUCyclesError extends Error{};
-class CPUDuplicateTaskError extends Error{};
-class InvalidTaskError extends Error{};
+class NoFreeCPUCyclesError extends Error{}
+class CPUDuplicateTaskError extends Error{}
+class InvalidTaskError extends Error{}
 
 class CPUPool extends EventListener
 {
     /**
-     * @param {Array.<CPU>>} cpus   The CPUs to add into the cpu pool
+     * @param {Array.<CPU>} cpus   The CPUs to add into the cpu pool
      * @param {number} maxCPUs      The maximum number of CPUs in the pool
      */
     constructor(cpus, maxCPUs)
@@ -2186,11 +2186,6 @@ class CPUPool extends EventListener
         {
             throw new Error("More CPUs than allotted amount");
         }
-
-        /**
-         * @type {number} The average speed of all cpus in the pool
-         */
-        this.averageSpeed = 0;
         /**
          * @type {number} The average speed of all cpus in the pool
          */
@@ -2205,7 +2200,7 @@ class CPUPool extends EventListener
         this.tasks = [];
 
         /**
-         * @type {Object.<string, <Task>>}
+         * @type {Object.<string, Task>}
          */
         this.tasksByHash = {};
 
@@ -2254,7 +2249,7 @@ class CPUPool extends EventListener
         }
     }
 
-    flagCPUDead(slot, cpu)
+    flagCPUDead()
     {
         this.trigger('cpuBurnedOut');
         this.update();
@@ -2266,7 +2261,6 @@ class CPUPool extends EventListener
 
     update()
     {
-        this.averageSpeed = 0;
         this.totalSpeed = 0;
         this.cpuCount = 0;
         for(let cpu of this.cpus)
@@ -2277,7 +2271,6 @@ class CPUPool extends EventListener
                 this.cpuCount ++;
             }
         }
-        this.averageSpeed = this.totalSpeed / this.cpuCount;
     }
 
     /**
@@ -2344,11 +2337,6 @@ class CPUPool extends EventListener
         return this.totalSpeed - this.load;
     }
 
-    get averageLoad()
-    {
-        return this.load / this.cpuCount;
-    }
-
     alterCPULoad(taskHash, direction)
     {
         let task = this.tasksByHash[taskHash];
@@ -2366,20 +2354,31 @@ class CPUPool extends EventListener
             return;
         }
         let totalWeight = 0;
+        console.log(`Total CPU Pool cycles: ${this.totalSpeed}`);
+        console.log(`Total load: ${this.load}`);
+        console.log(`Total assignable cylces: ${this.availableCycles}`);
 
         for(let task of this.tasks)
         {
             totalWeight += task.weight;
         }
+        console.log(`Total Task Weight: ${totalWeight}`);
 
         let weightedFreeSpace = this.availableCycles / totalWeight;
+        console.log(`Each unit of weight amounts to ${weightedFreeSpace.toFixed(2)}`);
         let results = {};
 
         for(let task of this.tasks)
         {
-            let taskCycles = Math.floor(weightedFreeSpace * task.weight) + task.minimumRequiredCycles;
-            task.setCyclesPerTick(taskCycles);
-            results[task.hash] = (taskCycles / this.totalSpeed * 100).toFixed(2);
+            let weightedCycles = weightedFreeSpace * task.weight,
+                taskCycles = weightedCycles + task.minimumRequiredCycles,
+                cyclePercentage = (taskCycles / this.totalSpeed * 100).toFixed(2);
+            console.log(`Task specific weight ${task.weight}, amounting to ${(task.weight/totalWeight*100).toFixed(2)}% of assignable cycles`);
+            console.log(`Converts to ${weightedCycles} plus the minimum required cycles of ${task.minimumRequiredCycles}`);
+            console.log(`And adds up to ${taskCycles} out of ${this.totalSpeed}, which is ${cyclePercentage}%`);
+            task.setCyclesPerTick(Math.floor(taskCycles));
+            task.setLoadPercentage(cyclePercentage);
+            results[task.hash] =cyclePercentage;
         }
 
         return results;
@@ -2754,7 +2753,7 @@ const   Alphabet = require('../../Alphabet'),
         Task = require('./Task');
 
 
-const GRID_SIZE_DIFFICULTY_EXPONENT = 0.8;
+const GRID_SIZE_DIFFICULTY_MANTISSA = 1.4;
 
 class EncryptionCell
 {
@@ -2787,12 +2786,6 @@ class EncryptionCracker extends Task
         super('Encryption Cracker', encryption, encryption.difficulty);
         this.rows = encryption.rows;
         this.cols = encryption.cols;
-        this.encryption = encryption;
-
-        /**
-         * This is just an arbitrary number representing how many clock cycles per tick are needed to solve each cell
-         */
-        this.encryptionDifficulty = encryption.difficulty;
 
         /**
          *
@@ -2812,6 +2805,9 @@ class EncryptionCracker extends Task
          * @type {Array.<EncryptionCell>}
          */
         this.cells = [];
+        /**
+         * @type {Array.<EncryptionCell>}
+         */
         this.unsolvedCells = [];
         for(let i = 0; i < this.rows; i++)
         {
@@ -2864,7 +2860,18 @@ class EncryptionCracker extends Task
 
     get solved()
     {
-        return this.unsolvedCells.length == 0;
+        return this.unsolvedCells.length === 0;
+    }
+
+    // figure out how many cells to solve
+    // I'm trying to figure out how to make this longer
+    // this may lead to a number less than zero and so, this tick, nothing will happen
+
+    setCyclesPerTick(cyclesPerTick)
+    {
+        super.setCyclesPerTick(cyclesPerTick);
+        this.attacksPerTick = cyclesPerTick / (this.unsolvedCells.length * Math.pow(GRID_SIZE_DIFFICULTY_MANTISSA, this.challenge.difficulty));
+        return this;
     }
 
     processTick()
@@ -2875,10 +2882,7 @@ class EncryptionCracker extends Task
             cell.tick();
         }
 
-        // figure out how many cells to solve
-        // I'm trying to figure out how to make this longer
-        // this may lead to a number less than zero and so, this tick, nothing will happen
-        this.currentTickPercentage += (this.cyclesPerTick / this.encryptionDifficulty) / Math.pow(this.unsolvedCells.length, GRID_SIZE_DIFFICULTY_EXPONENT);
+        this.currentTickPercentage += this.attacksPerTick;
 
         // if the currentTickPercentage is bigger than one, we solve that many cells
         if(this.currentTickPercentage >= 1)
@@ -2894,11 +2898,6 @@ class EncryptionCracker extends Task
         json = json?json:{rows:10,cols:10,difficulty:50};
         return new EncryptionCracker(json.rows, json.cols, json.difficulty);
     }
-
-    getRewardRatio()
-    {
-        return this.difficultyRatio / Math.pow(this.ticksTaken, 2);
-    }
 }
 
 module.exports = EncryptionCracker;
@@ -2906,7 +2905,7 @@ module.exports = EncryptionCracker;
 },{"../../Alphabet":6,"../../Helpers":23,"./Task":17}],16:[function(require,module,exports){
 const   DICTIONARY_CRACKER_MINIMUM_CYCLES = 5,
         SEQUENTIAL_CRACKER_MINIMUM_CYCLES = 20,
-        Task = require('./Task')
+        Task = require('./Task'),
         Alphabet = require('../../Alphabet');
 
 class PasswordCracker extends Task
@@ -2914,15 +2913,24 @@ class PasswordCracker extends Task
     constructor(password, name, minimumRequiredCycles)
     {
         super(name, password, minimumRequiredCycles);
-        this.password = password;
         this.currentGuess = null;
+        this.attacksPerTick = 0;
+    }
+
+
+
+    setCyclesPerTick(cyclesPerTick)
+    {
+        super.setCyclesPerTick(cyclesPerTick);
+        this.attacksPerTick = Math.floor(Math.pow(cyclesPerTick, 1/Math.pow(this.challenge.difficulty, 2)));
+        return this;
     }
 
     attackPassword()
     {
-        if(!this.password.solved)
+        if(!this.challenge.solved)
         {
-            let result = this.password.attack(this.currentGuess);
+            let result = this.challenge.attack(this.currentGuess);
             if (result)
             {
                 this.signalComplete();
@@ -2943,11 +2951,6 @@ class DictionaryCracker extends PasswordCracker
         this.totalGuesses = 0;
     }
 
-    get dictionaryEntriesLeft()
-    {
-        return this.dictionary.length;
-    }
-
     processTick()
     {
         if(!this.solved)
@@ -2959,7 +2962,7 @@ class DictionaryCracker extends PasswordCracker
             {
                 this.currentGuess = this.dictionary[this.totalGuesses++];
                 let guessSuccessful = this.attackPassword();
-                if(guessSuccessful || guessesThisTick++ >= this.cyclesPerTick)
+                if(guessSuccessful || guessesThisTick++ >= this.attacksPerTick)
                 {
                     attacking = false;
                 }
@@ -2975,7 +2978,7 @@ class SequentialAttacker extends PasswordCracker
         super(password, 'Sequential Cracker', SEQUENTIAL_CRACKER_MINIMUM_CYCLES);
         this.currentGuess = '';
         this.lettersSolved = 0;
-        console.log(password.length);
+
         for(let i = 0; i < password.length; i++)
         {
             this.currentGuess += '*';
@@ -2999,12 +3002,12 @@ class SequentialAttacker extends PasswordCracker
         while(attacking)
         {
             let letterGuess = this.getNextLetter();
-            if(this.password.attackLetter(letterGuess))
+            if(this.challenge.attackLetter(letterGuess))
             {
                 this.currentGuess = this.currentGuess.substr(0, this.lettersSolved++) + letterGuess + this.currentGuess.substr(this.lettersSolved);
             }
             let guessSuccessful = this.attackPassword();
-            if(guessSuccessful || guessesThisTick++ >= this.cyclesPerTick)
+            if(guessSuccessful || guessesThisTick++ >= this.attacksPerTick)
             {
                 attacking = false;
             }
@@ -3046,6 +3049,7 @@ class Task extends EventListener
         this.working = true;
         this.completed = false;
         this.challenge = challenge.setTask(this);
+        this.loadPercentage = 0;
     }
 
     get hash()
@@ -3073,6 +3077,11 @@ class Task extends EventListener
         }
         this.cyclesPerTick = cyclesPerTick;
         return this;
+    }
+
+    setLoadPercentage(loadPercentage)
+    {
+        this.loadPercentage = loadPercentage;
     }
 
     addCycles(tickIncrease)
@@ -4362,14 +4371,13 @@ module.exports = EventListener;
             let html = '';
             for(let task of this.downlink.currentMissionTasks)
             {
-                let loadPercentage = (task.cyclesPerTick / totalCycles * 100).toFixed(2);
                 html += `<div class="row ${CPU_MISSION_TASK}" data-task-hash ="${task.hash}">`+
                     `<div class="col-3 cpu-task-name">${task.name}</div>`+
                     `<div class="col cpu-task-bar">`+
                         `<div class="reduce-cpu-load cpu-load-changer" data-cpu-load-direction="-1">&lt;</div>`+
                         `<div class="percentage-bar-container">`+
-                            `<div class="percentage-bar" style="width:${loadPercentage}%" data-task-hash ="${task.hash}">&nbsp;</div>`+
-                            `<div class="percentage-text" data-task-hash ="${task.hash}">${loadPercentage}</div>`+
+                            `<div class="percentage-bar" style="width:${task.loadPercentage}%" data-task-hash ="${task.hash}">&nbsp;</div>`+
+                            `<div class="percentage-text" data-task-hash ="${task.hash}">${task.loadPercentage}%</div>`+
                         `</div>`+
                         `<div class="increase-cpu-load cpu-load-changer" data-cpu-load-direction="+1">&gt;</div>`+
                     `</div>`+
@@ -4389,7 +4397,7 @@ module.exports = EventListener;
             for(let hash in cpuLoad)
             {
                 $(`.percentage-bar[data-task-hash="${hash}"]`).css("width", `${cpuLoad[hash]}%`);
-                $(`.percentage-text[data-task-hash="${hash}"]`).text(cpuLoad[hash]);
+                $(`.percentage-text[data-task-hash="${hash}"]`).text(`${cpuLoad[hash]}%`);
             }
         },
         updateCurrentMissionView:function(server){
@@ -4741,6 +4749,11 @@ class Challenge extends EventListener
         this.trigger('solved');
         return this;
     }
+
+    get calculatedDifficulty()
+    {
+        throw new Error('Unimplemented abstract method');
+    }
 }
 
 module.exports = Challenge;
@@ -4774,17 +4787,23 @@ class Encryption extends Challenge
         {
             name = 'Quadratic';
         }
-        super(name + ' Encryption', difficultyRatio);
+        super(name + ' Encryption', difficulty);
         this.rows = rows;
         this.cols = cols;
         this.size = size;
     }
 
+    get calculatedDifficulty()
+    {
+        return Math.floor(Math.pow(this.size, DIFFICULTY_EXPONENT));
+    }
+
     static getDimensionForDifficulty(difficulty)
     {
-        const min = 5 + difficulty,
-              max = 8 + difficulty * 2;
-        return getRandomIntBetween(5+difficulty, 9+difficulty);
+        const   flooredDifficulty = Math.floor(difficulty),
+                min = 5 + flooredDifficulty,
+                max = 8 + flooredDifficulty * 2;
+        return getRandomIntBetween(min, max);
     }
 }
 
@@ -4818,6 +4837,11 @@ class Password extends Challenge
     {
         this.trigger('start');
         return testPassword === this.text;
+    }
+
+    get calculatedDifficulty()
+    {
+        return this.difficulty;
     }
 
     static get PASSWORD_DICTIONARY_DIFFICULTIES()
@@ -4856,13 +4880,13 @@ class AlphanumericPassword extends Password
 
     static getRandomPassword(difficulty)
     {
-        let stringLength = helpers.getRandomIntegerBetween(5, 10) + difficulty;
+        let stringLength = helpers.getRandomIntegerBetween(5, 10) + Math.floor(difficulty);
         let password = '';
         for (let i = 0; i < stringLength; i++)
         {
             password += Alphabet.getRandomLetter();
         }
-        return new AlphanumericPassword(password, stringLength);
+        return new AlphanumericPassword(password, difficulty);
     }
 }
 
@@ -4881,7 +4905,7 @@ class DictionaryPassword extends Password
      */
     static getRandomPassword(difficulty)
     {
-        let usedDictionary = DictionaryPassword.reduceDictionary(PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST - Math.min(difficulty, PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST)),
+        let usedDictionary = DictionaryPassword.reduceDictionary(PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST - Math.min(Math.floor(difficulty), PASSWORD_DICTIONARY_DIFFICULTIES.HARDEST)),
             password = helpers.getRandomArrayElement(usedDictionary);
         return new DictionaryPassword(password, difficulty, usedDictionary);
     }
@@ -7244,20 +7268,19 @@ class Mission extends EventListener
 
         this.setDifficulty(this.target.securityLevel);
 
-        let missionChallengeDifficulty = Math.floor(this.difficulty);
         let serverType = "Server";
-        if(missionChallengeDifficulty > 10)
+        if(this.difficulty > 10)
         {
             serverType = 'Server Farm';
         }
-        else if(missionChallengeDifficulty > 5)
+        else if(this.difficulty > 5)
         {
             serverType = 'Cluster';
         }
 
         this.computer = new MissionComputer(this.target, serverType)
-            .setPassword(Password.getPasswordForDifficulty(missionChallengeDifficulty))
-            .setEncryption(new Encryption(missionChallengeDifficulty))
+            .setPassword(Password.getPasswordForDifficulty(this.difficulty))
+            .setEncryption(new Encryption(this.difficulty))
             .on('accessed', ()=>{
                 this.signalComplete();
             }).on('connectionStepTraced', (step)=>{
@@ -7448,7 +7471,7 @@ class MissionComputer extends Computer
             })
             .on('start', ()=>{this.startTraceBack();});
 
-        this.difficultyModifier += Math.pow(challenge.difficulty, DIFFICULTY_EXPONENT);
+        this.difficultyModifier += challenge.calculatedDifficulty;
         this.challenges.push(challenge);
         this.traceSpeed = Math.pow(this.difficultyModifier, this.company.securityLevel);
     }
