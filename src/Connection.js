@@ -43,6 +43,7 @@ class Connection extends EventListener
         this.amountTraced = 0;
         this.traceTicks = 0;
         this.active = false;
+        this.traced = false;
     }
 
     static improveConnectionDistance(amount)
@@ -98,6 +99,7 @@ class Connection extends EventListener
     clone()
     {
         let clone = new Connection(this.name);
+        clone.startingPoint = this.startingPoint;
         for(let computer of this.computers)
         {
             clone.addComputer(computer);
@@ -119,7 +121,10 @@ class Connection extends EventListener
      */
     traceStep(stepTraceAmount)
     {
-        //console.log(stepTraceAmount);
+        if(this.traced)
+        {
+            return;
+        }
         this.amountTraced += stepTraceAmount;
         this.traceTicks++;
         if(this.traceTicks % Connection.sensitivity === 0)
@@ -133,6 +138,7 @@ class Connection extends EventListener
             this.amountTraced = 0;
             if(this.computersTraced >= this.connectionLength)
             {
+                this.traced = true;
                 this.trigger("connectionTraced");
             }
             this.trigger("stepTraced", this.computersTraced);
@@ -175,7 +181,7 @@ class Connection extends EventListener
 
     get tracePercent()
     {
-        return (this.totalAmountTraced / this.totalConnectionLength * 100).toFixed(2);
+        return Math.min(100, (this.totalAmountTraced / this.totalConnectionLength * 100).toFixed(2));
     }
 
     removeComputer(computer)

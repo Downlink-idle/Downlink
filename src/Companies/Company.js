@@ -65,7 +65,7 @@ class Company
 
     static get securityIncreaseExponent()
     {
-        return 1.02;
+        return 1.01;
     }
 
     /**

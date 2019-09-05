@@ -1945,7 +1945,7 @@ class Company
 
     static get securityIncreaseExponent()
     {
-        return 1.02;
+        return 1.01;
     }
 
     /**
@@ -2775,7 +2775,7 @@ class EncryptionCracker extends Task
 {
     constructor(encryption)
     {
-        super('Encryption Cracker', encryption, encryption.difficulty);
+        super('Encryption Cracker', encryption);
         this.rows = encryption.rows;
         this.cols = encryption.cols;
 
@@ -2867,7 +2867,7 @@ class EncryptionCracker extends Task
 
     get attacksPerTick()
     {
-        let attacksPerTick = this.cyclesPerTick / (this.unsolvedCells.length * Math.pow(GRID_SIZE_DIFFICULTY_MANTISSA, Math.pow(this.challenge.difficulty, 2)));
+        let attacksPerTick = this.cyclesPerTick / (this.unsolvedCells.length * this.challenge.difficulty);
         return attacksPerTick;
     }
 
@@ -3038,7 +3038,7 @@ class Task extends EventListener
     {
         super();
         this.name= name;
-        this.minimumRequiredCycles = minimumRequiredCycles?minimumRequiredCycles:10;
+        this.minimumRequiredCycles = minimumRequiredCycles?minimumRequiredCycles:challenge.difficulty;
         this.cyclesPerTick = 0;
         this.weight = 1;
         this.difficultyRatio = 0;
@@ -3201,6 +3201,7 @@ class Connection extends EventListener
         this.amountTraced = 0;
         this.traceTicks = 0;
         this.active = false;
+        this.traced = false;
     }
 
     static improveConnectionDistance(amount)
@@ -3256,6 +3257,7 @@ class Connection extends EventListener
     clone()
     {
         let clone = new Connection(this.name);
+        clone.startingPoint = this.startingPoint;
         for(let computer of this.computers)
         {
             clone.addComputer(computer);
@@ -3277,7 +3279,10 @@ class Connection extends EventListener
      */
     traceStep(stepTraceAmount)
     {
-        //console.log(stepTraceAmount);
+        if(this.traced)
+        {
+            return;
+        }
         this.amountTraced += stepTraceAmount;
         this.traceTicks++;
         if(this.traceTicks % Connection.sensitivity === 0)
@@ -3291,6 +3296,7 @@ class Connection extends EventListener
             this.amountTraced = 0;
             if(this.computersTraced >= this.connectionLength)
             {
+                this.traced = true;
                 this.trigger("connectionTraced");
             }
             this.trigger("stepTraced", this.computersTraced);
@@ -3333,7 +3339,7 @@ class Connection extends EventListener
 
     get tracePercent()
     {
-        return (this.totalAmountTraced / this.totalConnectionLength * 100).toFixed(2);
+        return Math.min(100, (this.totalAmountTraced / this.totalConnectionLength * 100).toFixed(2));
     }
 
     removeComputer(computer)
@@ -3840,11 +3846,11 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.7b",
+        version:"0.4.10b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
-        minimumVersion:"0.4.8b",
+        minimumVersion:"0.4.10b",
         /**
          * jquery entities that are needed for updating
          */
@@ -4748,13 +4754,9 @@ class Challenge extends EventListener
 module.exports = Challenge;
 
 },{"../../EventListener":21}],25:[function(require,module,exports){
-const DIFFICULTY_EXPONENT = 0.3;
-
-function getRandomIntBetween(min, max)
-{
-    return  Math.floor(Math.random() * (max - min + 1)) + min;
-}
-const Challenge = require('./Challenge');
+const   DIFFICULTY_EXPONENT = 0.3;
+        Challenge = require('./Challenge'),
+        helper = require('../../Helpers');
 class Encryption extends Challenge
 {
     /**
@@ -4791,13 +4793,13 @@ class Encryption extends Challenge
         const   flooredDifficulty = Math.floor(difficulty),
                 min = 6 + flooredDifficulty,
                 max = 8 + flooredDifficulty * 2;
-        return getRandomIntBetween(min, max);
+        return helper.getRandomIntegerBetween(min, max);
     }
 }
 
 module.exports = Encryption;
 
-},{"./Challenge":24}],26:[function(require,module,exports){
+},{"../../Helpers":23,"./Challenge":24}],26:[function(require,module,exports){
 const   dictionary = require('./dictionary'),
         Challenge = require('./Challenge'),
         Alphabet = require('../../Alphabet'),
@@ -4829,7 +4831,7 @@ class Password extends Challenge
 
     get calculatedDifficulty()
     {
-        return this.difficulty;
+        return Math.floor(Math.sqrt(this.length * this.difficulty));
     }
 
     static get PASSWORD_DICTIONARY_DIFFICULTIES()

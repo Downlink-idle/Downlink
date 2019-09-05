@@ -33,7 +33,7 @@ class EncryptionCracker extends Task
 {
     constructor(encryption)
     {
-        super('Encryption Cracker', encryption, encryption.difficulty);
+        super('Encryption Cracker', encryption);
         this.rows = encryption.rows;
         this.cols = encryption.cols;
 
@@ -125,7 +125,7 @@ class EncryptionCracker extends Task
 
     get attacksPerTick()
     {
-        let attacksPerTick = this.cyclesPerTick / (this.unsolvedCells.length * Math.pow(GRID_SIZE_DIFFICULTY_MANTISSA, Math.pow(this.challenge.difficulty, 2)));
+        let attacksPerTick = this.cyclesPerTick / (this.unsolvedCells.length * this.challenge.difficulty);
         return attacksPerTick;
     }
 

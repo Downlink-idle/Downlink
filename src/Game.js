@@ -36,11 +36,11 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.7b",
+        version:"0.4.10b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
-        minimumVersion:"0.4.8b",
+        minimumVersion:"0.4.10b",
         /**
          * jquery entities that are needed for updating
          */

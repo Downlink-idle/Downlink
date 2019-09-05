@@ -1,10 +1,6 @@
-const DIFFICULTY_EXPONENT = 0.3;
-
-function getRandomIntBetween(min, max)
-{
-    return  Math.floor(Math.random() * (max - min + 1)) + min;
-}
-const Challenge = require('./Challenge');
+const   DIFFICULTY_EXPONENT = 0.3;
+        Challenge = require('./Challenge'),
+        helper = require('../../Helpers');
 class Encryption extends Challenge
 {
     /**
@@ -41,7 +37,7 @@ class Encryption extends Challenge
         const   flooredDifficulty = Math.floor(difficulty),
                 min = 6 + flooredDifficulty,
                 max = 8 + flooredDifficulty * 2;
-        return getRandomIntBetween(min, max);
+        return helper.getRandomIntegerBetween(min, max);
     }
 }
 

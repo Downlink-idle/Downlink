@@ -17,7 +17,7 @@ class Task extends EventListener
     {
         super();
         this.name= name;
-        this.minimumRequiredCycles = minimumRequiredCycles?minimumRequiredCycles:10;
+        this.minimumRequiredCycles = minimumRequiredCycles?minimumRequiredCycles:challenge.difficulty;
         this.cyclesPerTick = 0;
         this.weight = 1;
         this.difficultyRatio = 0;
