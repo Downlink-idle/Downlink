@@ -40,7 +40,7 @@
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
-        minimumVersion:"0.4.7b",
+        minimumVersion:"0.4.8b",
         /**
          * jquery entities that are needed for updating
          */
