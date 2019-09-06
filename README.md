@@ -11,19 +11,19 @@ I don't currently program anything for node, but I like the clean code that come
 The current game loop abstracts a simulated computer solving some simulated problems. The Game.js file is what is exposed to the browser and is the only file that expects to see the window object at all.
 The game JSON object requires Downlink which module.exports an instance of a class to encompass the game's business logic, where Game.js is solely concerned with what to do with the browser's DOM (which I render using [Bootsrap](https://getbootstrap.com/) and update with [jquery](https://jquery.com/) via their respective CDNs).
 
-The Game class isntantiates a Downlink Object and adds some listeners to it.
+The Game object isntantiates a Downlink Object from a its class and adds some listeners to it.
 
-At present the primitive game loop looks like this:
+At present the game loop looks like this:
 1) Game Object asks Downlink to tick which
     1) tells its simulated pc to tick
-    2) tells its simulated mission to tick (which is currently just a void method that does nothing, but I envisage doing the likes of the connection tracing that Uplink had)
-2) finally draws the UI information for the Downlink object
+    2) tells its simulated mission to tick if it has one
+2) If the game has no mission, it asks for one
    
-Any time the Downlink object fires off a missionComplete event the Game Object asks Downlink to choose a new mission for itself.
+Any time the Downlink object fires off a missionComplete event the Game Object flags itself as being ready for a new mission. 
 
 This game loop is always going to be running in the background but there will be a few more things added to it before the game is done. 
 
 Any time a Mission is requested, it creates a computer which has some challenges that must be solved in order for the mission computer (an extended Computer class) to tell the mission it's done.
 When the mission is done it triggers an event. These tasks are passed to the player's computer which adds tasks to its CPUs. When those tasks solve their challenges, they tell the CPU they're done.
 
-The current very primitive UI can be seen at the [git hub pages branch page](https://cuannan.github.io/Downlink/). There is a [discord](https://discord.gg/mmmuCNq) but I am not yet presumptuous enough to start a subreddit.  
+The current very primitive UI can be seen at the [git hub pages branch page](https://cuannan.github.io/Downlink/). There is a [discord](https://discord.gg/mmmuCNq) and I am now presumptuous enough to have [a reddit](https://www.reddit.com/r/Downlink_Idle_Game)  
