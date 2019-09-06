@@ -17,7 +17,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "bundle": "browserify ./src/Game.js > ./js/bundle.js",
     "compress": "minify ./js/bundle.js > ./js/bundle.packaged.js",
-    "package": "npm run bundle && npm run compress"
+    "package": "npm run bundle && npm run compress",
+    "buildTest": "browserify ./test/testIceBreaker.js > ./test/testIceBreaker.build.js"
   },
   "repository": {
     "type": "git",
