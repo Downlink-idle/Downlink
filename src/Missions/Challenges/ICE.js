@@ -11,9 +11,11 @@ class ICE extends Challenge
          */
         this.width = helpers.getRandomIntegerBetween(8,10);
         /**
-         * @type {number}
+         * @type {number} We always want this to be odd, because 0 is in the middle of its range
          */
-        this.height = helpers.getRandomIntegerBetween(3,5);
+        this.height = helpers.getRandomIntegerBetween(4, 6) * 2 + 1;
+
+
         /**
          * @type {number}
          */
@@ -26,3 +28,5 @@ class ICE extends Challenge
         return this.size;
     }
 }
+
+module.exports = ICE;
