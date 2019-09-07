@@ -5,6 +5,7 @@ const   MissionGenerator = require('./Missions/MissionGenerator'),
         ComputerGenerator = require('./Computers/ComputerGenerator'),
         CPU = require('./Computers/CPU'),
         helper = require('./Helpers'),
+        Research = require('./Computers/Research/Research'),
         Decimal = require('break_infinity.js');
 
 /**
@@ -89,10 +90,13 @@ class Downlink extends EventListener
 
     disconnectFromMissionServer()
     {
-        this.activeMission.computer.disconnect();
-        for(let task of this.playerComputer.missionTasks)
+        if(this.activeMission)
         {
-            task.pause();
+            this.activeMission.computer.disconnect();
+            for (let task of this.playerComputer.missionTasks)
+            {
+                task.pause();
+            }
         }
     }
 
@@ -268,6 +272,27 @@ class Downlink extends EventListener
     {
         this.currency = this.currency.minus(this.cpuIncreaseCost);
         this.playerComputer.increaseCPUPoolSize();
+    }
+
+    get availableResearch()
+    {
+        return Research.availableResearch;
+    }
+
+    startResearch(researchItemName)
+    {
+        let researchItem = Research.getItemByName(researchItemName);
+        researchItem.on('complete', ()=>{
+            this.playerComputer.updateCPUPool();
+            this.trigger('researchComplete');
+        });
+
+        this.playerComputer.startResearchTask(researchItem);
+    }
+
+    get currentCPUTasks()
+    {
+        return this.playerComputer.currentCPUTasks;
     }
 }
 

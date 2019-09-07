@@ -63,7 +63,11 @@ function drawGraph(points, context, color)
  */
 function drawGraphs(iceBreaker, context)
 {
-    drawGraph(iceBreaker.iceBreakerPoints,context, '#00d');
+    if(!iceBreaker.completed)
+    {
+        drawGraph(iceBreaker.iceBreakerPoints, context, '#00d');
+    }
+
     drawGraph(iceBreaker.icePoints, context, '#800')
     context.strokeStyle = '#000';
 }

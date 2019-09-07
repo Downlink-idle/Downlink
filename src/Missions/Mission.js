@@ -109,7 +109,7 @@ class Mission extends EventListener
      */
     get reward()
     {
-        return this.difficulty * this.computer.difficultyModifier * this.sponsor.playerRespectModifier;
+        return Math.pow((this.difficulty * this.computer.difficultyModifier), this.sponsor.playerRespectModifier);
     }
 
     signalComplete()

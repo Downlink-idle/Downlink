@@ -60,6 +60,10 @@ class CPUPool extends EventListener
         {
             this.addCPU(cpu);
         }
+
+        CPU.on('upgrade', ()=>{
+            this.update();
+        });
     }
 
     get width()
@@ -84,7 +88,7 @@ class CPUPool extends EventListener
     {
         if(cpu)
         {
-            cpu.once('burnOut', () => {
+            cpu.once('burnOut', ()=>{
                 this.flagCPUDead(slot, cpu);
             });
             this.cpus[slot] = cpu;
@@ -210,17 +214,35 @@ class CPUPool extends EventListener
         let weightedFreeSpace = this.availableCycles / totalWeight;
         let results = {};
 
-        for(let task of this.tasks)
+        try
         {
-            let weightedCycles = weightedFreeSpace * task.weight,
-                taskCycles = weightedCycles + task.minimumRequiredCycles,
-                cyclePercentage = (taskCycles / this.totalSpeed * 100).toFixed(2);
-            task.setCyclesPerTick(Math.floor(taskCycles));
-            task.setLoadPercentage(cyclePercentage);
-            results[task.hash] =cyclePercentage;
+            for (let task of this.tasks)
+            {
+                let weightedCycles = weightedFreeSpace * task.weight,
+                    taskCycles = weightedCycles + task.minimumRequiredCycles,
+                    cyclePercentage = (taskCycles / this.totalSpeed * 100).toFixed(2);
+                task.setCyclesPerTick(Math.floor(taskCycles));
+                task.setLoadPercentage(cyclePercentage);
+                results[task.hash] = cyclePercentage;
+            }
+        }
+        catch(e)
+        {
+            if(e.constructor.name === 'CPUOverloadError')
+            {
+                this.pauseAllTasks();
+            }
         }
 
         return results;
+    }
+
+    pauseAllTasks()
+    {
+        for (let task of this.tasks)
+        {
+            task.pause();
+        }
     }
 
     /**

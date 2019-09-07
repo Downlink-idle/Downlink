@@ -175,3 +175,11 @@
 {
     width: 100%;
 }
+
+#player-company-standings
+{
+    height: 400px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 26px;
+}

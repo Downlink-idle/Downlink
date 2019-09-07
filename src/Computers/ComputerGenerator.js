@@ -34,7 +34,12 @@ class ComputerGenerator
 
     newPlayerComputer()
     {
-        let potato = new PlayerComputer([new CPU()]);
+        let potato = new PlayerComputer([
+            new CPU(),
+            new CPU(),
+            new CPU(),
+            new CPU()
+        ]);
         potato.setLocation(location);
         return potato;
     }

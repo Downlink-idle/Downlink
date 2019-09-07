@@ -1,5 +1,5 @@
 const   Task = require('./Tasks/Task'),
-        EventListener = require('../EventListener'),
+        Upgradeable = require('../Upgradeable'),
         cpus = require('./cpus');
 
 class CPUFullError extends Error{};
@@ -8,7 +8,7 @@ class InvalidTaskError extends Error{};
 
 const CPU_COST_MODIFIER = 4000;
 
-class CPU extends EventListener
+class CPU extends Upgradeable
 {
     constructor(name, speed, img, lifeCycle, lifeCycleUsed)
     {
@@ -21,7 +21,7 @@ class CPU extends EventListener
         /**
          * @type {number}
          */
-        this.speed = parseInt(speed?speed:defaultCPU.speed);
+        this.baseSpeed = parseInt(speed?speed:defaultCPU.speed);
         /**
          * @type {string} the rgb() color for the cpu
          */
@@ -33,9 +33,35 @@ class CPU extends EventListener
         /**
          * @type {number}
          */
-        this.lifeCycle = parseInt(lifeCycle?lifeCycle:defaultCPU.lifeCycle);
+        this.baseLifeCycle = parseInt(lifeCycle?lifeCycle:defaultCPU.lifeCycle);
         this.lifeCycleUsed = parseInt(lifeCycleUsed?lifeCycleUsed:0);
         this.living = this.lifeCycleUsed < this.lifeCycle;
+    }
+
+    get lifeCycle()
+    {
+        let lifeCycle = this.baseLifeCycle;
+        if(CPU.upgrades && CPU.upgrades.lifeCycle)
+        {
+            for(let amount of CPU.upgrades.lifeCycle)
+            {
+                lifeCycle *= amount;
+            }
+        }
+        return lifeCycle;
+    }
+
+    get speed()
+    {
+        let speed = this.baseSpeed;
+        if(CPU.upgrades && CPU.upgrades.speed)
+        {
+            for(let amount of CPU.upgrades.speed)
+            {
+                speed *= amount;
+            }
+        }
+        return speed;
     }
 
     get remainingLifeCycle()
@@ -45,14 +71,13 @@ class CPU extends EventListener
 
     get health()
     {
-        let decimal = this.remainingLifeCycle / this.lifeCycle,
-            percentage = decimal * 100,
-            fixed = percentage.toFixed(2);
         if(this.lifeCycleUsed >= this.lifeCycle)
         {
             return 0;
         }
-
+        let decimal = this.remainingLifeCycle / this.lifeCycle,
+            percentage = decimal * 100,
+            fixed = percentage.toFixed(2);
         return fixed;
     }
 
@@ -60,9 +85,9 @@ class CPU extends EventListener
     {
         let json = {
             name:this.name,
-            speed:this.speed.toString(),
+            speed:this.baseSpeed.toString(),
             img:this.img,
-            lifeCycle:this.lifeCycle.toString(),
+            lifeCycle:this.baseLifeCycle.toString(),
             lifeCycleUsed:this.lifeCycleUsed.toString()
         };
         return json;
@@ -80,7 +105,7 @@ class CPU extends EventListener
 
     tick(load)
     {
-        this.lifeCycleUsed += Math.round(load);
+        this.lifeCycleUsed += load;
         if(this.lifeCycleUsed >= this.lifeCycle)
         {
             this.living = false;
@@ -105,6 +130,11 @@ class CPU extends EventListener
     get healthImage()
     {
         return this.living?this.img:CPU.deadImage;
+    }
+
+    static get loadReduction()
+    {
+        return 1;
     }
 }
 

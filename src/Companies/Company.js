@@ -28,7 +28,6 @@ class Company
          * @type {number} the reward modifier this company offers the player
          * this is the increase exponent for successfully achieved missions
          */
-        this.missionSuccessIncreaseExponent = 1.001;
         this.securityLevel = 1;
     }
 
@@ -45,7 +44,7 @@ class Company
 
     finishMission(mission)
     {
-        this.playerRespectModifier *= this.missionSuccessIncreaseExponent;
+        this.playerRespectModifier *= Company.missionSuccessIncreaseExponent;
     }
 
     traceHacker()
@@ -65,7 +64,12 @@ class Company
 
     static get securityIncreaseExponent()
     {
-        return 1.01;
+        return 1.009;
+    }
+
+    static get missionSuccessIncreaseExponent()
+    {
+        return 1.0085;
     }
 
     /**

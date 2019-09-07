@@ -47,6 +47,20 @@ class EventListener
         this.events = {};
     }
 
+    static set staticEvents(events)
+    {
+        this._events = events;
+    }
+
+    static get staticEvents()
+    {
+        if(!this.hasOwnProperty('_events'))
+        {
+            this._events = {};
+        }
+        return this._events;
+    }
+
     once(eventName, callback)
     {
         let e = eventName.toLowerCase();
@@ -56,6 +70,18 @@ class EventListener
         }
         this.events[e].triggered = false;
         this.events[e].addListener(callback);
+        return this;
+    }
+
+    static once(eventName, callback)
+    {
+        let e = eventName.toLowerCase();
+        if(!this.staticEvents[e])
+        {
+            this.staticEvents[e] = new Event(this, e, true);
+        }
+        this.staticEvents[e].triggered = false;
+        this.staticEvents[e].addListener(callback);
         return this;
     }
 
@@ -70,12 +96,23 @@ class EventListener
         return this;
     }
 
+    static on(eventName, callback)
+    {
+        let e = eventName.toLowerCase();
+        if(!this.staticEvents[e])
+        {
+            this.staticEvents[e] = new Event(this, e);
+        }
+        this.staticEvents[e].addListener(callback);
+        return this;
+    }
+
     off(eventName)
     {
         if(eventName)
         {
             let e = eventName.toLowerCase();
-            this.events[e] = null;
+            delete(this.events[e]);
         }
         else
         {
@@ -84,11 +121,25 @@ class EventListener
         return this;
     }
 
+    static off(eventName)
+    {
+        if(eventName)
+        {
+            let e = eventName.toLowerCase();
+            delete(this.staticEvents[e]);
+        }
+        else
+        {
+            this.staticEvents = {};
+        }
+    }
+
     addListener(eventName, callback)
     {
         let e = eventName.toLowerCase();
         return this.on(e, callback);
     }
+
 
     trigger(eventName, ...args)
     {
@@ -107,6 +158,31 @@ class EventListener
         }
     }
 
+    static trigger(eventName, ...args)
+    {
+        let e = eventName.toLowerCase();
+        if(this.staticEvents[e])
+        {
+            try
+            {
+                let evt = this.staticEvents[e];
+                evt.trigger(args);
+            }
+            catch(e)
+            {
+                console.log(e);
+            }
+        }
+    }
+
+    static removeListener(eventName, callback)
+    {
+        let e = eventName.toLowerCase();
+        if(this.staticEvents[e])
+        {
+            this.staticEvents[e].removeListener(callback);
+        }
+    }
 
     removeListener(eventName, callback)
     {
