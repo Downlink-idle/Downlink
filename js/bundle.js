@@ -3143,7 +3143,7 @@ class EncryptionCracker extends Task
 
     get attacksPerTick()
     {
-        let attacksPerTick = this.cyclesPerTick / (this.unsolvedCells.length * this.challenge.difficulty);
+        let attacksPerTick = this.cyclesPerTick / (this.unsolvedCells.length * Math.pow(this.challenge.difficulty, 2));
         return attacksPerTick;
     }
 
@@ -3195,7 +3195,7 @@ class PasswordCracker extends Task
     setCyclesPerTick(cyclesPerTick)
     {
         super.setCyclesPerTick(cyclesPerTick);
-        this.attacksPerTick = Math.floor(Math.pow(cyclesPerTick, 1/Math.pow(this.challenge.difficulty, 2)));
+        this.attacksPerTick = Math.floor(Math.pow(cyclesPerTick, 1/Math.pow(this.challenge.difficulty, 1.5)));
         return this;
     }
 
@@ -3776,7 +3776,9 @@ class Downlink extends EventListener
         {
             this.setPlayerComputer();
         }
-        this.playerComputer.on('cpuPoolEmpty', ()=>{this.trigger('cpuPoolEmpty')});
+        this.playerComputer.on('cpuPoolEmpty', ()=>{
+            this.trigger('cpuPoolEmpty');
+        });
         return this.playerComputer;
     }
 
@@ -4238,7 +4240,7 @@ module.exports = EventListener;
             EncryptionCracker = require('./Computers/Tasks/EncryptionCracker'),
             {PasswordCracker} = require('./Computers/Tasks/PasswordCracker'),
             Decimal = require('break_infinity.js'),
-            TICK_INTERVAL_LENGTH=100,
+            TICK_INTERVAL_LENGTH=5,
             MISSION_LIST_CLASS = 'mission-list-row',
             COMPANY_REP_CLASS = 'company-rep-row',
             COMPANY_SECURITY_CLASS = 'company-security-col',
@@ -4671,7 +4673,7 @@ module.exports = EventListener;
         },
         disconnect:function()
         {
-            if(this.mission.computer.currentPlayerConnection.active)
+            if(this.mission && this.mission.computer.currentPlayerConnection.active)
             {
                 this.downlink.disconnectFromMissionServer();
                 this.$activeMissionDisconnectButton
@@ -5056,7 +5058,7 @@ module.exports = EventListener;
         {
             this.takingMissions = false;
             this.canTakeMissions = false;
-            this.updateMissionToggleButton();
+            this.disconnect();
         },
         updateMissionToggleButton()
         {
@@ -5082,12 +5084,20 @@ module.exports = EventListener;
                     html += `<div class="row">
                         <div class="col">${researchItem.name}</div>
                         <div class="col-1">${researchItem.researchTicks}</div>
-                        <div class="col-3"><button data-research-item="${researchItem.name}" class="research-start-button btn btn-sm btn-primary">Start researching</button></div>
+                        <div class="col-3">
+                            <button data-research-item="${researchItem.name}" class="research-start-button btn btn-sm btn-primary" data-toggle="tooltip" data-html="true" title="<ul>`;
+                            for(let property of researchItem.propertiesEffected)
+                            {
+                                html += `<li>${property.property} &times; ${property.amount}</li>`;
+                            }
+                            html +=`</ul>">Start researching</button>
+                        </div>
                     </div>`;
                 }
                 html += `</div>`;
             }
             this.$researchModalBody.html(html);
+            $('[data-toggle="tooltip"]').tooltip();
             $('.research-start-button').click((evt)=>{
                 this.startResearch(evt.target.dataset.researchItem);
             });
@@ -5258,8 +5268,8 @@ class Encryption extends Challenge
     static getDimensionForDifficulty(difficulty)
     {
         const   flooredDifficulty = Math.floor(difficulty),
-                min = 6 + flooredDifficulty,
-                max = 8 + flooredDifficulty * 2;
+                min = (5 + flooredDifficulty),
+                max = (5 + flooredDifficulty) * 2;
         return helper.getRandomIntegerBetween(min, max);
     }
 }
