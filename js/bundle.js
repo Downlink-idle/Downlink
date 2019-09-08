@@ -1877,7 +1877,7 @@ Alphabet.build();
 
 module.exports = Alphabet;
 
-},{"./Helpers":23}],7:[function(require,module,exports){
+},{"./Helpers":26}],7:[function(require,module,exports){
 const   ComputerGenerator = require('../Computers/ComputerGenerator'),
         helper = require('../Helpers'),
         companyNames = require('./companies');
@@ -1908,7 +1908,6 @@ class Company
          * @type {number} the reward modifier this company offers the player
          * this is the increase exponent for successfully achieved missions
          */
-        this.missionSuccessIncreaseExponent = 1.001;
         this.securityLevel = 1;
     }
 
@@ -1925,7 +1924,7 @@ class Company
 
     finishMission(mission)
     {
-        this.playerRespectModifier *= this.missionSuccessIncreaseExponent;
+        this.playerRespectModifier *= Company.missionSuccessIncreaseExponent;
     }
 
     traceHacker()
@@ -1945,7 +1944,12 @@ class Company
 
     static get securityIncreaseExponent()
     {
-        return 1.01;
+        return 1.009;
+    }
+
+    static get missionSuccessIncreaseExponent()
+    {
+        return 1.0085;
     }
 
     /**
@@ -2017,7 +2021,7 @@ class Company
 
 module.exports = Company;
 
-},{"../Computers/ComputerGenerator":12,"../Helpers":23,"./companies":8}],8:[function(require,module,exports){
+},{"../Computers/ComputerGenerator":12,"../Helpers":26,"./companies":8}],8:[function(require,module,exports){
 let companyNames = [
     "Mike Rowe soft",
     "Pear",
@@ -2031,6 +2035,46 @@ let companyNames = [
     "Global Hyper Mega Compunet",
     "Athena",
     "Hybrides",
+    'Grimes Inc',
+    'Wehner - Spencer',
+    'Spinka Group',
+    'Towne, Kilback and Mills',
+    'Krajcik - Willms',
+    'Wisoky - Jaskolski',
+    'Pouros, DuBuque and Ledner',
+    'Waelchi, Balistreri and Rath',
+    'Ortiz, Dare and Schmitt',
+    'Wilderman - Hackett',
+    'Ortiz - Waelchi',
+    'Nitzsche, Rowe and Murphy',
+    'McGlynn - Leannon',
+    'Lesch - Davis',
+    'Russel, Hamill and Kozey',
+    'Corkery - Grant',
+    'Koepp, McGlynn and Glover',
+    'Schmidt Group',
+    'Prosacco - Lueilwitz',
+    'McCullough - Kulas',
+    'Fritsch and Sons',
+    'Lemke and Sons',
+    'Langworth, Kuhic and Schaden',
+    'Borer and Sons',
+    'Glover - Renner',
+    'Zboncak, Lind and Stroman',
+    'McKenzie, Williamson and Klocko',
+    'Kub, Pfannerstill and Walker',
+    'Herzog, Schmidt and Gaylord',
+    'Gerlach, Harris and Hartmann',
+    'Feest - Friesen',
+    'Schaefer, Fahey and Wuckert',
+    'Parker, Effertz and Moen',
+    'Zulauf - Mueller',
+    'Windler, Walker and Keebler',
+    'Beatty, Rau and Renner',
+    'Bernier - Marvin',
+    'Auer and Sons',
+    'Walter - Hagenes',
+    'Harvey and Sons',
     "Tógan Labs", // with permission from Eilís Ní Fhlannagáin
 ];
 
@@ -2038,7 +2082,7 @@ module.exports = companyNames;
 
 },{}],9:[function(require,module,exports){
 const   Task = require('./Tasks/Task'),
-        EventListener = require('../EventListener'),
+        Upgradeable = require('../Upgradeable'),
         cpus = require('./cpus');
 
 class CPUFullError extends Error{};
@@ -2047,7 +2091,7 @@ class InvalidTaskError extends Error{};
 
 const CPU_COST_MODIFIER = 4000;
 
-class CPU extends EventListener
+class CPU extends Upgradeable
 {
     constructor(name, speed, img, lifeCycle, lifeCycleUsed)
     {
@@ -2060,7 +2104,7 @@ class CPU extends EventListener
         /**
          * @type {number}
          */
-        this.speed = parseInt(speed?speed:defaultCPU.speed);
+        this.baseSpeed = parseInt(speed?speed:defaultCPU.speed);
         /**
          * @type {string} the rgb() color for the cpu
          */
@@ -2072,9 +2116,35 @@ class CPU extends EventListener
         /**
          * @type {number}
          */
-        this.lifeCycle = parseInt(lifeCycle?lifeCycle:defaultCPU.lifeCycle);
+        this.baseLifeCycle = parseInt(lifeCycle?lifeCycle:defaultCPU.lifeCycle);
         this.lifeCycleUsed = parseInt(lifeCycleUsed?lifeCycleUsed:0);
         this.living = this.lifeCycleUsed < this.lifeCycle;
+    }
+
+    get lifeCycle()
+    {
+        let lifeCycle = this.baseLifeCycle;
+        if(CPU.upgrades && CPU.upgrades.lifeCycle)
+        {
+            for(let amount of CPU.upgrades.lifeCycle)
+            {
+                lifeCycle *= amount;
+            }
+        }
+        return lifeCycle;
+    }
+
+    get speed()
+    {
+        let speed = this.baseSpeed;
+        if(CPU.upgrades && CPU.upgrades.speed)
+        {
+            for(let amount of CPU.upgrades.speed)
+            {
+                speed *= amount;
+            }
+        }
+        return speed;
     }
 
     get remainingLifeCycle()
@@ -2084,14 +2154,13 @@ class CPU extends EventListener
 
     get health()
     {
-        let decimal = this.remainingLifeCycle / this.lifeCycle,
-            percentage = decimal * 100,
-            fixed = percentage.toFixed(2);
         if(this.lifeCycleUsed >= this.lifeCycle)
         {
             return 0;
         }
-
+        let decimal = this.remainingLifeCycle / this.lifeCycle,
+            percentage = decimal * 100,
+            fixed = percentage.toFixed(2);
         return fixed;
     }
 
@@ -2099,9 +2168,9 @@ class CPU extends EventListener
     {
         let json = {
             name:this.name,
-            speed:this.speed.toString(),
+            speed:this.baseSpeed.toString(),
             img:this.img,
-            lifeCycle:this.lifeCycle.toString(),
+            lifeCycle:this.baseLifeCycle.toString(),
             lifeCycleUsed:this.lifeCycleUsed.toString()
         };
         return json;
@@ -2119,7 +2188,7 @@ class CPU extends EventListener
 
     tick(load)
     {
-        this.lifeCycleUsed += Math.round(load);
+        this.lifeCycleUsed += load;
         if(this.lifeCycleUsed >= this.lifeCycle)
         {
             this.living = false;
@@ -2145,12 +2214,17 @@ class CPU extends EventListener
     {
         return this.living?this.img:CPU.deadImage;
     }
+
+    static get loadReduction()
+    {
+        return 1;
+    }
 }
 
 
 module.exports = CPU;
 
-},{"../EventListener":21,"./Tasks/Task":17,"./cpus":18}],10:[function(require,module,exports){
+},{"../Upgradeable":34,"./Tasks/Task":20,"./cpus":21}],10:[function(require,module,exports){
 const   CPU = require('./CPU'),
         Task = require('./Tasks/Task'),
         helpers = require('../Helpers'),
@@ -2213,6 +2287,10 @@ class CPUPool extends EventListener
         {
             this.addCPU(cpu);
         }
+
+        CPU.on('upgrade', ()=>{
+            this.update();
+        });
     }
 
     get width()
@@ -2237,7 +2315,7 @@ class CPUPool extends EventListener
     {
         if(cpu)
         {
-            cpu.once('burnOut', () => {
+            cpu.once('burnOut', ()=>{
                 this.flagCPUDead(slot, cpu);
             });
             this.cpus[slot] = cpu;
@@ -2363,17 +2441,35 @@ class CPUPool extends EventListener
         let weightedFreeSpace = this.availableCycles / totalWeight;
         let results = {};
 
-        for(let task of this.tasks)
+        try
         {
-            let weightedCycles = weightedFreeSpace * task.weight,
-                taskCycles = weightedCycles + task.minimumRequiredCycles,
-                cyclePercentage = (taskCycles / this.totalSpeed * 100).toFixed(2);
-            task.setCyclesPerTick(Math.floor(taskCycles));
-            task.setLoadPercentage(cyclePercentage);
-            results[task.hash] =cyclePercentage;
+            for (let task of this.tasks)
+            {
+                let weightedCycles = weightedFreeSpace * task.weight,
+                    taskCycles = weightedCycles + task.minimumRequiredCycles,
+                    cyclePercentage = (taskCycles / this.totalSpeed * 100).toFixed(2);
+                task.setCyclesPerTick(Math.floor(taskCycles));
+                task.setLoadPercentage(cyclePercentage);
+                results[task.hash] = cyclePercentage;
+            }
+        }
+        catch(e)
+        {
+            if(e.constructor.name === 'CPUOverloadError')
+            {
+                this.pauseAllTasks();
+            }
         }
 
         return results;
+    }
+
+    pauseAllTasks()
+    {
+        for (let task of this.tasks)
+        {
+            task.pause();
+        }
     }
 
     /**
@@ -2404,7 +2500,7 @@ class CPUPool extends EventListener
 
 module.exports = CPUPool;
 
-},{"../EventListener":21,"../Helpers":23,"./CPU":9,"./Tasks/Task":17}],11:[function(require,module,exports){
+},{"../EventListener":24,"../Helpers":26,"./CPU":9,"./Tasks/Task":20}],11:[function(require,module,exports){
 const EventListener = require('../EventListener');
 
 class Computer extends EventListener
@@ -2493,7 +2589,7 @@ class Computer extends EventListener
 
 module.exports = Computer;
 
-},{"../EventListener":21}],12:[function(require,module,exports){
+},{"../EventListener":24}],12:[function(require,module,exports){
 const   PlayerComputer = require('./PlayerComputer'),
         Computer = require('./Computer'),
         CPU = require('./CPU'),
@@ -2530,7 +2626,12 @@ class ComputerGenerator
 
     newPlayerComputer()
     {
-        let potato = new PlayerComputer([new CPU()]);
+        let potato = new PlayerComputer([
+            new CPU(),
+            new CPU(),
+            new CPU(),
+            new CPU()
+        ]);
         potato.setLocation(location);
         return potato;
     }
@@ -2553,12 +2654,13 @@ class ComputerGenerator
 
 module.exports = new ComputerGenerator();
 
-},{"../Helpers":23,"../Missions/MissionComputer":29,"./CPU":9,"./Computer":11,"./PlayerComputer":13,"./PublicComputer":14}],13:[function(require,module,exports){
+},{"../Helpers":26,"../Missions/MissionComputer":32,"./CPU":9,"./Computer":11,"./PlayerComputer":13,"./PublicComputer":14}],13:[function(require,module,exports){
 const   {Password, DictionaryPassword, AlphanumericPassword} = require('../Missions/Challenges/Password'),
         helpers = require('../Helpers'),
         {DictionaryCracker, PasswordCracker, SequentialAttacker} = require('./Tasks/PasswordCracker'),
         Encryption = require('../Missions/Challenges/Encryption'),
         EncryptionCracker = require('./Tasks/EncryptionCracker'),
+        ResearchTask = require('./Tasks/ResearchTask'),
         Computer = require('./Computer'),
         CPUPool = require('./CPUPool'),
         CPU = require('./CPU.js');
@@ -2667,6 +2769,14 @@ class PlayerComputer extends Computer
         return this.cpuPool.updateLoadBalance();
     }
 
+    /**
+     * @param {Research} researchItem
+     */
+    startResearchTask(researchItem)
+    {
+        let researchTask = new ResearchTask(researchItem);
+        this.cpuPool.addTask(researchTask);
+    }
 
     get tasks()
     {
@@ -2710,11 +2820,21 @@ class PlayerComputer extends Computer
         pc.setLocation(json.location);
         return pc;
     }
+
+    get currentCPUTasks()
+    {
+        return this.cpuPool.tasks;
+    }
+
+    updateCPUPool()
+    {
+        this.cpuPool.update();
+    }
 }
 
 module.exports = PlayerComputer;
 
-},{"../Helpers":23,"../Missions/Challenges/Encryption":25,"../Missions/Challenges/Password":26,"./CPU.js":9,"./CPUPool":10,"./Computer":11,"./Tasks/EncryptionCracker":15,"./Tasks/PasswordCracker":16}],14:[function(require,module,exports){
+},{"../Helpers":26,"../Missions/Challenges/Encryption":28,"../Missions/Challenges/Password":29,"./CPU.js":9,"./CPUPool":10,"./Computer":11,"./Tasks/EncryptionCracker":17,"./Tasks/PasswordCracker":18,"./Tasks/ResearchTask":19}],14:[function(require,module,exports){
 let Computer = require('./Computer');
 
 let allPublicComputers = {};
@@ -2746,6 +2866,158 @@ class PublicComputer extends Computer
 module.exports = PublicComputer;
 
 },{"./Computer":11}],15:[function(require,module,exports){
+const   helpers = require('../../Helpers'),
+        upgradeables = {
+            CPU:require('../CPU'),
+            Connection:require('../../Connection'),
+        },
+        EventListener = require('../../EventListener');
+
+class ResearchEffect
+{
+    constructor(property, amount)
+    {
+        this.property = property;
+        this.amount = amount;
+    }
+
+    toJSON()
+    {
+        return {
+            property:this.property,
+            amount:this.amount
+        }
+    }
+}
+
+class Research extends EventListener
+{
+    constructor(name, classEffected, propertiesEffected, researchTicks, amountDone)
+    {
+        super();
+        this.name = name;
+        this.classEffected = classEffected;
+        this.propertiesEffected = propertiesEffected;
+        this.researchTicks = researchTicks;
+        this.amountDone = amountDone;
+        this.researchCompleted = amountDone >= researchTicks;
+    }
+
+    setTask(task)
+    {
+        this.task = task;
+        return this;
+    }
+
+    solve()
+    {
+        this.completeResearch();
+    }
+
+    completeResearch()
+    {
+        this.researchCompleted = true;
+        this.classEffected.applyResearchUpgrade(this.propertiesEffected);
+        this.trigger('complete')
+    }
+
+    setAmountDone(amountDone)
+    {
+        this.amountDone = Math.min(amountDone, this.researchTicks);
+    }
+
+    toJSON()
+    {
+        return {
+            name:this.name,
+            classEffected:this.classEffected.constructor.name,
+            propertiesEffected:this.propertiesEffected,
+            researchTicks:this.researchTicks,
+            amountDone:this.amountDone
+        };
+    }
+
+    static fromJSON(json)
+    {
+        let properties = [];
+        for(let property of json.propertiesEffected)
+        {
+            properties.push(new ResearchEffect(property.property, property.amount));
+        }
+        return new Research(
+            json.name,
+            upgradeables[json.className],
+            properties,
+            json.researchTicks,
+            json.amountDone?json.amountDone:0
+        )
+    }
+
+    static loadJSON(researchData)
+    {
+        let researches = {}, allResearches = {};
+        for (let className in researchData)
+        {
+            let classResearchData = researchData[className];
+            researches[className] = [];
+            for (let researchDatum of classResearchData)
+            {
+                researchDatum.className = className;
+                let research = this.fromJSON(researchDatum);
+                researches[className].push(research);
+                allResearches[researchDatum.name] = research;
+            }
+        }
+        this.categoryResearches = researches;
+        this.allResearches = allResearches;
+        this.applySavedResearch(Object.values(allResearches).filter(research=>research.researchCompleted))
+    }
+
+    static applySavedResearch(savedResearches)
+    {
+        savedResearches.forEach((research)=>{
+            research.completeResearch();
+        });
+    }
+
+    static loadDefaultJSON()
+    {
+        const researchData = require('./researchData');
+        this.loadJSON(researchData);
+    }
+
+    static get availableResearch()
+    {
+        let research = {};
+        for(let researchType in this.categoryResearches)
+        {
+            research[researchType] = this.categoryResearches[researchType].filter(research => !research.researchCompleted);
+        }
+        return research;
+    }
+
+    static getItemByName(name)
+    {
+        return Research.allResearches[name];
+    }
+}
+const researchFactor = 6000;
+
+module.exports = Research;
+
+},{"../../Connection":22,"../../EventListener":24,"../../Helpers":26,"../CPU":9,"./researchData":16}],16:[function(require,module,exports){
+let researchData = {
+    CPU:[
+        {name:"Overclocking", propertiesEffected:[{property:"speed", amount:1.5}, {property:"lifeCycle",amount:0.9}], researchTicks:40000},
+        {name:"Room Temperature Superconductors", propertiesEffected:[{property:"speed", amount:2}, {property:"lifeCycle", amount:1.2}], researchTicks:200000},
+        {name:"Quantum Substrate Transistors", propertiesEffected:[{property:"speed",amount:4}, {property:"lifeCycle",amount:2}], researchTicks: 1000000},
+        {name:"Superstate Collapsifiers", propertiesEffected:[{property:"speed",amount:8}, {property:"lifeCycle",amount:4}], researchTicks:10000000}
+    ]
+};
+
+module.exports = researchData;
+
+},{}],17:[function(require,module,exports){
 const   Alphabet = require('../../Alphabet'),
         helpers = require('../../Helpers'),
         Task = require('./Task');
@@ -2903,7 +3175,7 @@ class EncryptionCracker extends Task
 
 module.exports = EncryptionCracker;
 
-},{"../../Alphabet":6,"../../Helpers":23,"./Task":17}],16:[function(require,module,exports){
+},{"../../Alphabet":6,"../../Helpers":26,"./Task":20}],18:[function(require,module,exports){
 const   DICTIONARY_CRACKER_MINIMUM_CYCLES = 5,
         SEQUENTIAL_CRACKER_MINIMUM_CYCLES = 20,
         Task = require('./Task'),
@@ -3022,7 +3294,43 @@ module.exports = {
     SequentialAttacker:SequentialAttacker
 };
 
-},{"../../Alphabet":6,"./Task":17}],17:[function(require,module,exports){
+},{"../../Alphabet":6,"./Task":20}],19:[function(require,module,exports){
+const   Task = require ('./Task'),
+        helpers = require('../../Helpers');
+
+class ResearchTask extends Task
+{
+    /**
+     * @param {Research} researchItem
+     */
+    constructor(researchItem)
+    {
+        super('Researching '+researchItem.name, researchItem, 0);
+        this.researchDone = 0;
+        /**
+         * While this is also stored in this.challenge, lexically it makes less sense.
+         * @type {Research}
+         */
+        this.researchItem = researchItem;
+        this.minimumRequiredCycles = 10;
+    }
+
+    processTick()
+    {
+        this.researchDone += this.cyclesPerTick;
+        this.researchItem.setAmountDone(this.researchDone);
+        if(this.researchDone >= this.researchItem.researchTicks)
+        {
+            this.researchDone = this.researchItem.researchTicks;
+            this.signalComplete();
+        }
+    }
+
+}
+
+module.exports = ResearchTask;
+
+},{"../../Helpers":26,"./Task":20}],20:[function(require,module,exports){
 const   EventListener = require('../../EventListener'),
         Decimal = require('break_infinity.js');
 
@@ -3049,7 +3357,7 @@ class Task extends EventListener
         this.ticksTaken = 0;
         this.working = true;
         this.completed = false;
-        this.challenge = challenge.setTask(this);
+        this.challenge = challenge?challenge.setTask(this):null;
         this.loadPercentage = 0;
     }
 
@@ -3057,6 +3365,8 @@ class Task extends EventListener
     {
         return this.challenge.hash;
     }
+
+
 
     alterWeight(direction)
     {
@@ -3138,6 +3448,7 @@ class Task extends EventListener
     pause()
     {
         this.working = false;
+        console.log("Paused "+this.name);
         return this;
     }
 
@@ -3150,16 +3461,18 @@ class Task extends EventListener
 
 module.exports = Task;
 
-},{"../../EventListener":21,"break_infinity.js":1}],18:[function(require,module,exports){
+},{"../../EventListener":24,"break_infinity.js":1}],21:[function(require,module,exports){
 let cpus = [
     {name:"Garbo Processor", speed:20, lifeCycle:20000, img:'cpu-i.png'},
     {name:"Garbo Processor II", speed:40, lifeCycle:40000, img:'cpu-ii.png'},
     {name:"Garbo Processor II.5", speed:80, lifeCycle:60000, img:'cpu-iii.png'},
     {name:"Garbo Processor BLT", speed:133, lifeCycle: 100000, img:'cpu-iv.png'}
 ];
+
+
 module.exports = cpus;
 
-},{}],19:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 const   Computer = require('./Computers/Computer'),
         PublicComputer = require('./Computers/PublicComputer'),
         EventListener = require('./EventListener'),
@@ -3413,7 +3726,7 @@ Connection.sensitivity = 10;
 
 module.exports = Connection;
 
-},{"./Computers/Computer":11,"./Computers/PublicComputer":14,"./EventListener":21,"./Helpers":23,"md5":5}],20:[function(require,module,exports){
+},{"./Computers/Computer":11,"./Computers/PublicComputer":14,"./EventListener":24,"./Helpers":26,"md5":5}],23:[function(require,module,exports){
 const   MissionGenerator = require('./Missions/MissionGenerator'),
         EventListener = require('./EventListener'),
         Connection = require('./Connection'),
@@ -3421,6 +3734,7 @@ const   MissionGenerator = require('./Missions/MissionGenerator'),
         ComputerGenerator = require('./Computers/ComputerGenerator'),
         CPU = require('./Computers/CPU'),
         helper = require('./Helpers'),
+        Research = require('./Computers/Research/Research'),
         Decimal = require('break_infinity.js');
 
 /**
@@ -3505,10 +3819,13 @@ class Downlink extends EventListener
 
     disconnectFromMissionServer()
     {
-        this.activeMission.computer.disconnect();
-        for(let task of this.playerComputer.missionTasks)
+        if(this.activeMission)
         {
-            task.pause();
+            this.activeMission.computer.disconnect();
+            for (let task of this.playerComputer.missionTasks)
+            {
+                task.pause();
+            }
         }
     }
 
@@ -3601,7 +3918,8 @@ class Downlink extends EventListener
             playerConnection:this.playerConnection.toJSON(),
             companies:[],
             currency:this.currency.toString(),
-            runTime:this.runTime
+            runTime:this.runTime,
+            researches:Research.categoryResearches,
         };
         for(let company of this.companies)
         {
@@ -3613,6 +3931,7 @@ class Downlink extends EventListener
     static fromJSON(json)
     {
         Company.loadCompaniesFromJSON(json.companies);
+        Research.loadJSON(json.researches);
 
         let downlink = new Downlink();
 
@@ -3620,6 +3939,7 @@ class Downlink extends EventListener
         downlink.playerComputer = ComputerGenerator.fromJSON(json.playerComputer);
         downlink.runTime = parseInt(json.runTime);
         downlink.lastTickTime = Date.now();
+
 
         downlink.playerConnection = Connection.fromJSON(json.playerConnection);
         downlink.playerConnection.setStartingPoint(downlink.playerComputer);
@@ -3630,7 +3950,7 @@ class Downlink extends EventListener
     static getNew()
     {
         Company.buildCompanyList();
-
+        Research.loadDefaultJSON();
         let dl = new Downlink();
         return dl;
     }
@@ -3685,11 +4005,32 @@ class Downlink extends EventListener
         this.currency = this.currency.minus(this.cpuIncreaseCost);
         this.playerComputer.increaseCPUPoolSize();
     }
+
+    get availableResearch()
+    {
+        return Research.availableResearch;
+    }
+
+    startResearch(researchItemName)
+    {
+        let researchItem = Research.getItemByName(researchItemName);
+        researchItem.on('complete', ()=>{
+            this.playerComputer.updateCPUPool();
+            this.trigger('researchComplete');
+        });
+
+        this.playerComputer.startResearchTask(researchItem);
+    }
+
+    get currentCPUTasks()
+    {
+        return this.playerComputer.currentCPUTasks;
+    }
 }
 
 module.exports = Downlink;
 
-},{"./Companies/Company":7,"./Computers/CPU":9,"./Computers/ComputerGenerator":12,"./Connection":19,"./EventListener":21,"./Helpers":23,"./Missions/MissionGenerator":30,"./validWorldMapPoints":31,"break_infinity.js":1}],21:[function(require,module,exports){
+},{"./Companies/Company":7,"./Computers/CPU":9,"./Computers/ComputerGenerator":12,"./Computers/Research/Research":15,"./Connection":22,"./EventListener":24,"./Helpers":26,"./Missions/MissionGenerator":33,"./validWorldMapPoints":35,"break_infinity.js":1}],24:[function(require,module,exports){
 class Event
 {
     constructor(owner, name, once)
@@ -3739,6 +4080,20 @@ class EventListener
         this.events = {};
     }
 
+    static set staticEvents(events)
+    {
+        this._events = events;
+    }
+
+    static get staticEvents()
+    {
+        if(!this.hasOwnProperty('_events'))
+        {
+            this._events = {};
+        }
+        return this._events;
+    }
+
     once(eventName, callback)
     {
         let e = eventName.toLowerCase();
@@ -3748,6 +4103,18 @@ class EventListener
         }
         this.events[e].triggered = false;
         this.events[e].addListener(callback);
+        return this;
+    }
+
+    static once(eventName, callback)
+    {
+        let e = eventName.toLowerCase();
+        if(!this.staticEvents[e])
+        {
+            this.staticEvents[e] = new Event(this, e, true);
+        }
+        this.staticEvents[e].triggered = false;
+        this.staticEvents[e].addListener(callback);
         return this;
     }
 
@@ -3762,12 +4129,23 @@ class EventListener
         return this;
     }
 
+    static on(eventName, callback)
+    {
+        let e = eventName.toLowerCase();
+        if(!this.staticEvents[e])
+        {
+            this.staticEvents[e] = new Event(this, e);
+        }
+        this.staticEvents[e].addListener(callback);
+        return this;
+    }
+
     off(eventName)
     {
         if(eventName)
         {
             let e = eventName.toLowerCase();
-            this.events[e] = null;
+            delete(this.events[e]);
         }
         else
         {
@@ -3776,11 +4154,25 @@ class EventListener
         return this;
     }
 
+    static off(eventName)
+    {
+        if(eventName)
+        {
+            let e = eventName.toLowerCase();
+            delete(this.staticEvents[e]);
+        }
+        else
+        {
+            this.staticEvents = {};
+        }
+    }
+
     addListener(eventName, callback)
     {
         let e = eventName.toLowerCase();
         return this.on(e, callback);
     }
+
 
     trigger(eventName, ...args)
     {
@@ -3799,6 +4191,31 @@ class EventListener
         }
     }
 
+    static trigger(eventName, ...args)
+    {
+        let e = eventName.toLowerCase();
+        if(this.staticEvents[e])
+        {
+            try
+            {
+                let evt = this.staticEvents[e];
+                evt.trigger(args);
+            }
+            catch(e)
+            {
+                console.log(e);
+            }
+        }
+    }
+
+    static removeListener(eventName, callback)
+    {
+        let e = eventName.toLowerCase();
+        if(this.staticEvents[e])
+        {
+            this.staticEvents[e].removeListener(callback);
+        }
+    }
 
     removeListener(eventName, callback)
     {
@@ -3812,7 +4229,7 @@ class EventListener
 
 module.exports = EventListener;
 
-},{}],22:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 // This file is solely responsible for exposing the necessary parts of the game to the UI elements
 (($)=>{$(()=>{
 
@@ -3851,11 +4268,11 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.11b",
+        version:"0.5.0b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
-        minimumVersion:"0.4.11b",
+        minimumVersion:"0.5.0b",
         /**
          * jquery entities that are needed for updating
          */
@@ -3868,6 +4285,7 @@ module.exports = EventListener;
         $activeMissionServerName:null,
         $playerCurrencySpan:null,
         $playerStandingsTitle:null,
+        $playerStandingsContainer:null,
         $playerComputerCPUListContainer:null,
         $worldMapModal:null,
         $worldMapContainer:null,
@@ -3892,6 +4310,8 @@ module.exports = EventListener;
         $gridSizeIncreaseSpan:null,
         $gridSizeCostSpan:null,
         $gridSizeButton:null,
+        $researchModal:null,
+        $researchModalBody:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -3908,6 +4328,7 @@ module.exports = EventListener;
             this.$activeMissionServerName = $('#active-mission-server-name');
             this.$playerCurrencySpan = $('#player-currency');
             this.$playerStandingsTitle = $('#player-company-standings-title');
+            this.$playerStandingsContainer = $('#player-company-standings');
             this.$playerComputerCPUListContainer = $('#player-computer-processors');
             this.$worldMapModal = $('#connection-modal');
             this.$worldMapContainer = $('#world-map');
@@ -3928,6 +4349,8 @@ module.exports = EventListener;
             this.$cpuTasksCol = $('#tasks-col');
             this.$gridSizeIncreaseSpan = $('#grid-size-increase-amount');
             this.$gridSizeCostSpan = $('#grid-size-increase-cost');
+            this.$researchModal = $('#research-modal');
+            this.$researchModalBody = $('#research-modal-body');
 
             this.$gridSizeButton = $('#increase-cpu-grid-size').click(()=>{this.increaseCPUPoolSize()});
             this.$activeMissionDisconnectButton = $('#disconnect-button').click(()=>{this.disconnect()});
@@ -3938,6 +4361,7 @@ module.exports = EventListener;
             $('#settings-save-button').click(()=>{this.saveFile();});
             $('#connectionModalLink').click(()=>{this.showConnectionManager();});
             $('#settingsModalLink').click(()=>{this.showSettingsModal();});
+            $('#researchModalLink').click(()=>{this.showResearchModal();});
             $('#game-version').html(this.version);
             $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
             $('#connection-auto-build-button').click(()=>{this.autoBuildConnection()});
@@ -4368,10 +4792,10 @@ module.exports = EventListener;
         {
             $(`.${CPU_MISSION_TASK}`).remove();
             let html = '';
-            for(let task of this.downlink.currentMissionTasks)
+            for(let task of this.downlink.currentCPUTasks)
             {
                 html += `<div class="row ${CPU_MISSION_TASK}" data-task-hash ="${task.hash}">`+
-                    `<div class="col-3 cpu-task-name">${task.name}</div>`+
+                    `<div class="col-5 cpu-task-name">${task.name}</div>`+
                     `<div class="col cpu-task-bar">`+
                         `<div class="reduce-cpu-load cpu-load-changer" data-cpu-load-direction="-1">&lt;</div>`+
                         `<div class="percentage-bar-container">`+
@@ -4644,6 +5068,40 @@ module.exports = EventListener;
             {
                 this.$missionToggleButton.attr('disabled', 'disabled').text("Start taking missions");
             }
+        },
+        showResearchModal()
+        {
+            let html = ``;
+            let availableResearch = this.downlink.availableResearch;
+            for(let researchType in availableResearch)
+            {
+                html += `<h2 class="row">${researchType} (${availableResearch[researchType].length})</h2><div class="container-fluid">`;
+
+                for(let researchItem of availableResearch[researchType])
+                {
+                    html += `<div class="row">
+                        <div class="col">${researchItem.name}</div>
+                        <div class="col-1">${researchItem.researchTicks}</div>
+                        <div class="col-3"><button data-research-item="${researchItem.name}" class="research-start-button btn btn-sm btn-primary">Start researching</button></div>
+                    </div>`;
+                }
+                html += `</div>`;
+            }
+            this.$researchModalBody.html(html);
+            $('.research-start-button').click((evt)=>{
+                this.startResearch(evt.target.dataset.researchItem);
+            });
+            this.$researchModal.modal({keyboard:false, backdrop:"static"});
+        },
+        startResearch:function(researchItem)
+        {
+            this.downlink.startResearch(researchItem);
+            this.downlink.on('researchComplete', ()=>{
+                this.updateComputerBuild();
+                this.save();
+            });
+            this.$researchModal.modal('hide');
+            this.updateCPULoadBalancer();
         }
     };
 
@@ -4652,7 +5110,7 @@ module.exports = EventListener;
     window.game = game;
 })})(window.jQuery);
 
-},{"./Computers/CPU":9,"./Computers/Tasks/EncryptionCracker":15,"./Computers/Tasks/PasswordCracker":16,"./Downlink":20,"break_infinity.js":1}],23:[function(require,module,exports){
+},{"./Computers/CPU":9,"./Computers/Tasks/EncryptionCracker":17,"./Computers/Tasks/PasswordCracker":18,"./Downlink":23,"break_infinity.js":1}],26:[function(require,module,exports){
 module.exports = {
     shuffleArray:function(array)
     {
@@ -4688,7 +5146,7 @@ module.exports = {
 
 };
 
-},{}],24:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 const EventListener = require('../../EventListener');
 
 class Challenge extends EventListener
@@ -4763,7 +5221,7 @@ class Challenge extends EventListener
 
 module.exports = Challenge;
 
-},{"../../EventListener":21}],25:[function(require,module,exports){
+},{"../../EventListener":24}],28:[function(require,module,exports){
 const   Challenge = require('./Challenge'),
         helper = require('../../Helpers');
 class Encryption extends Challenge
@@ -4808,7 +5266,7 @@ class Encryption extends Challenge
 
 module.exports = Encryption;
 
-},{"../../Helpers":23,"./Challenge":24}],26:[function(require,module,exports){
+},{"../../Helpers":26,"./Challenge":27}],29:[function(require,module,exports){
 const   dictionary = require('./dictionary'),
         Challenge = require('./Challenge'),
         Alphabet = require('../../Alphabet'),
@@ -4919,7 +5377,7 @@ class DictionaryPassword extends Password
 
 module.exports = {Password:Password, DictionaryPassword:DictionaryPassword, AlphanumericPassword:AlphanumericPassword};
 
-},{"../../Alphabet":6,"../../Helpers":23,"./Challenge":24,"./dictionary":27}],27:[function(require,module,exports){
+},{"../../Alphabet":6,"../../Helpers":26,"./Challenge":27,"./dictionary":30}],30:[function(require,module,exports){
 // stolen from Bart Busschot's xkpasswd JS github repo
 // See https://github.com/bbusschots/hsxkpasswd.js
 
@@ -7188,7 +7646,7 @@ let dictionary = [
 
 module.exports = dictionary;
 
-},{}],28:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 const   Company = require('../Companies/Company'),
         MissionComputer = require('./MissionComputer'),
         {Password} = require('./Challenges/Password'),
@@ -7300,7 +7758,7 @@ class Mission extends EventListener
      */
     get reward()
     {
-        return this.difficulty * this.computer.difficultyModifier * this.sponsor.playerRespectModifier;
+        return Math.pow((this.difficulty * this.computer.difficultyModifier), this.sponsor.playerRespectModifier);
     }
 
     signalComplete()
@@ -7336,7 +7794,7 @@ class Mission extends EventListener
 }
 module.exports = Mission;
 
-},{"../Companies/Company":7,"../EventListener":21,"../Helpers":23,"./Challenges/Encryption":25,"./Challenges/Password":26,"./MissionComputer":29}],29:[function(require,module,exports){
+},{"../Companies/Company":7,"../EventListener":24,"../Helpers":26,"./Challenges/Encryption":28,"./Challenges/Password":29,"./MissionComputer":32}],32:[function(require,module,exports){
 const   Computer = require('../Computers/Computer');
 let  DIFFICULTY_EXPONENT = 1.8;
 
@@ -7541,7 +7999,7 @@ MissionComputer.computersSpawned = 0;
 
 module.exports = MissionComputer;
 
-},{"../Computers/Computer":11}],30:[function(require,module,exports){
+},{"../Computers/Computer":11}],33:[function(require,module,exports){
 const   Mission = require('./Mission'),
         MINIMUM_MISSIONS = 10;
 let availableMissions = [];
@@ -7575,7 +8033,46 @@ class MissionGenerator
 
 module.exports = MissionGenerator;
 
-},{"./Mission":28}],31:[function(require,module,exports){
+},{"./Mission":31}],34:[function(require,module,exports){
+const EventListener = require('./EventListener');
+
+class Upgradeable extends EventListener
+{
+    static get upgrades()
+    {
+        return this.hasOwnProperty('_upgrades')?this._upgrades:void 0;
+    }
+
+    static set upgrades(upgrades)
+    {
+        this._upgrades = upgrades;
+    }
+
+    /**
+     *
+     * @param {Array.<ResearchEffect>} upgradeEffects
+     */
+    static applyResearchUpgrade(upgradeEffects)
+    {
+        if(!this.upgrades)
+        {
+            this.upgrades = [];
+        }
+        for(let effect of upgradeEffects)
+        {
+            if(!this.upgrades[effect.property])
+            {
+                this.upgrades[effect.property] = [];
+            }
+            this.upgrades[effect.property].push(effect.amount);
+        }
+        this.trigger('upgrade');
+    }
+}
+
+module.exports = Upgradeable;
+
+},{"./EventListener":24}],35:[function(require,module,exports){
 module.exports = [{"x":386,"y":6,"color":15797228},{"x":402,"y":10,"color":15797228},{"x":390,"y":13,"color":15797228},{"x":379,"y":16,"color":15797228},{"x":407,"y":19,"color":15797228},{"x":381,"y":21,"color":15797228},{"x":271,"y":23,"color":15797228},{"x":361,"y":24,"color":15797228},{"x":377,"y":25,"color":15797228},{"x":396,"y":26,"color":15797228},{"x":405,"y":27,"color":15797228},{"x":414,"y":28,"color":15797228},{"x":413,"y":29,"color":15797228},{"x":401,"y":30,"color":15797228},{"x":382,"y":31,"color":15797228},{"x":359,"y":32,"color":15797228},{"x":290,"y":33,"color":15797228},{"x":263,"y":34,"color":15797228},{"x":406,"y":34,"color":15797228},{"x":370,"y":35,"color":15797228},{"x":292,"y":36,"color":15797228},{"x":257,"y":37,"color":15797228},{"x":394,"y":37,"color":15797228},{"x":353,"y":38,"color":15797228},{"x":283,"y":39,"color":15797228},{"x":257,"y":40,"color":15797228},{"x":393,"y":40,"color":15797228},{"x":374,"y":41,"color":15797228},{"x":342,"y":42,"color":15797228},{"x":298,"y":43,"color":15797228},{"x":254,"y":44,"color":15797228},{"x":383,"y":44,"color":15797228},{"x":321,"y":45,"color":15797228},{"x":255,"y":46,"color":15797228},{"x":380,"y":46,"color":15797228},{"x":293,"y":47,"color":15797228},{"x":422,"y":47,"color":15797228},{"x":333,"y":48,"color":15797228},{"x":242,"y":49,"color":15797228},{"x":365,"y":49,"color":15797228},{"x":268,"y":50,"color":15797228},{"x":400,"y":50,"color":15797228},{"x":321,"y":51,"color":15797228},{"x":446,"y":51,"color":15797228},{"x":356,"y":52,"color":15797228},{"x":257,"y":53,"color":15797228},{"x":376,"y":53,"color":15797228},{"x":274,"y":54,"color":15797228},{"x":392,"y":54,"color":15797228},{"x":288,"y":55,"color":15797228},{"x":410,"y":55,"color":15797228},{"x":315,"y":56,"color":15797228},{"x":417,"y":56,"color":15797228},{"x":314,"y":57,"color":15797228},{"x":416,"y":57,"color":15797228},{"x":325,"y":58,"color":15797228},{"x":429,"y":58,"color":15797228},{"x":333,"y":59,"color":15797228},{"x":437,"y":59,"color":15797228},{"x":340,"y":60,"color":15797228},{"x":443,"y":60,"color":15797228},{"x":348,"y":61,"color":15797228},{"x":755,"y":61,"color":15797228},{"x":350,"y":62,"color":15797228},{"x":753,"y":62,"color":15797228},{"x":338,"y":63,"color":15797228},{"x":441,"y":63,"color":15797228},{"x":327,"y":64,"color":15797228},{"x":429,"y":64,"color":15797228},{"x":314,"y":65,"color":15797228},{"x":414,"y":65,"color":15797228},{"x":286,"y":66,"color":15797228},{"x":397,"y":66,"color":15797228},{"x":265,"y":67,"color":15797228},{"x":374,"y":67,"color":15797228},{"x":223,"y":68,"color":15797228},{"x":356,"y":68,"color":15797228},{"x":759,"y":68,"color":15797228},{"x":353,"y":69,"color":15797228},{"x":220,"y":70,"color":15797228},{"x":366,"y":70,"color":15797228},{"x":257,"y":71,"color":15797228},{"x":368,"y":71,"color":15797228},{"x":259,"y":72,"color":15797228},{"x":369,"y":72,"color":15797228},{"x":227,"y":73,"color":15797228},{"x":358,"y":73,"color":15797228},{"x":213,"y":74,"color":15797228},{"x":340,"y":74,"color":15797228},{"x":621,"y":74,"color":15797228},{"x":318,"y":75,"color":15797228},{"x":418,"y":75,"color":15797228},{"x":295,"y":76,"color":15797228},{"x":396,"y":76,"color":15797228},{"x":269,"y":77,"color":15797228},{"x":386,"y":77,"color":15797228},{"x":258,"y":78,"color":15797228},{"x":381,"y":78,"color":15797228},{"x":244,"y":79,"color":15797228},{"x":365,"y":79,"color":15797228},{"x":212,"y":80,"color":15797228},{"x":342,"y":80,"color":15797228},{"x":548,"y":80,"color":15797228},{"x":312,"y":81,"color":15797228},{"x":412,"y":81,"color":15797228},{"x":248,"y":82,"color":15797228},{"x":376,"y":82,"color":15797228},{"x":202,"y":83,"color":15797228},{"x":344,"y":83,"color":15797228},{"x":552,"y":83,"color":15797228},{"x":323,"y":84,"color":15797228},{"x":423,"y":84,"color":15797228},{"x":313,"y":85,"color":15797228},{"x":413,"y":85,"color":15797228},{"x":268,"y":86,"color":15797228},{"x":394,"y":86,"color":15797228},{"x":244,"y":87,"color":15797228},{"x":376,"y":87,"color":15797228},{"x":215,"y":88,"color":15797228},{"x":356,"y":88,"color":15797228},{"x":556,"y":88,"color":15797228},{"x":341,"y":89,"color":15797228},{"x":532,"y":89,"color":15797228},{"x":334,"y":90,"color":15797228},{"x":521,"y":90,"color":15797228},{"x":329,"y":91,"color":15797228},{"x":518,"y":91,"color":15797228},{"x":327,"y":92,"color":15797228},{"x":516,"y":92,"color":15797228},{"x":325,"y":93,"color":15797228},{"x":425,"y":93,"color":15797228},{"x":316,"y":94,"color":15797228},{"x":416,"y":94,"color":15797228},{"x":301,"y":95,"color":15797228},{"x":401,"y":95,"color":15797228},{"x":293,"y":96,"color":15797228},{"x":393,"y":96,"color":15797228},{"x":263,"y":97,"color":15797228},{"x":386,"y":97,"color":15797228},{"x":249,"y":98,"color":15797228},{"x":367,"y":98,"color":15797228},{"x":220,"y":99,"color":15797228},{"x":342,"y":99,"color":15797228},{"x":538,"y":99,"color":15797228},{"x":304,"y":100,"color":15797228},{"x":404,"y":100,"color":15797228},{"x":266,"y":101,"color":15797228},{"x":378,"y":101,"color":15797228},{"x":237,"y":102,"color":15797228},{"x":353,"y":102,"color":15797228},{"x":169,"y":103,"color":15797228},{"x":314,"y":103,"color":15797228},{"x":414,"y":103,"color":15797228},{"x":278,"y":104,"color":15797228},{"x":378,"y":104,"color":15797228},{"x":251,"y":105,"color":15797228},{"x":360,"y":105,"color":15797228},{"x":224,"y":106,"color":15797228},{"x":352,"y":106,"color":15797228},{"x":245,"y":107,"color":15797228},{"x":358,"y":107,"color":15797228},{"x":259,"y":108,"color":15797228},{"x":369,"y":108,"color":15797228},{"x":259,"y":109,"color":15797228},{"x":370,"y":109,"color":15797228},{"x":258,"y":110,"color":15797228},{"x":377,"y":110,"color":15797228},{"x":295,"y":111,"color":15797228},{"x":395,"y":111,"color":15797228},{"x":314,"y":112,"color":15797228},{"x":414,"y":112,"color":15797228},{"x":331,"y":113,"color":15797228},{"x":546,"y":113,"color":15797228},{"x":351,"y":114,"color":15797228},{"x":214,"y":115,"color":15797228},{"x":367,"y":115,"color":15797228},{"x":297,"y":116,"color":15797228},{"x":397,"y":116,"color":15797228},{"x":330,"y":117,"color":15797228},{"x":529,"y":117,"color":15797228},{"x":357,"y":118,"color":15797228},{"x":243,"y":119,"color":15797228},{"x":386,"y":119,"color":15797228},{"x":309,"y":120,"color":15797228},{"x":409,"y":120,"color":15797228},{"x":326,"y":121,"color":15797228},{"x":426,"y":121,"color":15797228},{"x":329,"y":122,"color":15797228},{"x":429,"y":122,"color":15797228},{"x":332,"y":123,"color":15797228},{"x":775,"y":123,"color":15797228},{"x":327,"y":124,"color":15797228},{"x":530,"y":124,"color":15797228},{"x":310,"y":125,"color":15797228},{"x":410,"y":125,"color":15797228},{"x":306,"y":126,"color":15797228},{"x":406,"y":126,"color":15797228},{"x":312,"y":127,"color":15797228},{"x":412,"y":127,"color":15797228},{"x":309,"y":128,"color":15797228},{"x":409,"y":128,"color":15797228},{"x":306,"y":129,"color":15797228},{"x":406,"y":129,"color":15797228},{"x":292,"y":130,"color":15797228},{"x":394,"y":130,"color":15797228},{"x":224,"y":131,"color":15797228},{"x":389,"y":131,"color":15797228},{"x":205,"y":132,"color":15797228},{"x":397,"y":132,"color":15797228},{"x":289,"y":133,"color":15797228},{"x":408,"y":133,"color":15797228},{"x":314,"y":134,"color":15797228},{"x":414,"y":134,"color":15797228},{"x":223,"y":135,"color":15797228},{"x":414,"y":135,"color":15797228},{"x":205,"y":136,"color":15797228},{"x":411,"y":136,"color":15797228},{"x":182,"y":137,"color":15797228},{"x":399,"y":137,"color":15797228},{"x":806,"y":137,"color":15797228},{"x":363,"y":138,"color":15797228},{"x":769,"y":138,"color":15797228},{"x":323,"y":139,"color":15797228},{"x":425,"y":139,"color":15797228},{"x":164,"y":140,"color":15797228},{"x":378,"y":140,"color":15797228},{"x":783,"y":140,"color":15797228},{"x":249,"y":141,"color":15797228},{"x":413,"y":141,"color":15797228},{"x":887,"y":141,"color":15797228},{"x":335,"y":142,"color":15797228},{"x":738,"y":142,"color":15797228},{"x":165,"y":143,"color":15797228},{"x":356,"y":143,"color":15797228},{"x":756,"y":143,"color":15797228},{"x":201,"y":144,"color":15797228},{"x":375,"y":144,"color":15797228},{"x":778,"y":144,"color":15797228},{"x":242,"y":145,"color":15797228},{"x":407,"y":145,"color":15797228},{"x":883,"y":145,"color":15797228},{"x":357,"y":146,"color":15797228},{"x":761,"y":146,"color":15797228},{"x":247,"y":147,"color":15797228},{"x":414,"y":147,"color":15797228},{"x":213,"y":148,"color":15797228},{"x":392,"y":148,"color":15797228},{"x":796,"y":148,"color":15797228},{"x":373,"y":149,"color":15797228},{"x":776,"y":149,"color":15797228},{"x":373,"y":150,"color":15797228},{"x":786,"y":150,"color":15797228},{"x":400,"y":151,"color":15797228},{"x":331,"y":152,"color":15797228},{"x":734,"y":152,"color":15797228},{"x":356,"y":153,"color":15797228},{"x":758,"y":153,"color":15797228},{"x":381,"y":154,"color":15797228},{"x":785,"y":154,"color":15797228},{"x":395,"y":155,"color":15797228},{"x":136,"y":156,"color":15797228},{"x":406,"y":156,"color":15797228},{"x":204,"y":157,"color":15797228},{"x":417,"y":157,"color":15797228},{"x":224,"y":158,"color":15797228},{"x":643,"y":158,"color":15797228},{"x":225,"y":159,"color":15797228},{"x":645,"y":159,"color":15797228},{"x":203,"y":160,"color":15797228},{"x":399,"y":160,"color":15797228},{"x":140,"y":161,"color":15797228},{"x":367,"y":161,"color":15797228},{"x":764,"y":161,"color":15797228},{"x":237,"y":162,"color":15797228},{"x":410,"y":162,"color":15797228},{"x":817,"y":162,"color":15797228},{"x":340,"y":163,"color":15797228},{"x":741,"y":163,"color":15797228},{"x":146,"y":164,"color":15797228},{"x":375,"y":164,"color":15797228},{"x":781,"y":164,"color":15797228},{"x":250,"y":165,"color":15797228},{"x":686,"y":165,"color":15797228},{"x":836,"y":165,"color":15797228},{"x":345,"y":166,"color":15797228},{"x":746,"y":166,"color":15797228},{"x":142,"y":167,"color":15797228},{"x":370,"y":167,"color":15797228},{"x":767,"y":167,"color":15797228},{"x":182,"y":168,"color":15797228},{"x":390,"y":168,"color":15797228},{"x":789,"y":168,"color":15797228},{"x":205,"y":169,"color":15797228},{"x":405,"y":169,"color":15797228},{"x":795,"y":169,"color":15797228},{"x":202,"y":170,"color":15797228},{"x":397,"y":170,"color":15797228},{"x":780,"y":170,"color":15797228},{"x":165,"y":171,"color":15797228},{"x":374,"y":171,"color":15797228},{"x":756,"y":171,"color":15797228},{"x":131,"y":172,"color":15797228},{"x":342,"y":172,"color":15797228},{"x":727,"y":172,"color":15797228},{"x":827,"y":172,"color":15797228},{"x":245,"y":173,"color":15797228},{"x":680,"y":173,"color":15797228},{"x":805,"y":173,"color":15797228},{"x":182,"y":174,"color":15797228},{"x":393,"y":174,"color":15797228},{"x":777,"y":174,"color":15797228},{"x":147,"y":175,"color":15797228},{"x":364,"y":175,"color":15797228},{"x":749,"y":175,"color":15797228},{"x":884,"y":175,"color":15797228},{"x":333,"y":176,"color":15797228},{"x":688,"y":176,"color":15797228},{"x":810,"y":176,"color":15797228},{"x":171,"y":177,"color":15797228},{"x":380,"y":177,"color":15797228},{"x":755,"y":177,"color":15797228},{"x":888,"y":177,"color":15797228},{"x":263,"y":178,"color":15797228},{"x":679,"y":178,"color":15797228},{"x":796,"y":178,"color":15797228},{"x":163,"y":179,"color":15797228},{"x":369,"y":179,"color":15797228},{"x":735,"y":179,"color":15797228},{"x":835,"y":179,"color":15797228},{"x":245,"y":180,"color":15797228},{"x":417,"y":180,"color":15797228},{"x":774,"y":180,"color":15797228},{"x":905,"y":180,"color":15797228},{"x":349,"y":181,"color":15797228},{"x":721,"y":181,"color":15797228},{"x":821,"y":181,"color":15797228},{"x":181,"y":182,"color":15797228},{"x":384,"y":182,"color":15797228},{"x":747,"y":182,"color":15797228},{"x":847,"y":182,"color":15797228},{"x":235,"y":183,"color":15797228},{"x":402,"y":183,"color":15797228},{"x":767,"y":183,"color":15797228},{"x":878,"y":183,"color":15797228},{"x":250,"y":184,"color":15797228},{"x":417,"y":184,"color":15797228},{"x":776,"y":184,"color":15797228},{"x":884,"y":184,"color":15797228},{"x":252,"y":185,"color":15797228},{"x":641,"y":185,"color":15797228},{"x":779,"y":185,"color":15797228},{"x":884,"y":185,"color":15797228},{"x":241,"y":186,"color":15797228},{"x":402,"y":186,"color":15797228},{"x":765,"y":186,"color":15797228},{"x":870,"y":186,"color":15797228},{"x":184,"y":187,"color":15797228},{"x":379,"y":187,"color":15797228},{"x":737,"y":187,"color":15797228},{"x":837,"y":187,"color":15797228},{"x":38,"y":188,"color":15797228},{"x":330,"y":188,"color":15797228},{"x":704,"y":188,"color":15797228},{"x":804,"y":188,"color":15797228},{"x":905,"y":188,"color":15797228},{"x":248,"y":189,"color":15797228},{"x":400,"y":189,"color":15797228},{"x":768,"y":189,"color":15797228},{"x":868,"y":189,"color":15797228},{"x":174,"y":190,"color":15797228},{"x":365,"y":190,"color":15797228},{"x":735,"y":190,"color":15797228},{"x":835,"y":190,"color":15797228},{"x":935,"y":190,"color":15797228},{"x":269,"y":191,"color":15797228},{"x":679,"y":191,"color":15797228},{"x":784,"y":191,"color":15797228},{"x":884,"y":191,"color":15797228},{"x":162,"y":192,"color":15797228},{"x":354,"y":192,"color":15797228},{"x":712,"y":192,"color":15797228},{"x":812,"y":192,"color":15797228},{"x":912,"y":192,"color":15797228},{"x":177,"y":193,"color":15797228},{"x":374,"y":193,"color":15797228},{"x":730,"y":193,"color":15797228},{"x":830,"y":193,"color":15797228},{"x":930,"y":193,"color":15797228},{"x":185,"y":194,"color":15797228},{"x":388,"y":194,"color":15797228},{"x":735,"y":194,"color":15797228},{"x":835,"y":194,"color":15797228},{"x":935,"y":194,"color":15797228},{"x":182,"y":195,"color":15797228},{"x":393,"y":195,"color":15797228},{"x":736,"y":195,"color":15797228},{"x":836,"y":195,"color":15797228},{"x":936,"y":195,"color":15797228},{"x":169,"y":196,"color":15797228},{"x":381,"y":196,"color":15797228},{"x":717,"y":196,"color":15797228},{"x":817,"y":196,"color":15797228},{"x":917,"y":196,"color":15797228},{"x":115,"y":197,"color":15797228},{"x":353,"y":197,"color":15797228},{"x":679,"y":197,"color":15797228},{"x":783,"y":197,"color":15797228},{"x":883,"y":197,"color":15797228},{"x":44,"y":198,"color":15797228},{"x":207,"y":198,"color":15797228},{"x":411,"y":198,"color":15797228},{"x":742,"y":198,"color":15797228},{"x":842,"y":198,"color":15797228},{"x":942,"y":198,"color":15797228},{"x":87,"y":199,"color":15797228},{"x":341,"y":199,"color":15797228},{"x":576,"y":199,"color":15797228},{"x":769,"y":199,"color":15797228},{"x":869,"y":199,"color":15797228},{"x":977,"y":199,"color":15797228},{"x":122,"y":200,"color":15797228},{"x":354,"y":200,"color":15797228},{"x":659,"y":200,"color":15797228},{"x":776,"y":200,"color":15797228},{"x":876,"y":200,"color":15797228},{"x":985,"y":200,"color":15797228},{"x":124,"y":201,"color":15797228},{"x":350,"y":201,"color":15797228},{"x":625,"y":201,"color":15797228},{"x":779,"y":201,"color":15797228},{"x":879,"y":201,"color":15797228},{"x":986,"y":201,"color":15797228},{"x":121,"y":202,"color":15797228},{"x":350,"y":202,"color":15797228},{"x":622,"y":202,"color":15797228},{"x":778,"y":202,"color":15797228},{"x":878,"y":202,"color":15797228},{"x":984,"y":202,"color":15797228},{"x":115,"y":203,"color":15797228},{"x":347,"y":203,"color":15797228},{"x":584,"y":203,"color":15797228},{"x":770,"y":203,"color":15797228},{"x":870,"y":203,"color":15797228},{"x":974,"y":203,"color":15797228},{"x":92,"y":204,"color":15797228},{"x":251,"y":204,"color":15797228},{"x":559,"y":204,"color":15797228},{"x":740,"y":204,"color":15797228},{"x":840,"y":204,"color":15797228},{"x":940,"y":204,"color":15797228},{"x":55,"y":205,"color":15797228},{"x":157,"y":205,"color":15797228},{"x":396,"y":205,"color":15797228},{"x":699,"y":205,"color":15797228},{"x":802,"y":205,"color":15797228},{"x":902,"y":205,"color":15797228},{"x":14,"y":206,"color":15797228},{"x":116,"y":206,"color":15797228},{"x":354,"y":206,"color":15797228},{"x":636,"y":206,"color":15797228},{"x":754,"y":206,"color":15797228},{"x":854,"y":206,"color":15797228},{"x":954,"y":206,"color":15797228},{"x":66,"y":207,"color":15797228},{"x":223,"y":207,"color":15797228},{"x":550,"y":207,"color":15797228},{"x":707,"y":207,"color":15797228},{"x":807,"y":207,"color":15797228},{"x":907,"y":207,"color":15797228},{"x":19,"y":208,"color":15797228},{"x":121,"y":208,"color":15797228},{"x":355,"y":208,"color":15797228},{"x":614,"y":208,"color":15797228},{"x":743,"y":208,"color":15797228},{"x":843,"y":208,"color":15797228},{"x":943,"y":208,"color":15797228},{"x":57,"y":209,"color":15797228},{"x":184,"y":209,"color":15797228},{"x":387,"y":209,"color":15797228},{"x":659,"y":209,"color":15797228},{"x":767,"y":209,"color":15797228},{"x":867,"y":209,"color":15797228},{"x":967,"y":209,"color":15797228},{"x":80,"y":210,"color":15797228},{"x":226,"y":210,"color":15797228},{"x":543,"y":210,"color":15797228},{"x":670,"y":210,"color":15797228},{"x":777,"y":210,"color":15797228},{"x":877,"y":210,"color":15797228},{"x":977,"y":210,"color":15797228},{"x":91,"y":211,"color":15797228},{"x":231,"y":211,"color":15797228},{"x":548,"y":211,"color":15797228},{"x":674,"y":211,"color":15797228},{"x":782,"y":211,"color":15797228},{"x":882,"y":211,"color":15797228},{"x":982,"y":211,"color":15797228},{"x":96,"y":212,"color":15797228},{"x":219,"y":212,"color":15797228},{"x":532,"y":212,"color":15797228},{"x":656,"y":212,"color":15797228},{"x":768,"y":212,"color":15797228},{"x":868,"y":212,"color":15797228},{"x":968,"y":212,"color":15797228},{"x":80,"y":213,"color":15797228},{"x":186,"y":213,"color":15797228},{"x":352,"y":213,"color":15797228},{"x":596,"y":213,"color":15797228},{"x":725,"y":213,"color":15797228},{"x":825,"y":213,"color":15797228},{"x":925,"y":213,"color":15797228},{"x":36,"y":214,"color":15797228},{"x":138,"y":214,"color":15797228},{"x":250,"y":214,"color":15797228},{"x":548,"y":214,"color":15797228},{"x":671,"y":214,"color":15797228},{"x":776,"y":214,"color":15797228},{"x":876,"y":214,"color":15797228},{"x":976,"y":214,"color":15797228},{"x":89,"y":215,"color":15797228},{"x":193,"y":215,"color":15797228},{"x":360,"y":215,"color":15797228},{"x":623,"y":215,"color":15797228},{"x":729,"y":215,"color":15797228},{"x":829,"y":215,"color":15797228},{"x":929,"y":215,"color":15797228},{"x":40,"y":216,"color":15797228},{"x":142,"y":216,"color":15797228},{"x":245,"y":216,"color":15797228},{"x":547,"y":216,"color":15797228},{"x":669,"y":216,"color":15797228},{"x":776,"y":216,"color":15797228},{"x":876,"y":216,"color":15797228},{"x":976,"y":216,"color":15797228},{"x":95,"y":217,"color":15797228},{"x":204,"y":217,"color":15797228},{"x":365,"y":217,"color":15797228},{"x":627,"y":217,"color":15797228},{"x":734,"y":217,"color":15797228},{"x":834,"y":217,"color":15797228},{"x":934,"y":217,"color":15797228},{"x":48,"y":218,"color":15797228},{"x":158,"y":218,"color":15797228},{"x":293,"y":218,"color":15797228},{"x":571,"y":218,"color":15797228},{"x":703,"y":218,"color":15797228},{"x":803,"y":218,"color":15797228},{"x":903,"y":218,"color":15797228},{"x":1005,"y":218,"color":15797228},{"x":116,"y":219,"color":15797228},{"x":228,"y":219,"color":15797228},{"x":530,"y":219,"color":15797228},{"x":649,"y":219,"color":15797228},{"x":763,"y":219,"color":15797228},{"x":863,"y":219,"color":15797228},{"x":963,"y":219,"color":15797228},{"x":78,"y":220,"color":15797228},{"x":196,"y":220,"color":15797228},{"x":361,"y":220,"color":15797228},{"x":623,"y":220,"color":15797228},{"x":735,"y":220,"color":15797228},{"x":835,"y":220,"color":15797228},{"x":935,"y":220,"color":15797228},{"x":46,"y":221,"color":15797228},{"x":163,"y":221,"color":15797228},{"x":337,"y":221,"color":15797228},{"x":589,"y":221,"color":15797228},{"x":709,"y":221,"color":15797228},{"x":809,"y":221,"color":15797228},{"x":909,"y":221,"color":15797228},{"x":1014,"y":221,"color":15797228},{"x":116,"y":222,"color":15797228},{"x":275,"y":222,"color":15797228},{"x":561,"y":222,"color":15797228},{"x":691,"y":222,"color":15797228},{"x":791,"y":222,"color":15797228},{"x":891,"y":222,"color":15797228},{"x":991,"y":222,"color":15797228},{"x":101,"y":223,"color":15797228},{"x":221,"y":223,"color":15797228},{"x":543,"y":223,"color":15797228},{"x":669,"y":223,"color":15797228},{"x":769,"y":223,"color":15797228},{"x":869,"y":223,"color":15797228},{"x":969,"y":223,"color":15797228},{"x":67,"y":224,"color":15797228},{"x":188,"y":224,"color":15797228},{"x":367,"y":224,"color":15797228},{"x":629,"y":224,"color":15797228},{"x":729,"y":224,"color":15797228},{"x":829,"y":224,"color":15797228},{"x":929,"y":224,"color":15797228},{"x":20,"y":225,"color":15797228},{"x":122,"y":225,"color":15797228},{"x":276,"y":225,"color":15797228},{"x":555,"y":225,"color":15797228},{"x":675,"y":225,"color":15797228},{"x":775,"y":225,"color":15797228},{"x":875,"y":225,"color":15797228},{"x":975,"y":225,"color":15797228},{"x":65,"y":226,"color":15797228},{"x":180,"y":226,"color":15797228},{"x":361,"y":226,"color":15797228},{"x":620,"y":226,"color":15797228},{"x":720,"y":226,"color":15797228},{"x":820,"y":226,"color":15797228},{"x":920,"y":226,"color":15797228},{"x":12,"y":227,"color":15797228},{"x":114,"y":227,"color":15797228},{"x":227,"y":227,"color":15797228},{"x":545,"y":227,"color":15797228},{"x":672,"y":227,"color":15797228},{"x":772,"y":227,"color":15797228},{"x":872,"y":227,"color":15797228},{"x":972,"y":227,"color":15797228},{"x":70,"y":228,"color":15797228},{"x":182,"y":228,"color":15797228},{"x":369,"y":228,"color":15797228},{"x":628,"y":228,"color":15797228},{"x":728,"y":228,"color":15797228},{"x":828,"y":228,"color":15797228},{"x":928,"y":228,"color":15797228},{"x":35,"y":229,"color":15797228},{"x":147,"y":229,"color":15797228},{"x":283,"y":229,"color":15797228},{"x":565,"y":229,"color":15797228},{"x":684,"y":229,"color":15797228},{"x":784,"y":229,"color":15797228},{"x":884,"y":229,"color":15797228},{"x":984,"y":229,"color":15797228},{"x":91,"y":230,"color":15797228},{"x":202,"y":230,"color":15797228},{"x":422,"y":230,"color":15797228},{"x":628,"y":230,"color":15797228},{"x":728,"y":230,"color":15797228},{"x":828,"y":230,"color":15797228},{"x":928,"y":230,"color":15797228},{"x":38,"y":231,"color":15797228},{"x":149,"y":231,"color":15797228},{"x":268,"y":231,"color":15797228},{"x":558,"y":231,"color":15797228},{"x":675,"y":231,"color":15797228},{"x":775,"y":231,"color":15797228},{"x":875,"y":231,"color":15797228},{"x":975,"y":231,"color":15797228},{"x":91,"y":232,"color":15797228},{"x":193,"y":232,"color":15797228},{"x":359,"y":232,"color":15797228},{"x":615,"y":232,"color":15797228},{"x":715,"y":232,"color":15797228},{"x":815,"y":232,"color":15797228},{"x":915,"y":232,"color":15797228},{"x":37,"y":233,"color":15797228},{"x":139,"y":233,"color":15797228},{"x":243,"y":233,"color":15797228},{"x":537,"y":233,"color":15797228},{"x":660,"y":233,"color":15797228},{"x":760,"y":233,"color":15797228},{"x":860,"y":233,"color":15797228},{"x":960,"y":233,"color":15797228},{"x":99,"y":234,"color":15797228},{"x":199,"y":234,"color":15797228},{"x":366,"y":234,"color":15797228},{"x":616,"y":234,"color":15797228},{"x":716,"y":234,"color":15797228},{"x":816,"y":234,"color":15797228},{"x":916,"y":234,"color":15797228},{"x":54,"y":235,"color":15797228},{"x":156,"y":235,"color":15797228},{"x":283,"y":235,"color":15797228},{"x":567,"y":235,"color":15797228},{"x":678,"y":235,"color":15797228},{"x":778,"y":235,"color":15797228},{"x":878,"y":235,"color":15797228},{"x":978,"y":235,"color":15797228},{"x":119,"y":236,"color":15797228},{"x":219,"y":236,"color":15797228},{"x":530,"y":236,"color":15797228},{"x":645,"y":236,"color":15797228},{"x":745,"y":236,"color":15797228},{"x":845,"y":236,"color":15797228},{"x":945,"y":236,"color":15797228},{"x":85,"y":237,"color":15797228},{"x":185,"y":237,"color":15797228},{"x":426,"y":237,"color":15797228},{"x":623,"y":237,"color":15797228},{"x":723,"y":237,"color":15797228},{"x":823,"y":237,"color":15797228},{"x":923,"y":237,"color":15797228},{"x":59,"y":238,"color":15797228},{"x":161,"y":238,"color":15797228},{"x":347,"y":238,"color":15797228},{"x":596,"y":238,"color":15797228},{"x":696,"y":238,"color":15797228},{"x":796,"y":238,"color":15797228},{"x":896,"y":238,"color":15797228},{"x":31,"y":239,"color":15797228},{"x":133,"y":239,"color":15797228},{"x":254,"y":239,"color":15797228},{"x":575,"y":239,"color":15797228},{"x":676,"y":239,"color":15797228},{"x":776,"y":239,"color":15797228},{"x":876,"y":239,"color":15797228},{"x":976,"y":239,"color":15797228},{"x":113,"y":240,"color":15797228},{"x":213,"y":240,"color":15797228},{"x":568,"y":240,"color":15797228},{"x":669,"y":240,"color":15797228},{"x":769,"y":240,"color":15797228},{"x":869,"y":240,"color":15797228},{"x":969,"y":240,"color":15797228},{"x":105,"y":241,"color":15797228},{"x":205,"y":241,"color":15797228},{"x":574,"y":241,"color":15797228},{"x":674,"y":241,"color":15797228},{"x":774,"y":241,"color":15797228},{"x":874,"y":241,"color":15797228},{"x":974,"y":241,"color":15797228},{"x":102,"y":242,"color":15797228},{"x":202,"y":242,"color":15797228},{"x":560,"y":242,"color":15797228},{"x":662,"y":242,"color":15797228},{"x":762,"y":242,"color":15797228},{"x":862,"y":242,"color":15797228},{"x":962,"y":242,"color":15797228},{"x":90,"y":243,"color":15797228},{"x":190,"y":243,"color":15797228},{"x":553,"y":243,"color":15797228},{"x":655,"y":243,"color":15797228},{"x":755,"y":243,"color":15797228},{"x":855,"y":243,"color":15797228},{"x":955,"y":243,"color":15797228},{"x":80,"y":244,"color":15797228},{"x":185,"y":244,"color":15797228},{"x":550,"y":244,"color":15797228},{"x":652,"y":244,"color":15797228},{"x":752,"y":244,"color":15797228},{"x":852,"y":244,"color":15797228},{"x":952,"y":244,"color":15797228},{"x":76,"y":245,"color":15797228},{"x":188,"y":245,"color":15797228},{"x":559,"y":245,"color":15797228},{"x":660,"y":245,"color":15797228},{"x":760,"y":245,"color":15797228},{"x":860,"y":245,"color":15797228},{"x":960,"y":245,"color":15797228},{"x":85,"y":246,"color":15797228},{"x":197,"y":246,"color":15797228},{"x":568,"y":246,"color":15797228},{"x":669,"y":246,"color":15797228},{"x":769,"y":246,"color":15797228},{"x":869,"y":246,"color":15797228},{"x":972,"y":246,"color":15797228},{"x":96,"y":247,"color":15797228},{"x":208,"y":247,"color":15797228},{"x":581,"y":247,"color":15797228},{"x":681,"y":247,"color":15797228},{"x":781,"y":247,"color":15797228},{"x":881,"y":247,"color":15797228},{"x":14,"y":248,"color":15797228},{"x":116,"y":248,"color":15797228},{"x":274,"y":248,"color":15797228},{"x":594,"y":248,"color":15797228},{"x":694,"y":248,"color":15797228},{"x":794,"y":248,"color":15797228},{"x":894,"y":248,"color":15797228},{"x":27,"y":249,"color":15797228},{"x":129,"y":249,"color":15797228},{"x":351,"y":249,"color":15797228},{"x":609,"y":249,"color":15797228},{"x":709,"y":249,"color":15797228},{"x":809,"y":249,"color":15797228},{"x":909,"y":249,"color":15797228},{"x":42,"y":250,"color":15797228},{"x":144,"y":250,"color":15797228},{"x":504,"y":250,"color":15797228},{"x":620,"y":250,"color":15797228},{"x":720,"y":250,"color":15797228},{"x":820,"y":250,"color":15797228},{"x":920,"y":250,"color":15797228},{"x":55,"y":251,"color":15797228},{"x":167,"y":251,"color":15797228},{"x":522,"y":251,"color":15797228},{"x":637,"y":251,"color":15797228},{"x":737,"y":251,"color":15797228},{"x":837,"y":251,"color":15797228},{"x":943,"y":251,"color":15797228},{"x":80,"y":252,"color":15797228},{"x":193,"y":252,"color":15797228},{"x":561,"y":252,"color":15797228},{"x":665,"y":252,"color":15797228},{"x":765,"y":252,"color":15797228},{"x":865,"y":252,"color":15797228},{"x":17,"y":253,"color":15797228},{"x":120,"y":253,"color":15797228},{"x":299,"y":253,"color":15797228},{"x":606,"y":253,"color":15797228},{"x":706,"y":253,"color":15797228},{"x":806,"y":253,"color":15797228},{"x":906,"y":253,"color":15797228},{"x":61,"y":254,"color":15797228},{"x":176,"y":254,"color":15797228},{"x":550,"y":254,"color":15797228},{"x":658,"y":254,"color":15797228},{"x":758,"y":254,"color":15797228},{"x":858,"y":254,"color":15797228},{"x":15,"y":255,"color":15797228},{"x":123,"y":255,"color":15797228},{"x":348,"y":255,"color":15797228},{"x":623,"y":255,"color":15797228},{"x":723,"y":255,"color":15797228},{"x":823,"y":255,"color":15797228},{"x":923,"y":255,"color":15797228},{"x":100,"y":256,"color":15797228},{"x":209,"y":256,"color":15797228},{"x":596,"y":256,"color":15797228},{"x":696,"y":256,"color":15797228},{"x":796,"y":256,"color":15797228},{"x":896,"y":256,"color":15797228},{"x":79,"y":257,"color":15797228},{"x":186,"y":257,"color":15797228},{"x":558,"y":257,"color":15797228},{"x":667,"y":257,"color":15797228},{"x":767,"y":257,"color":15797228},{"x":867,"y":257,"color":15797228},{"x":36,"y":258,"color":15797228},{"x":150,"y":258,"color":15797228},{"x":512,"y":258,"color":15797228},{"x":635,"y":258,"color":15797228},{"x":735,"y":258,"color":15797228},{"x":835,"y":258,"color":15797228},{"x":957,"y":258,"color":15797228},{"x":118,"y":259,"color":15797228},{"x":268,"y":259,"color":15797228},{"x":615,"y":259,"color":15797228},{"x":715,"y":259,"color":15797228},{"x":815,"y":259,"color":15797228},{"x":915,"y":259,"color":15797228},{"x":111,"y":260,"color":15797228},{"x":211,"y":260,"color":15797228},{"x":612,"y":260,"color":15797228},{"x":712,"y":260,"color":15797228},{"x":812,"y":260,"color":15797228},{"x":912,"y":260,"color":15797228},{"x":118,"y":261,"color":15797228},{"x":268,"y":261,"color":15797228},{"x":624,"y":261,"color":15797228},{"x":724,"y":261,"color":15797228},{"x":824,"y":261,"color":15797228},{"x":946,"y":261,"color":15797228},{"x":144,"y":262,"color":15797228},{"x":514,"y":262,"color":15797228},{"x":650,"y":262,"color":15797228},{"x":750,"y":262,"color":15797228},{"x":850,"y":262,"color":15797228},{"x":46,"y":263,"color":15797228},{"x":186,"y":263,"color":15797228},{"x":584,"y":263,"color":15797228},{"x":684,"y":263,"color":15797228},{"x":784,"y":263,"color":15797228},{"x":884,"y":263,"color":15797228},{"x":129,"y":264,"color":15797228},{"x":279,"y":264,"color":15797228},{"x":623,"y":264,"color":15797228},{"x":723,"y":264,"color":15797228},{"x":823,"y":264,"color":15797228},{"x":26,"y":265,"color":15797228},{"x":172,"y":265,"color":15797228},{"x":566,"y":265,"color":15797228},{"x":666,"y":265,"color":15797228},{"x":766,"y":265,"color":15797228},{"x":866,"y":265,"color":15797228},{"x":133,"y":266,"color":15797228},{"x":282,"y":266,"color":15797228},{"x":618,"y":266,"color":15797228},{"x":718,"y":266,"color":15797228},{"x":818,"y":266,"color":15797228},{"x":41,"y":267,"color":15797228},{"x":196,"y":267,"color":15797228},{"x":582,"y":267,"color":15797228},{"x":682,"y":267,"color":15797228},{"x":782,"y":267,"color":15797228},{"x":882,"y":267,"color":15797228},{"x":173,"y":268,"color":15797228},{"x":554,"y":268,"color":15797228},{"x":655,"y":268,"color":15797228},{"x":755,"y":268,"color":15797228},{"x":855,"y":268,"color":15797228},{"x":150,"y":269,"color":15797228},{"x":502,"y":269,"color":15797228},{"x":631,"y":269,"color":15797228},{"x":731,"y":269,"color":15797228},{"x":831,"y":269,"color":15797228},{"x":129,"y":270,"color":15797228},{"x":272,"y":270,"color":15797228},{"x":606,"y":270,"color":15797228},{"x":706,"y":270,"color":15797228},{"x":806,"y":270,"color":15797228},{"x":110,"y":271,"color":15797228},{"x":210,"y":271,"color":15797228},{"x":586,"y":271,"color":15797228},{"x":686,"y":271,"color":15797228},{"x":786,"y":271,"color":15797228},{"x":939,"y":271,"color":15797228},{"x":191,"y":272,"color":15797228},{"x":568,"y":272,"color":15797228},{"x":668,"y":272,"color":15797228},{"x":768,"y":272,"color":15797228},{"x":868,"y":272,"color":15797228},{"x":173,"y":273,"color":15797228},{"x":529,"y":273,"color":15797228},{"x":656,"y":273,"color":15797228},{"x":756,"y":273,"color":15797228},{"x":856,"y":273,"color":15797228},{"x":165,"y":274,"color":15797228},{"x":518,"y":274,"color":15797228},{"x":645,"y":274,"color":15797228},{"x":745,"y":274,"color":15797228},{"x":845,"y":274,"color":15797228},{"x":151,"y":275,"color":15797228},{"x":297,"y":275,"color":15797228},{"x":632,"y":275,"color":15797228},{"x":732,"y":275,"color":15797228},{"x":832,"y":275,"color":15797228},{"x":134,"y":276,"color":15797228},{"x":279,"y":276,"color":15797228},{"x":605,"y":276,"color":15797228},{"x":705,"y":276,"color":15797228},{"x":805,"y":276,"color":15797228},{"x":108,"y":277,"color":15797228},{"x":208,"y":277,"color":15797228},{"x":580,"y":277,"color":15797228},{"x":680,"y":277,"color":15797228},{"x":780,"y":277,"color":15797228},{"x":932,"y":277,"color":15797228},{"x":190,"y":278,"color":15797228},{"x":555,"y":278,"color":15797228},{"x":657,"y":278,"color":15797228},{"x":757,"y":278,"color":15797228},{"x":857,"y":278,"color":15797228},{"x":168,"y":279,"color":15797228},{"x":306,"y":279,"color":15797228},{"x":623,"y":279,"color":15797228},{"x":723,"y":279,"color":15797228},{"x":823,"y":279,"color":15797228},{"x":137,"y":280,"color":15797228},{"x":273,"y":280,"color":15797228},{"x":596,"y":280,"color":15797228},{"x":696,"y":280,"color":15797228},{"x":796,"y":280,"color":15797228},{"x":30,"y":281,"color":15797228},{"x":208,"y":281,"color":15797228},{"x":564,"y":281,"color":15797228},{"x":664,"y":281,"color":15797228},{"x":764,"y":281,"color":15797228},{"x":864,"y":281,"color":15797228},{"x":176,"y":282,"color":15797228},{"x":472,"y":282,"color":15797228},{"x":640,"y":282,"color":15797228},{"x":740,"y":282,"color":15797228},{"x":840,"y":282,"color":15797228},{"x":154,"y":283,"color":15797228},{"x":288,"y":283,"color":15797228},{"x":622,"y":283,"color":15797228},{"x":722,"y":283,"color":15797228},{"x":822,"y":283,"color":15797228},{"x":142,"y":284,"color":15797228},{"x":273,"y":284,"color":15797228},{"x":608,"y":284,"color":15797228},{"x":708,"y":284,"color":15797228},{"x":808,"y":284,"color":15797228},{"x":129,"y":285,"color":15797228},{"x":229,"y":285,"color":15797228},{"x":584,"y":285,"color":15797228},{"x":684,"y":285,"color":15797228},{"x":784,"y":285,"color":15797228},{"x":941,"y":285,"color":15797228},{"x":210,"y":286,"color":15797228},{"x":555,"y":286,"color":15797228},{"x":658,"y":286,"color":15797228},{"x":759,"y":286,"color":15797228},{"x":862,"y":286,"color":15797228},{"x":187,"y":287,"color":15797228},{"x":309,"y":287,"color":15797228},{"x":634,"y":287,"color":15797228},{"x":741,"y":287,"color":15797228},{"x":844,"y":287,"color":15797228},{"x":172,"y":288,"color":15797228},{"x":286,"y":288,"color":15797228},{"x":615,"y":288,"color":15797228},{"x":719,"y":288,"color":15797228},{"x":822,"y":288,"color":15797228},{"x":149,"y":289,"color":15797228},{"x":249,"y":289,"color":15797228},{"x":585,"y":289,"color":15797228},{"x":691,"y":289,"color":15797228},{"x":791,"y":289,"color":15797228},{"x":122,"y":290,"color":15797228},{"x":222,"y":290,"color":15797228},{"x":534,"y":290,"color":15797228},{"x":644,"y":290,"color":15797228},{"x":751,"y":290,"color":15797228},{"x":854,"y":290,"color":15797228},{"x":183,"y":291,"color":15797228},{"x":293,"y":291,"color":15797228},{"x":605,"y":291,"color":15797228},{"x":711,"y":291,"color":15797228},{"x":815,"y":291,"color":15797228},{"x":143,"y":292,"color":15797228},{"x":243,"y":292,"color":15797228},{"x":565,"y":292,"color":15797228},{"x":674,"y":292,"color":15797228},{"x":783,"y":292,"color":15797228},{"x":118,"y":293,"color":15797228},{"x":218,"y":293,"color":15797228},{"x":510,"y":293,"color":15797228},{"x":626,"y":293,"color":15797228},{"x":741,"y":293,"color":15797228},{"x":846,"y":293,"color":15797228},{"x":177,"y":294,"color":15797228},{"x":290,"y":294,"color":15797228},{"x":580,"y":294,"color":15797228},{"x":682,"y":294,"color":15797228},{"x":788,"y":294,"color":15797228},{"x":125,"y":295,"color":15797228},{"x":229,"y":295,"color":15797228},{"x":515,"y":295,"color":15797228},{"x":623,"y":295,"color":15797228},{"x":732,"y":295,"color":15797228},{"x":837,"y":295,"color":15797228},{"x":169,"y":296,"color":15797228},{"x":285,"y":296,"color":15797228},{"x":558,"y":296,"color":15797228},{"x":662,"y":296,"color":15797228},{"x":768,"y":296,"color":15797228},{"x":882,"y":296,"color":15797228},{"x":214,"y":297,"color":15797228},{"x":324,"y":297,"color":15797228},{"x":592,"y":297,"color":15797228},{"x":694,"y":297,"color":15797228},{"x":802,"y":297,"color":15797228},{"x":131,"y":298,"color":15797228},{"x":236,"y":298,"color":15797228},{"x":502,"y":298,"color":15797228},{"x":610,"y":298,"color":15797228},{"x":713,"y":298,"color":15797228},{"x":819,"y":298,"color":15797228},{"x":151,"y":299,"color":15797228},{"x":267,"y":299,"color":15797228},{"x":523,"y":299,"color":15797228},{"x":626,"y":299,"color":15797228},{"x":731,"y":299,"color":15797228},{"x":838,"y":299,"color":15797228},{"x":169,"y":300,"color":15797228},{"x":284,"y":300,"color":15797228},{"x":539,"y":300,"color":15797228},{"x":644,"y":300,"color":15797228},{"x":747,"y":300,"color":15797228},{"x":855,"y":300,"color":15797228},{"x":186,"y":301,"color":15797228},{"x":301,"y":301,"color":15797228},{"x":556,"y":301,"color":15797228},{"x":665,"y":301,"color":15797228},{"x":767,"y":301,"color":15797228},{"x":875,"y":301,"color":15797228},{"x":211,"y":302,"color":15797228},{"x":320,"y":302,"color":15797228},{"x":581,"y":302,"color":15797228},{"x":683,"y":302,"color":15797228},{"x":788,"y":302,"color":15797228},{"x":930,"y":302,"color":15797228},{"x":224,"y":303,"color":15797228},{"x":474,"y":303,"color":15797228},{"x":602,"y":303,"color":15797228},{"x":704,"y":303,"color":15797228},{"x":815,"y":303,"color":15797228},{"x":148,"y":304,"color":15797228},{"x":250,"y":304,"color":15797228},{"x":518,"y":304,"color":15797228},{"x":638,"y":304,"color":15797228},{"x":741,"y":304,"color":15797228},{"x":858,"y":304,"color":15797228},{"x":189,"y":305,"color":15797228},{"x":297,"y":305,"color":15797228},{"x":586,"y":305,"color":15797228},{"x":695,"y":305,"color":15797228},{"x":809,"y":305,"color":15797228},{"x":145,"y":306,"color":15797228},{"x":248,"y":306,"color":15797228},{"x":527,"y":306,"color":15797228},{"x":641,"y":306,"color":15797228},{"x":747,"y":306,"color":15797228},{"x":856,"y":306,"color":15797228},{"x":193,"y":307,"color":15797228},{"x":295,"y":307,"color":15797228},{"x":563,"y":307,"color":15797228},{"x":679,"y":307,"color":15797228},{"x":791,"y":307,"color":15797228},{"x":135,"y":308,"color":15797228},{"x":237,"y":308,"color":15797228},{"x":506,"y":308,"color":15797228},{"x":616,"y":308,"color":15797228},{"x":738,"y":308,"color":15797228},{"x":844,"y":308,"color":15797228},{"x":189,"y":309,"color":15797228},{"x":291,"y":309,"color":15797228},{"x":570,"y":309,"color":15797228},{"x":680,"y":309,"color":15797228},{"x":792,"y":309,"color":15797228},{"x":136,"y":310,"color":15797228},{"x":238,"y":310,"color":15797228},{"x":517,"y":310,"color":15797228},{"x":640,"y":310,"color":15797228},{"x":745,"y":310,"color":15797228},{"x":865,"y":310,"color":15797228},{"x":206,"y":311,"color":15797228},{"x":504,"y":311,"color":15797228},{"x":617,"y":311,"color":15797228},{"x":721,"y":311,"color":15797228},{"x":847,"y":311,"color":15797228},{"x":188,"y":312,"color":15797228},{"x":288,"y":312,"color":15797228},{"x":597,"y":312,"color":15797228},{"x":701,"y":312,"color":15797228},{"x":826,"y":312,"color":15797228},{"x":171,"y":313,"color":15797228},{"x":271,"y":313,"color":15797228},{"x":570,"y":313,"color":15797228},{"x":676,"y":313,"color":15797228},{"x":788,"y":313,"color":15797228},{"x":151,"y":314,"color":15797228},{"x":253,"y":314,"color":15797228},{"x":555,"y":314,"color":15797228},{"x":658,"y":314,"color":15797228},{"x":764,"y":314,"color":15797228},{"x":879,"y":314,"color":15797228},{"x":224,"y":315,"color":15797228},{"x":515,"y":315,"color":15797228},{"x":632,"y":315,"color":15797228},{"x":736,"y":315,"color":15797228},{"x":847,"y":315,"color":15797228},{"x":280,"y":316,"color":15797228},{"x":571,"y":316,"color":15797228},{"x":673,"y":316,"color":15797228},{"x":777,"y":316,"color":15797228},{"x":888,"y":316,"color":15797228},{"x":240,"y":317,"color":15797228},{"x":515,"y":317,"color":15797228},{"x":631,"y":317,"color":15797228},{"x":735,"y":317,"color":15797228},{"x":837,"y":317,"color":15797228},{"x":190,"y":318,"color":15797228},{"x":474,"y":318,"color":15797228},{"x":598,"y":318,"color":15797228},{"x":699,"y":318,"color":15797228},{"x":805,"y":318,"color":15797228},{"x":161,"y":319,"color":15797228},{"x":276,"y":319,"color":15797228},{"x":557,"y":319,"color":15797228},{"x":665,"y":319,"color":15797228},{"x":770,"y":319,"color":15797228},{"x":880,"y":319,"color":15797228},{"x":253,"y":320,"color":15797228},{"x":526,"y":320,"color":15797228},{"x":651,"y":320,"color":15797228},{"x":755,"y":320,"color":15797228},{"x":859,"y":320,"color":15797228},{"x":215,"y":321,"color":15797228},{"x":506,"y":321,"color":15797228},{"x":638,"y":321,"color":15797228},{"x":744,"y":321,"color":15797228},{"x":855,"y":321,"color":15797228},{"x":219,"y":322,"color":15797228},{"x":540,"y":322,"color":15797228},{"x":652,"y":322,"color":15797228},{"x":755,"y":322,"color":15797228},{"x":859,"y":322,"color":15797228},{"x":215,"y":323,"color":15797228},{"x":527,"y":323,"color":15797228},{"x":635,"y":323,"color":15797228},{"x":738,"y":323,"color":15797228},{"x":841,"y":323,"color":15797228},{"x":196,"y":324,"color":15797228},{"x":508,"y":324,"color":15797228},{"x":626,"y":324,"color":15797228},{"x":739,"y":324,"color":15797228},{"x":843,"y":324,"color":15797228},{"x":198,"y":325,"color":15797228},{"x":504,"y":325,"color":15797228},{"x":637,"y":325,"color":15797228},{"x":741,"y":325,"color":15797228},{"x":845,"y":325,"color":15797228},{"x":198,"y":326,"color":15797228},{"x":499,"y":326,"color":15797228},{"x":643,"y":326,"color":15797228},{"x":746,"y":326,"color":15797228},{"x":854,"y":326,"color":15797228},{"x":211,"y":327,"color":15797228},{"x":500,"y":327,"color":15797228},{"x":653,"y":327,"color":15797228},{"x":755,"y":327,"color":15797228},{"x":858,"y":327,"color":15797228},{"x":217,"y":328,"color":15797228},{"x":516,"y":328,"color":15797228},{"x":667,"y":328,"color":15797228},{"x":770,"y":328,"color":15797228},{"x":873,"y":328,"color":15797228},{"x":231,"y":329,"color":15797228},{"x":550,"y":329,"color":15797228},{"x":689,"y":329,"color":15797228},{"x":793,"y":329,"color":15797228},{"x":153,"y":330,"color":15797228},{"x":274,"y":330,"color":15797228},{"x":596,"y":330,"color":15797228},{"x":713,"y":330,"color":15797228},{"x":818,"y":330,"color":15797228},{"x":177,"y":331,"color":15797228},{"x":483,"y":331,"color":15797228},{"x":635,"y":331,"color":15797228},{"x":744,"y":331,"color":15797228},{"x":848,"y":331,"color":15797228},{"x":209,"y":332,"color":15797228},{"x":516,"y":332,"color":15797228},{"x":674,"y":332,"color":15797228},{"x":785,"y":332,"color":15797228},{"x":152,"y":333,"color":15797228},{"x":284,"y":333,"color":15797228},{"x":603,"y":333,"color":15797228},{"x":726,"y":333,"color":15797228},{"x":839,"y":333,"color":15797228},{"x":200,"y":334,"color":15797228},{"x":507,"y":334,"color":15797228},{"x":669,"y":334,"color":15797228},{"x":773,"y":334,"color":15797228},{"x":136,"y":335,"color":15797228},{"x":241,"y":335,"color":15797228},{"x":561,"y":335,"color":15797228},{"x":709,"y":335,"color":15797228},{"x":815,"y":335,"color":15797228},{"x":175,"y":336,"color":15797228},{"x":297,"y":336,"color":15797228},{"x":648,"y":336,"color":15797228},{"x":751,"y":336,"color":15797228},{"x":856,"y":336,"color":15797228},{"x":214,"y":337,"color":15797228},{"x":541,"y":337,"color":15797228},{"x":700,"y":337,"color":15797228},{"x":804,"y":337,"color":15797228},{"x":160,"y":338,"color":15797228},{"x":278,"y":338,"color":15797228},{"x":652,"y":338,"color":15797228},{"x":766,"y":338,"color":15797228},{"x":888,"y":338,"color":15797228},{"x":223,"y":339,"color":15797228},{"x":558,"y":339,"color":15797228},{"x":715,"y":339,"color":15797228},{"x":820,"y":339,"color":15797228},{"x":175,"y":340,"color":15797228},{"x":461,"y":340,"color":15797228},{"x":660,"y":340,"color":15797228},{"x":771,"y":340,"color":15797228},{"x":133,"y":341,"color":15797228},{"x":233,"y":341,"color":15797228},{"x":604,"y":341,"color":15797228},{"x":745,"y":341,"color":15797228},{"x":848,"y":341,"color":15797228},{"x":215,"y":342,"color":15797228},{"x":553,"y":342,"color":15797228},{"x":733,"y":342,"color":15797228},{"x":888,"y":342,"color":15797228},{"x":227,"y":343,"color":15797228},{"x":607,"y":343,"color":15797228},{"x":742,"y":343,"color":15797228},{"x":134,"y":344,"color":15797228},{"x":239,"y":344,"color":15797228},{"x":612,"y":344,"color":15797228},{"x":745,"y":344,"color":15797228},{"x":133,"y":345,"color":15797228},{"x":233,"y":345,"color":15797228},{"x":613,"y":345,"color":15797228},{"x":748,"y":345,"color":15797228},{"x":137,"y":346,"color":15797228},{"x":239,"y":346,"color":15797228},{"x":606,"y":346,"color":15797228},{"x":737,"y":346,"color":15797228},{"x":840,"y":346,"color":15797228},{"x":225,"y":347,"color":15797228},{"x":577,"y":347,"color":15797228},{"x":738,"y":347,"color":15797228},{"x":838,"y":347,"color":15797228},{"x":222,"y":348,"color":15797228},{"x":579,"y":348,"color":15797228},{"x":741,"y":348,"color":15797228},{"x":841,"y":348,"color":15797228},{"x":221,"y":349,"color":15797228},{"x":572,"y":349,"color":15797228},{"x":701,"y":349,"color":15797228},{"x":802,"y":349,"color":15797228},{"x":186,"y":350,"color":15797228},{"x":475,"y":350,"color":15797228},{"x":655,"y":350,"color":15797228},{"x":770,"y":350,"color":15797228},{"x":153,"y":351,"color":15797228},{"x":253,"y":351,"color":15797228},{"x":609,"y":351,"color":15797228},{"x":736,"y":351,"color":15797228},{"x":844,"y":351,"color":15797228},{"x":222,"y":352,"color":15797228},{"x":575,"y":352,"color":15797228},{"x":707,"y":352,"color":15797228},{"x":807,"y":352,"color":15797228},{"x":197,"y":353,"color":15797228},{"x":544,"y":353,"color":15797228},{"x":676,"y":353,"color":15797228},{"x":780,"y":353,"color":15797228},{"x":175,"y":354,"color":15797228},{"x":467,"y":354,"color":15797228},{"x":658,"y":354,"color":15797228},{"x":776,"y":354,"color":15797228},{"x":174,"y":355,"color":15797228},{"x":466,"y":355,"color":15797228},{"x":658,"y":355,"color":15797228},{"x":769,"y":355,"color":15797228},{"x":173,"y":356,"color":15797228},{"x":465,"y":356,"color":15797228},{"x":663,"y":356,"color":15797228},{"x":770,"y":356,"color":15797228},{"x":175,"y":357,"color":15797228},{"x":468,"y":357,"color":15797228},{"x":664,"y":357,"color":15797228},{"x":772,"y":357,"color":15797228},{"x":176,"y":358,"color":15797228},{"x":471,"y":358,"color":15797228},{"x":667,"y":358,"color":15797228},{"x":778,"y":358,"color":15797228},{"x":189,"y":359,"color":15797228},{"x":563,"y":359,"color":15797228},{"x":693,"y":359,"color":15797228},{"x":795,"y":359,"color":15797228},{"x":205,"y":360,"color":15797228},{"x":569,"y":360,"color":15797228},{"x":702,"y":360,"color":15797228},{"x":802,"y":360,"color":15797228},{"x":208,"y":361,"color":15797228},{"x":578,"y":361,"color":15797228},{"x":716,"y":361,"color":15797228},{"x":816,"y":361,"color":15797228},{"x":215,"y":362,"color":15797228},{"x":590,"y":362,"color":15797228},{"x":739,"y":362,"color":15797228},{"x":883,"y":362,"color":15797228},{"x":235,"y":363,"color":15797228},{"x":640,"y":363,"color":15797228},{"x":758,"y":363,"color":15797228},{"x":154,"y":364,"color":15797228},{"x":254,"y":364,"color":15797228},{"x":674,"y":364,"color":15797228},{"x":786,"y":364,"color":15797228},{"x":178,"y":365,"color":15797228},{"x":499,"y":365,"color":15797228},{"x":677,"y":365,"color":15797228},{"x":782,"y":365,"color":15797228},{"x":175,"y":366,"color":15797228},{"x":495,"y":366,"color":15797228},{"x":679,"y":366,"color":15797228},{"x":782,"y":366,"color":15797228},{"x":178,"y":367,"color":15797228},{"x":497,"y":367,"color":15797228},{"x":681,"y":367,"color":15797228},{"x":786,"y":367,"color":15797228},{"x":181,"y":368,"color":15797228},{"x":495,"y":368,"color":15797228},{"x":674,"y":368,"color":15797228},{"x":779,"y":368,"color":15797228},{"x":179,"y":369,"color":15797228},{"x":492,"y":369,"color":15797228},{"x":673,"y":369,"color":15797228},{"x":777,"y":369,"color":15797228},{"x":169,"y":370,"color":15797228},{"x":470,"y":370,"color":15797228},{"x":650,"y":370,"color":15797228},{"x":757,"y":370,"color":15797228},{"x":158,"y":371,"color":15797228},{"x":258,"y":371,"color":15797228},{"x":642,"y":371,"color":15797228},{"x":755,"y":371,"color":15797228},{"x":169,"y":372,"color":15797228},{"x":472,"y":372,"color":15797228},{"x":654,"y":372,"color":15797228},{"x":766,"y":372,"color":15797228},{"x":183,"y":373,"color":15797228},{"x":488,"y":373,"color":15797228},{"x":670,"y":373,"color":15797228},{"x":778,"y":373,"color":15797228},{"x":194,"y":374,"color":15797228},{"x":501,"y":374,"color":15797228},{"x":687,"y":374,"color":15797228},{"x":789,"y":374,"color":15797228},{"x":208,"y":375,"color":15797228},{"x":587,"y":375,"color":15797228},{"x":696,"y":375,"color":15797228},{"x":797,"y":375,"color":15797228},{"x":217,"y":376,"color":15797228},{"x":597,"y":376,"color":15797228},{"x":705,"y":376,"color":15797228},{"x":807,"y":376,"color":15797228},{"x":225,"y":377,"color":15797228},{"x":607,"y":377,"color":15797228},{"x":716,"y":377,"color":15797228},{"x":816,"y":377,"color":15797228},{"x":244,"y":378,"color":15797228},{"x":623,"y":378,"color":15797228},{"x":730,"y":378,"color":15797228},{"x":153,"y":379,"color":15797228},{"x":459,"y":379,"color":15797228},{"x":629,"y":379,"color":15797228},{"x":739,"y":379,"color":15797228},{"x":164,"y":380,"color":15797228},{"x":468,"y":380,"color":15797228},{"x":633,"y":380,"color":15797228},{"x":740,"y":380,"color":15797228},{"x":167,"y":381,"color":15797228},{"x":481,"y":381,"color":15797228},{"x":641,"y":381,"color":15797228},{"x":750,"y":381,"color":15797228},{"x":191,"y":382,"color":15797228},{"x":498,"y":382,"color":15797228},{"x":653,"y":382,"color":15797228},{"x":764,"y":382,"color":15797228},{"x":206,"y":383,"color":15797228},{"x":514,"y":383,"color":15797228},{"x":652,"y":383,"color":15797228},{"x":761,"y":383,"color":15797228},{"x":193,"y":384,"color":15797228},{"x":500,"y":384,"color":15797228},{"x":627,"y":384,"color":15797228},{"x":734,"y":384,"color":15797228},{"x":165,"y":385,"color":15797228},{"x":477,"y":385,"color":15797228},{"x":593,"y":385,"color":15797228},{"x":702,"y":385,"color":15797228},{"x":805,"y":385,"color":15797228},{"x":459,"y":386,"color":15797228},{"x":567,"y":386,"color":15797228},{"x":683,"y":386,"color":15797228},{"x":791,"y":386,"color":15797228},{"x":227,"y":387,"color":15797228},{"x":553,"y":387,"color":15797228},{"x":675,"y":387,"color":15797228},{"x":782,"y":387,"color":15797228},{"x":251,"y":388,"color":15797228},{"x":562,"y":388,"color":15797228},{"x":691,"y":388,"color":15797228},{"x":796,"y":388,"color":15797228},{"x":475,"y":389,"color":15797228},{"x":581,"y":389,"color":15797228},{"x":716,"y":389,"color":15797228},{"x":823,"y":389,"color":15797228},{"x":504,"y":390,"color":15797228},{"x":634,"y":390,"color":15797228},{"x":741,"y":390,"color":15797228},{"x":184,"y":391,"color":15797228},{"x":529,"y":391,"color":15797228},{"x":645,"y":391,"color":15797228},{"x":759,"y":391,"color":15797228},{"x":195,"y":392,"color":15797228},{"x":536,"y":392,"color":15797228},{"x":655,"y":392,"color":15797228},{"x":775,"y":392,"color":15797228},{"x":451,"y":393,"color":15797228},{"x":553,"y":393,"color":15797228},{"x":669,"y":393,"color":15797228},{"x":795,"y":393,"color":15797228},{"x":473,"y":394,"color":15797228},{"x":576,"y":394,"color":15797228},{"x":700,"y":394,"color":15797228},{"x":820,"y":394,"color":15797228},{"x":499,"y":395,"color":15797228},{"x":609,"y":395,"color":15797228},{"x":727,"y":395,"color":15797228},{"x":176,"y":396,"color":15797228},{"x":517,"y":396,"color":15797228},{"x":636,"y":396,"color":15797228},{"x":755,"y":396,"color":15797228},{"x":205,"y":397,"color":15797228},{"x":551,"y":397,"color":15797228},{"x":680,"y":397,"color":15797228},{"x":800,"y":397,"color":15797228},{"x":487,"y":398,"color":15797228},{"x":598,"y":398,"color":15797228},{"x":725,"y":398,"color":15797228},{"x":188,"y":399,"color":15797228},{"x":532,"y":399,"color":15797228},{"x":665,"y":399,"color":15797228},{"x":775,"y":399,"color":15797228},{"x":472,"y":400,"color":15797228},{"x":576,"y":400,"color":15797228},{"x":707,"y":400,"color":15797228},{"x":814,"y":400,"color":15797228},{"x":503,"y":401,"color":15797228},{"x":614,"y":401,"color":15797228},{"x":747,"y":401,"color":15797228},{"x":201,"y":402,"color":15797228},{"x":544,"y":402,"color":15797228},{"x":699,"y":402,"color":15797228},{"x":812,"y":402,"color":15797228},{"x":510,"y":403,"color":15797228},{"x":620,"y":403,"color":15797228},{"x":778,"y":403,"color":15797228},{"x":476,"y":404,"color":15797228},{"x":581,"y":404,"color":15797228},{"x":740,"y":404,"color":15797228},{"x":200,"y":405,"color":15797228},{"x":548,"y":405,"color":15797228},{"x":709,"y":405,"color":15797228},{"x":816,"y":405,"color":15797228},{"x":519,"y":406,"color":15797228},{"x":629,"y":406,"color":15797228},{"x":793,"y":406,"color":15797228},{"x":494,"y":407,"color":15797228},{"x":606,"y":407,"color":15797228},{"x":753,"y":407,"color":15797228},{"x":456,"y":408,"color":15797228},{"x":569,"y":408,"color":15797228},{"x":713,"y":408,"color":15797228},{"x":188,"y":409,"color":15797228},{"x":542,"y":409,"color":15797228},{"x":693,"y":409,"color":15797228},{"x":807,"y":409,"color":15797228},{"x":507,"y":410,"color":15797228},{"x":631,"y":410,"color":15797228},{"x":794,"y":410,"color":15797228},{"x":500,"y":411,"color":15797228},{"x":620,"y":411,"color":15797228},{"x":765,"y":411,"color":15797228},{"x":479,"y":412,"color":15797228},{"x":629,"y":412,"color":15797228},{"x":777,"y":412,"color":15797228},{"x":491,"y":413,"color":15797228},{"x":608,"y":413,"color":15797228},{"x":755,"y":413,"color":15797228},{"x":494,"y":414,"color":15797228},{"x":610,"y":414,"color":15797228},{"x":762,"y":414,"color":15797228},{"x":488,"y":415,"color":15797228},{"x":605,"y":415,"color":15797228},{"x":759,"y":415,"color":15797228},{"x":481,"y":416,"color":15797228},{"x":601,"y":416,"color":15797228},{"x":761,"y":416,"color":15797228},{"x":485,"y":417,"color":15797228},{"x":604,"y":417,"color":15797228},{"x":771,"y":417,"color":15797228},{"x":485,"y":418,"color":15797228},{"x":610,"y":418,"color":15797228},{"x":780,"y":418,"color":15797228},{"x":509,"y":419,"color":15797228},{"x":627,"y":419,"color":15797228},{"x":204,"y":420,"color":15797228},{"x":526,"y":420,"color":15797228},{"x":643,"y":420,"color":15797228},{"x":282,"y":421,"color":15797228},{"x":542,"y":421,"color":15797228},{"x":703,"y":421,"color":15797228},{"x":449,"y":422,"color":15797228},{"x":554,"y":422,"color":15797228},{"x":723,"y":422,"color":15797228},{"x":476,"y":423,"color":15797228},{"x":579,"y":423,"color":15797228},{"x":776,"y":423,"color":15797228},{"x":495,"y":424,"color":15797228},{"x":609,"y":424,"color":15797228},{"x":209,"y":425,"color":15797228},{"x":525,"y":425,"color":15797228},{"x":692,"y":425,"color":15797228},{"x":450,"y":426,"color":15797228},{"x":556,"y":426,"color":15797228},{"x":773,"y":426,"color":15797228},{"x":497,"y":427,"color":15797228},{"x":624,"y":427,"color":15797228},{"x":443,"y":428,"color":15797228},{"x":547,"y":428,"color":15797228},{"x":761,"y":428,"color":15797228},{"x":493,"y":429,"color":15797228},{"x":612,"y":429,"color":15797228},{"x":454,"y":430,"color":15797228},{"x":561,"y":430,"color":15797228},{"x":780,"y":430,"color":15797228},{"x":521,"y":431,"color":15797228},{"x":702,"y":431,"color":15797228},{"x":506,"y":432,"color":15797228},{"x":623,"y":432,"color":15797228},{"x":469,"y":433,"color":15797228},{"x":579,"y":433,"color":15797228},{"x":436,"y":434,"color":15797228},{"x":550,"y":434,"color":15797228},{"x":793,"y":434,"color":15797228},{"x":520,"y":435,"color":15797228},{"x":765,"y":435,"color":15797228},{"x":512,"y":436,"color":15797228},{"x":703,"y":436,"color":15797228},{"x":515,"y":437,"color":15797228},{"x":705,"y":437,"color":15797228},{"x":532,"y":438,"color":15797228},{"x":783,"y":438,"color":15797228},{"x":548,"y":439,"color":15797228},{"x":241,"y":440,"color":15797228},{"x":559,"y":440,"color":15797228},{"x":466,"y":441,"color":15797228},{"x":581,"y":441,"color":15797228},{"x":496,"y":442,"color":15797228},{"x":701,"y":442,"color":15797228},{"x":521,"y":443,"color":15797228},{"x":241,"y":444,"color":15797228},{"x":550,"y":444,"color":15797228},{"x":453,"y":445,"color":15797228},{"x":580,"y":445,"color":15797228},{"x":488,"y":446,"color":15797228},{"x":601,"y":446,"color":15797228},{"x":497,"y":447,"color":15797228},{"x":617,"y":447,"color":15797228},{"x":512,"y":448,"color":15797228},{"x":786,"y":448,"color":15797228},{"x":527,"y":449,"color":15797228},{"x":273,"y":450,"color":15797228},{"x":529,"y":450,"color":15797228},{"x":269,"y":451,"color":15797228},{"x":518,"y":451,"color":15797228},{"x":842,"y":451,"color":15797228},{"x":505,"y":452,"color":15797228},{"x":622,"y":452,"color":15797228},{"x":495,"y":453,"color":15797228},{"x":607,"y":453,"color":15797228},{"x":480,"y":454,"color":15797228},{"x":594,"y":454,"color":15797228},{"x":464,"y":455,"color":15797228},{"x":582,"y":455,"color":15797228},{"x":454,"y":456,"color":15797228},{"x":571,"y":456,"color":15797228},{"x":316,"y":457,"color":15797228},{"x":568,"y":457,"color":15797228},{"x":305,"y":458,"color":15797228},{"x":563,"y":458,"color":15797228},{"x":305,"y":459,"color":15797228},{"x":564,"y":459,"color":15797228},{"x":306,"y":460,"color":15797228},{"x":562,"y":460,"color":15797228},{"x":303,"y":461,"color":15797228},{"x":562,"y":461,"color":15797228},{"x":296,"y":462,"color":15797228},{"x":578,"y":462,"color":15797228},{"x":318,"y":463,"color":15797228},{"x":613,"y":463,"color":15797228},{"x":521,"y":464,"color":15797228},{"x":282,"y":465,"color":15797228},{"x":583,"y":465,"color":15797228},{"x":337,"y":466,"color":15797228},{"x":265,"y":467,"color":15797228},{"x":556,"y":467,"color":15797228},{"x":289,"y":468,"color":15797228},{"x":579,"y":468,"color":15797228},{"x":315,"y":469,"color":15797228},{"x":604,"y":469,"color":15797228},{"x":531,"y":470,"color":15797228},{"x":816,"y":470,"color":15797228},{"x":559,"y":471,"color":15797228},{"x":295,"y":472,"color":15797228},{"x":585,"y":472,"color":15797228},{"x":327,"y":473,"color":15797228},{"x":769,"y":473,"color":15797228},{"x":523,"y":474,"color":15797228},{"x":813,"y":474,"color":15797228},{"x":530,"y":475,"color":15797228},{"x":813,"y":475,"color":15797228},{"x":529,"y":476,"color":15797228},{"x":817,"y":476,"color":15797228},{"x":536,"y":477,"color":15797228},{"x":266,"y":478,"color":15797228},{"x":539,"y":478,"color":15797228},{"x":274,"y":479,"color":15797228},{"x":541,"y":479,"color":15797228},{"x":279,"y":480,"color":15797228},{"x":541,"y":480,"color":15797228},{"x":272,"y":481,"color":15797228},{"x":536,"y":481,"color":15797228},{"x":265,"y":482,"color":15797228},{"x":526,"y":482,"color":15797228},{"x":876,"y":482,"color":15797228},{"x":531,"y":483,"color":15797228},{"x":270,"y":484,"color":15797228},{"x":536,"y":484,"color":15797228},{"x":260,"y":485,"color":15797228},{"x":518,"y":485,"color":15797228},{"x":862,"y":485,"color":15797228},{"x":342,"y":486,"color":15797228},{"x":592,"y":486,"color":15797228},{"x":315,"y":487,"color":15797228},{"x":562,"y":487,"color":15797228},{"x":288,"y":488,"color":15797228},{"x":532,"y":488,"color":15797228},{"x":261,"y":489,"color":15797228},{"x":367,"y":489,"color":15797228},{"x":889,"y":489,"color":15797228},{"x":353,"y":490,"color":15797228},{"x":875,"y":490,"color":15797228},{"x":336,"y":491,"color":15797228},{"x":581,"y":491,"color":15797228},{"x":313,"y":492,"color":15797228},{"x":550,"y":492,"color":15797228},{"x":289,"y":493,"color":15797228},{"x":537,"y":493,"color":15797228},{"x":272,"y":494,"color":15797228},{"x":373,"y":494,"color":15797228},{"x":900,"y":494,"color":15797228},{"x":355,"y":495,"color":15797228},{"x":785,"y":495,"color":15797228},{"x":328,"y":496,"color":15797228},{"x":570,"y":496,"color":15797228},{"x":305,"y":497,"color":15797228},{"x":551,"y":497,"color":15797228},{"x":279,"y":498,"color":15797228},{"x":379,"y":498,"color":15797228},{"x":891,"y":498,"color":15797228},{"x":354,"y":499,"color":15797228},{"x":807,"y":499,"color":15797228},{"x":343,"y":500,"color":15797228},{"x":590,"y":500,"color":15797228},{"x":344,"y":501,"color":15797228},{"x":590,"y":501,"color":15797228},{"x":345,"y":502,"color":15797228},{"x":592,"y":502,"color":15797228},{"x":349,"y":503,"color":15797228},{"x":904,"y":503,"color":15797228},{"x":367,"y":504,"color":15797228},{"x":269,"y":505,"color":15797228},{"x":523,"y":505,"color":15797228},{"x":288,"y":506,"color":15797228},{"x":536,"y":506,"color":15797228},{"x":312,"y":507,"color":15797228},{"x":559,"y":507,"color":15797228},{"x":341,"y":508,"color":15797228},{"x":268,"y":509,"color":15797228},{"x":372,"y":509,"color":15797228},{"x":303,"y":510,"color":15797228},{"x":550,"y":510,"color":15797228},{"x":336,"y":511,"color":15797228},{"x":595,"y":511,"color":15797228},{"x":362,"y":512,"color":15797228},{"x":272,"y":513,"color":15797228},{"x":526,"y":513,"color":15797228},{"x":289,"y":514,"color":15797228},{"x":540,"y":514,"color":15797228},{"x":303,"y":515,"color":15797228},{"x":556,"y":515,"color":15797228},{"x":313,"y":516,"color":15797228},{"x":562,"y":516,"color":15797228},{"x":316,"y":517,"color":15797228},{"x":564,"y":517,"color":15797228},{"x":314,"y":518,"color":15797228},{"x":562,"y":518,"color":15797228},{"x":315,"y":519,"color":15797228},{"x":563,"y":519,"color":15797228},{"x":305,"y":520,"color":15797228},{"x":554,"y":520,"color":15797228},{"x":293,"y":521,"color":15797228},{"x":541,"y":521,"color":15797228},{"x":274,"y":522,"color":15797228},{"x":522,"y":522,"color":15797228},{"x":864,"y":522,"color":15797228},{"x":365,"y":523,"color":15797228},{"x":849,"y":523,"color":15797228},{"x":349,"y":524,"color":15797228},{"x":622,"y":524,"color":15797228},{"x":331,"y":525,"color":15797228},{"x":587,"y":525,"color":15797228},{"x":308,"y":526,"color":15797228},{"x":580,"y":526,"color":15797228},{"x":299,"y":527,"color":15797228},{"x":572,"y":527,"color":15797228},{"x":293,"y":528,"color":15797228},{"x":565,"y":528,"color":15797228},{"x":896,"y":528,"color":15797228},{"x":530,"y":529,"color":15797228},{"x":872,"y":529,"color":15797228},{"x":360,"y":530,"color":15797228},{"x":844,"y":530,"color":15797228},{"x":332,"y":531,"color":15797228},{"x":585,"y":531,"color":15797228},{"x":304,"y":532,"color":15797228},{"x":559,"y":532,"color":15797228},{"x":893,"y":532,"color":15797228},{"x":542,"y":533,"color":15797228},{"x":880,"y":533,"color":15797228},{"x":521,"y":534,"color":15797228},{"x":860,"y":534,"color":15797228},{"x":346,"y":535,"color":15797228},{"x":836,"y":535,"color":15797228},{"x":321,"y":536,"color":15797228},{"x":578,"y":536,"color":15797228},{"x":906,"y":536,"color":15797228},{"x":544,"y":537,"color":15797228},{"x":873,"y":537,"color":15797228},{"x":354,"y":538,"color":15797228},{"x":834,"y":538,"color":15797228},{"x":313,"y":539,"color":15797228},{"x":577,"y":539,"color":15797228},{"x":894,"y":539,"color":15797228},{"x":535,"y":540,"color":15797228},{"x":859,"y":540,"color":15797228},{"x":354,"y":541,"color":15797228},{"x":837,"y":541,"color":15797228},{"x":323,"y":542,"color":15797228},{"x":617,"y":542,"color":15797228},{"x":907,"y":542,"color":15797228},{"x":557,"y":543,"color":15797228},{"x":871,"y":543,"color":15797228},{"x":348,"y":544,"color":15797228},{"x":834,"y":544,"color":15797228},{"x":310,"y":545,"color":15797228},{"x":613,"y":545,"color":15797228},{"x":902,"y":545,"color":15797228},{"x":554,"y":546,"color":15797228},{"x":872,"y":546,"color":15797228},{"x":529,"y":547,"color":15797228},{"x":845,"y":547,"color":15797228},{"x":320,"y":548,"color":15797228},{"x":815,"y":548,"color":15797228},{"x":915,"y":548,"color":15797228},{"x":571,"y":549,"color":15797228},{"x":889,"y":549,"color":15797228},{"x":544,"y":550,"color":15797228},{"x":867,"y":550,"color":15797228},{"x":338,"y":551,"color":15797228},{"x":856,"y":551,"color":15797228},{"x":325,"y":552,"color":15797228},{"x":855,"y":552,"color":15797228},{"x":322,"y":553,"color":15797228},{"x":848,"y":553,"color":15797228},{"x":314,"y":554,"color":15797228},{"x":841,"y":554,"color":15797228},{"x":307,"y":555,"color":15797228},{"x":835,"y":555,"color":15797228},{"x":300,"y":556,"color":15797228},{"x":828,"y":556,"color":15797228},{"x":294,"y":557,"color":15797228},{"x":821,"y":557,"color":15797228},{"x":285,"y":558,"color":15797228},{"x":813,"y":558,"color":15797228},{"x":913,"y":558,"color":15797228},{"x":566,"y":559,"color":15797228},{"x":899,"y":559,"color":15797228},{"x":552,"y":560,"color":15797228},{"x":886,"y":560,"color":15797228},{"x":543,"y":561,"color":15797228},{"x":877,"y":561,"color":15797228},{"x":342,"y":562,"color":15797228},{"x":876,"y":562,"color":15797228},{"x":341,"y":563,"color":15797228},{"x":876,"y":563,"color":15797228},{"x":533,"y":564,"color":15797228},{"x":875,"y":564,"color":15797228},{"x":340,"y":565,"color":15797228},{"x":874,"y":565,"color":15797228},{"x":340,"y":566,"color":15797228},{"x":876,"y":566,"color":15797228},{"x":538,"y":567,"color":15797228},{"x":883,"y":567,"color":15797228},{"x":543,"y":568,"color":15797228},{"x":888,"y":568,"color":15797228},{"x":552,"y":569,"color":15797228},{"x":894,"y":569,"color":15797228},{"x":557,"y":570,"color":15797228},{"x":901,"y":570,"color":15797228},{"x":566,"y":571,"color":15797228},{"x":281,"y":572,"color":15797228},{"x":832,"y":572,"color":15797228},{"x":308,"y":573,"color":15797228},{"x":880,"y":573,"color":15797228},{"x":551,"y":574,"color":15797228},{"x":290,"y":575,"color":15797228},{"x":870,"y":575,"color":15797228},{"x":543,"y":576,"color":15797228},{"x":292,"y":577,"color":15797228},{"x":885,"y":577,"color":15797228},{"x":813,"y":578,"color":15797228},{"x":315,"y":579,"color":15797228},{"x":294,"y":580,"color":15797228},{"x":287,"y":581,"color":15797228},{"x":290,"y":582,"color":15797228},{"x":304,"y":583,"color":15797228},{"x":323,"y":584,"color":15797228},{"x":896,"y":585,"color":15797228},{"x":285,"y":587,"color":15797228},{"x":312,"y":588,"color":15797228},{"x":900,"y":589,"color":15797228},{"x":294,"y":591,"color":15797228},{"x":318,"y":592,"color":15797228},{"x":278,"y":594,"color":15797228},{"x":313,"y":595,"color":15797228},{"x":987,"y":597,"color":15797228},{"x":303,"y":600,"color":15797228},{"x":301,"y":603,"color":15797228},{"x":903,"y":606,"color":15797228},{"x":903,"y":609,"color":15797228},{"x":972,"y":612,"color":15797228},{"x":289,"y":616,"color":15797228},{"x":283,"y":620,"color":15797228},{"x":281,"y":624,"color":15797228},{"x":281,"y":629,"color":15797228},{"x":285,"y":634,"color":15797228},{"x":283,"y":640,"color":15797228},{"x":316,"y":649,"color":15797228}]
 
-},{}]},{},[22]);
+},{}]},{},[25]);

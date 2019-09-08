@@ -3,6 +3,7 @@ const   {Password, DictionaryPassword, AlphanumericPassword} = require('../Missi
         {DictionaryCracker, PasswordCracker, SequentialAttacker} = require('./Tasks/PasswordCracker'),
         Encryption = require('../Missions/Challenges/Encryption'),
         EncryptionCracker = require('./Tasks/EncryptionCracker'),
+        ResearchTask = require('./Tasks/ResearchTask'),
         Computer = require('./Computer'),
         CPUPool = require('./CPUPool'),
         CPU = require('./CPU.js');
@@ -111,6 +112,14 @@ class PlayerComputer extends Computer
         return this.cpuPool.updateLoadBalance();
     }
 
+    /**
+     * @param {Research} researchItem
+     */
+    startResearchTask(researchItem)
+    {
+        let researchTask = new ResearchTask(researchItem);
+        this.cpuPool.addTask(researchTask);
+    }
 
     get tasks()
     {
@@ -153,6 +162,16 @@ class PlayerComputer extends Computer
         let pc = new PlayerComputer(cpus, json.maxCPUs);
         pc.setLocation(json.location);
         return pc;
+    }
+
+    get currentCPUTasks()
+    {
+        return this.cpuPool.tasks;
+    }
+
+    updateCPUPool()
+    {
+        this.cpuPool.update();
     }
 }
 

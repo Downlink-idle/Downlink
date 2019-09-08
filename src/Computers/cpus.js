@@ -4,4 +4,6 @@ let cpus = [
     {name:"Garbo Processor II.5", speed:80, lifeCycle:60000, img:'cpu-iii.png'},
     {name:"Garbo Processor BLT", speed:133, lifeCycle: 100000, img:'cpu-iv.png'}
 ];
+
+
 module.exports = cpus;

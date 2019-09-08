@@ -6,13 +6,9 @@ class IcePoint
     constructor(heightRange)
     {
         this.heightRange = heightRange;
-        this.height = 0;
-    }
-
-    tick()
-    {
         this.height = helper.getRandomIntegerBetween(-this.heightRange, this.heightRange);
     }
+
 }
 
 class IceBreakerPoint
@@ -47,7 +43,6 @@ class IceBreakerPoint
      */
     tick()
     {
-        this.icePoint.tick();
         // if the point is solved, the height of this point should be the same as the height of the ice point
         if(this.solved)
         {
@@ -101,16 +96,16 @@ class IceBreakerPoint
             return this;
         }
 
-        this.searchRangeReductionAmount += fractionalAmount;
-        while(this.searchRangeReductionAmount >= 1 && !this.solved)
+        this.searchRange -= fractionalAmount;
+        if(this.searchRange < 0)
         {
-            this.searchRangeReductionAmount -= 1;
-            this.searchRange --;
-            if(this.searchRange === 0)
-            {
-                this.solved = true;
-            }
+            this.searchRange = 0;
         }
+        if(this.searchRange === 0)
+        {
+            this.solved = true;
+        }
+        
         return this;
     }
 }

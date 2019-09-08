@@ -5,6 +5,7 @@ const   MissionGenerator = require('./Missions/MissionGenerator'),
         ComputerGenerator = require('./Computers/ComputerGenerator'),
         CPU = require('./Computers/CPU'),
         helper = require('./Helpers'),
+        Research = require('./Computers/Research/Research'),
         Decimal = require('break_infinity.js');
 
 /**
@@ -89,10 +90,13 @@ class Downlink extends EventListener
 
     disconnectFromMissionServer()
     {
-        this.activeMission.computer.disconnect();
-        for(let task of this.playerComputer.missionTasks)
+        if(this.activeMission)
         {
-            task.pause();
+            this.activeMission.computer.disconnect();
+            for (let task of this.playerComputer.missionTasks)
+            {
+                task.pause();
+            }
         }
     }
 
@@ -185,7 +189,8 @@ class Downlink extends EventListener
             playerConnection:this.playerConnection.toJSON(),
             companies:[],
             currency:this.currency.toString(),
-            runTime:this.runTime
+            runTime:this.runTime,
+            researches:Research.categoryResearches,
         };
         for(let company of this.companies)
         {
@@ -197,6 +202,7 @@ class Downlink extends EventListener
     static fromJSON(json)
     {
         Company.loadCompaniesFromJSON(json.companies);
+        Research.loadJSON(json.researches);
 
         let downlink = new Downlink();
 
@@ -204,6 +210,7 @@ class Downlink extends EventListener
         downlink.playerComputer = ComputerGenerator.fromJSON(json.playerComputer);
         downlink.runTime = parseInt(json.runTime);
         downlink.lastTickTime = Date.now();
+
 
         downlink.playerConnection = Connection.fromJSON(json.playerConnection);
         downlink.playerConnection.setStartingPoint(downlink.playerComputer);
@@ -214,7 +221,7 @@ class Downlink extends EventListener
     static getNew()
     {
         Company.buildCompanyList();
-
+        Research.loadDefaultJSON();
         let dl = new Downlink();
         return dl;
     }
@@ -268,6 +275,27 @@ class Downlink extends EventListener
     {
         this.currency = this.currency.minus(this.cpuIncreaseCost);
         this.playerComputer.increaseCPUPoolSize();
+    }
+
+    get availableResearch()
+    {
+        return Research.availableResearch;
+    }
+
+    startResearch(researchItemName)
+    {
+        let researchItem = Research.getItemByName(researchItemName);
+        researchItem.on('complete', ()=>{
+            this.playerComputer.updateCPUPool();
+            this.trigger('researchComplete');
+        });
+
+        this.playerComputer.startResearchTask(researchItem);
+    }
+
+    get currentCPUTasks()
+    {
+        return this.playerComputer.currentCPUTasks;
     }
 }
 

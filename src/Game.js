@@ -36,11 +36,11 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.11b",
+        version:"0.5.0b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
-        minimumVersion:"0.4.11b",
+        minimumVersion:"0.5.0b",
         /**
          * jquery entities that are needed for updating
          */
@@ -53,6 +53,7 @@
         $activeMissionServerName:null,
         $playerCurrencySpan:null,
         $playerStandingsTitle:null,
+        $playerStandingsContainer:null,
         $playerComputerCPUListContainer:null,
         $worldMapModal:null,
         $worldMapContainer:null,
@@ -77,6 +78,8 @@
         $gridSizeIncreaseSpan:null,
         $gridSizeCostSpan:null,
         $gridSizeButton:null,
+        $researchModal:null,
+        $researchModalBody:null,
         /**
          * HTML DOM elements, as opposed to jQuery entities for special cases
          */
@@ -93,6 +96,7 @@
             this.$activeMissionServerName = $('#active-mission-server-name');
             this.$playerCurrencySpan = $('#player-currency');
             this.$playerStandingsTitle = $('#player-company-standings-title');
+            this.$playerStandingsContainer = $('#player-company-standings');
             this.$playerComputerCPUListContainer = $('#player-computer-processors');
             this.$worldMapModal = $('#connection-modal');
             this.$worldMapContainer = $('#world-map');
@@ -113,6 +117,8 @@
             this.$cpuTasksCol = $('#tasks-col');
             this.$gridSizeIncreaseSpan = $('#grid-size-increase-amount');
             this.$gridSizeCostSpan = $('#grid-size-increase-cost');
+            this.$researchModal = $('#research-modal');
+            this.$researchModalBody = $('#research-modal-body');
 
             this.$gridSizeButton = $('#increase-cpu-grid-size').click(()=>{this.increaseCPUPoolSize()});
             this.$activeMissionDisconnectButton = $('#disconnect-button').click(()=>{this.disconnect()});
@@ -123,6 +129,7 @@
             $('#settings-save-button').click(()=>{this.saveFile();});
             $('#connectionModalLink').click(()=>{this.showConnectionManager();});
             $('#settingsModalLink').click(()=>{this.showSettingsModal();});
+            $('#researchModalLink').click(()=>{this.showResearchModal();});
             $('#game-version').html(this.version);
             $('#computerModalLink').click(()=>{this.showComputerBuildModal()});
             $('#connection-auto-build-button').click(()=>{this.autoBuildConnection()});
@@ -553,10 +560,10 @@
         {
             $(`.${CPU_MISSION_TASK}`).remove();
             let html = '';
-            for(let task of this.downlink.currentMissionTasks)
+            for(let task of this.downlink.currentCPUTasks)
             {
                 html += `<div class="row ${CPU_MISSION_TASK}" data-task-hash ="${task.hash}">`+
-                    `<div class="col-3 cpu-task-name">${task.name}</div>`+
+                    `<div class="col-5 cpu-task-name">${task.name}</div>`+
                     `<div class="col cpu-task-bar">`+
                         `<div class="reduce-cpu-load cpu-load-changer" data-cpu-load-direction="-1">&lt;</div>`+
                         `<div class="percentage-bar-container">`+
@@ -829,6 +836,40 @@
             {
                 this.$missionToggleButton.attr('disabled', 'disabled').text("Start taking missions");
             }
+        },
+        showResearchModal()
+        {
+            let html = ``;
+            let availableResearch = this.downlink.availableResearch;
+            for(let researchType in availableResearch)
+            {
+                html += `<h2 class="row">${researchType} (${availableResearch[researchType].length})</h2><div class="container-fluid">`;
+
+                for(let researchItem of availableResearch[researchType])
+                {
+                    html += `<div class="row">
+                        <div class="col">${researchItem.name}</div>
+                        <div class="col-1">${researchItem.researchTicks}</div>
+                        <div class="col-3"><button data-research-item="${researchItem.name}" class="research-start-button btn btn-sm btn-primary">Start researching</button></div>
+                    </div>`;
+                }
+                html += `</div>`;
+            }
+            this.$researchModalBody.html(html);
+            $('.research-start-button').click((evt)=>{
+                this.startResearch(evt.target.dataset.researchItem);
+            });
+            this.$researchModal.modal({keyboard:false, backdrop:"static"});
+        },
+        startResearch:function(researchItem)
+        {
+            this.downlink.startResearch(researchItem);
+            this.downlink.on('researchComplete', ()=>{
+                this.updateComputerBuild();
+                this.save();
+            });
+            this.$researchModal.modal('hide');
+            this.updateCPULoadBalancer();
         }
     };
 

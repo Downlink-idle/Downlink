@@ -24,7 +24,7 @@ class Task extends EventListener
         this.ticksTaken = 0;
         this.working = true;
         this.completed = false;
-        this.challenge = challenge.setTask(this);
+        this.challenge = challenge?challenge.setTask(this):null;
         this.loadPercentage = 0;
     }
 
@@ -32,6 +32,8 @@ class Task extends EventListener
     {
         return this.challenge.hash;
     }
+
+
 
     alterWeight(direction)
     {
@@ -113,6 +115,7 @@ class Task extends EventListener
     pause()
     {
         this.working = false;
+        console.log("Paused "+this.name);
         return this;
     }
 
