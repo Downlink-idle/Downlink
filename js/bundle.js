@@ -2455,7 +2455,6 @@ class CPUPool extends EventListener
         }
         catch(e)
         {
-            console.log(e.constructor.name);
             if(e.constructor.name === 'CPUOverloadError')
             {
                 this.pauseAllTasks();
@@ -2868,7 +2867,6 @@ module.exports = PublicComputer;
 
 },{"./Computer":11}],15:[function(require,module,exports){
 const   helpers = require('../../Helpers'),
-        researchData = require('./researchData'),
         upgradeables = {
             CPU:require('../CPU'),
             Connection:require('../../Connection'),
@@ -2882,18 +2880,27 @@ class ResearchEffect
         this.property = property;
         this.amount = amount;
     }
+
+    toJSON()
+    {
+        return {
+            property:this.property,
+            amount:this.amount
+        }
+    }
 }
 
 class Research extends EventListener
 {
-    constructor(name, classEffected, propertiesEffected, researchTicks, researchComplete)
+    constructor(name, classEffected, propertiesEffected, researchTicks, amountDone)
     {
         super();
         this.name = name;
         this.classEffected = classEffected;
         this.propertiesEffected = propertiesEffected;
         this.researchTicks = researchTicks;
-        this.researchCompleted = researchComplete;
+        this.amountDone = amountDone;
+        this.researchCompleted = amountDone >= researchTicks;
     }
 
     setTask(task)
@@ -2914,52 +2921,97 @@ class Research extends EventListener
         this.trigger('complete')
     }
 
+    setAmountDone(amountDone)
+    {
+        this.amountDone = Math.min(amountDone, this.researchTicks);
+    }
+
+    toJSON()
+    {
+        return {
+            name:this.name,
+            classEffected:this.classEffected.constructor.name,
+            propertiesEffected:this.propertiesEffected,
+            researchTicks:this.researchTicks,
+            amountDone:this.amountDone
+        };
+    }
+
+    static fromJSON(json)
+    {
+        let properties = [];
+        for(let property of json.propertiesEffected)
+        {
+            properties.push(new ResearchEffect(property.property, property.amount));
+        }
+        return new Research(
+            json.name,
+            upgradeables[json.className],
+            properties,
+            json.researchTicks,
+            json.amountDone?json.amountDone:0
+        )
+    }
+
+    static loadJSON(researchData)
+    {
+        let researches = {}, allResearches = {};
+        for (let className in researchData)
+        {
+            let classResearchData = researchData[className];
+            researches[className] = [];
+            for (let researchDatum of classResearchData)
+            {
+                researchDatum.className = className;
+                let research = this.fromJSON(researchDatum);
+                researches[className].push(research);
+                allResearches[researchDatum.name] = research;
+            }
+        }
+        this.categoryResearches = researches;
+        this.allResearches = allResearches;
+        this.applySavedResearch(Object.values(allResearches).filter(research=>research.researchCompleted))
+    }
+
+    static applySavedResearch(savedResearches)
+    {
+        savedResearches.forEach((research)=>{
+            research.completeResearch();
+        });
+    }
+
+    static loadDefaultJSON()
+    {
+        const researchData = require('./researchData');
+        this.loadJSON(researchData);
+    }
+
     static get availableResearch()
     {
         let research = {};
-        for(let researchType in researches)
+        for(let researchType in this.categoryResearches)
         {
-            research[researchType] = researches[researchType].filter(research => !research.researchCompleted);
+            research[researchType] = this.categoryResearches[researchType].filter(research => !research.researchCompleted);
         }
         return research;
     }
 
     static getItemByName(name)
     {
-        return allResearches[name];
+        return Research.allResearches[name];
     }
 }
 const researchFactor = 6000;
-
-let researches = {},
-    allResearches = {};
-for(let classEffected in researchData)
-{
-    let classResearchData = researchData[classEffected];
-    researches[classEffected] = [];
-    for(let researchDatum of classResearchData)
-    {
-        let researchEffects = [],
-            researchAmount = researchFactor;
-        for(let property in researchDatum.effects)
-        {
-            researchEffects.push(new ResearchEffect(property, researchDatum.effects[property]));
-        }
-        let research = new Research(researchDatum.name, upgradeables[classEffected], researchEffects, researchDatum.researchTicks, false);
-        researches[classEffected].push(research);
-        allResearches[researchDatum.name] = research;
-    }
-}
 
 module.exports = Research;
 
 },{"../../Connection":22,"../../EventListener":24,"../../Helpers":26,"../CPU":9,"./researchData":16}],16:[function(require,module,exports){
 let researchData = {
     CPU:[
-        {name:"Overclocking", "effects":{"speed":1.5, "lifeCycle":0.9}, researchTicks:40000},
-        {name:"Room Temperature Superconductors", "effects":{"speed":2, "lifeCycle":1.2}, researchTicks:200000},
-        {name:"Quantum Substrate Transistors", "effects":{"speed":4, "lifeCycle":2}, researchTicks: 1000000},
-        {name:"Superstate Collapsifiers", "effects":{"speed":8, "lifeCycle":4}, researchTicks:10000000}
+        {name:"Overclocking", propertiesEffected:[{property:"speed", amount:1.5}, {property:"lifeCycle",amount:0.9}], researchTicks:40000},
+        {name:"Room Temperature Superconductors", propertiesEffected:[{property:"speed", amount:2}, {property:"lifeCycle", amount:1.2}], researchTicks:200000},
+        {name:"Quantum Substrate Transistors", propertiesEffected:[{property:"speed",amount:4}, {property:"lifeCycle",amount:2}], researchTicks: 1000000},
+        {name:"Superstate Collapsifiers", propertiesEffected:[{property:"speed",amount:8}, {property:"lifeCycle",amount:4}], researchTicks:10000000}
     ]
 };
 
@@ -3255,6 +3307,10 @@ class ResearchTask extends Task
     {
         super('Researching '+researchItem.name, researchItem, 0);
         this.researchDone = 0;
+        /**
+         * While this is also stored in this.challenge, lexically it makes less sense.
+         * @type {Research}
+         */
         this.researchItem = researchItem;
         this.minimumRequiredCycles = 10;
     }
@@ -3262,8 +3318,10 @@ class ResearchTask extends Task
     processTick()
     {
         this.researchDone += this.cyclesPerTick;
+        this.researchItem.setAmountDone(this.researchDone);
         if(this.researchDone >= this.researchItem.researchTicks)
         {
+            this.researchDone = this.researchItem.researchTicks;
             this.signalComplete();
         }
     }
@@ -3860,7 +3918,8 @@ class Downlink extends EventListener
             playerConnection:this.playerConnection.toJSON(),
             companies:[],
             currency:this.currency.toString(),
-            runTime:this.runTime
+            runTime:this.runTime,
+            researches:Research.categoryResearches,
         };
         for(let company of this.companies)
         {
@@ -3872,6 +3931,7 @@ class Downlink extends EventListener
     static fromJSON(json)
     {
         Company.loadCompaniesFromJSON(json.companies);
+        Research.loadJSON(json.researches);
 
         let downlink = new Downlink();
 
@@ -3879,6 +3939,7 @@ class Downlink extends EventListener
         downlink.playerComputer = ComputerGenerator.fromJSON(json.playerComputer);
         downlink.runTime = parseInt(json.runTime);
         downlink.lastTickTime = Date.now();
+
 
         downlink.playerConnection = Connection.fromJSON(json.playerConnection);
         downlink.playerConnection.setStartingPoint(downlink.playerComputer);
@@ -3889,7 +3950,7 @@ class Downlink extends EventListener
     static getNew()
     {
         Company.buildCompanyList();
-
+        Research.loadDefaultJSON();
         let dl = new Downlink();
         return dl;
     }
@@ -4177,7 +4238,7 @@ module.exports = EventListener;
             EncryptionCracker = require('./Computers/Tasks/EncryptionCracker'),
             {PasswordCracker} = require('./Computers/Tasks/PasswordCracker'),
             Decimal = require('break_infinity.js'),
-            TICK_INTERVAL_LENGTH=5,
+            TICK_INTERVAL_LENGTH=100,
             MISSION_LIST_CLASS = 'mission-list-row',
             COMPANY_REP_CLASS = 'company-rep-row',
             COMPANY_SECURITY_CLASS = 'company-security-col',
@@ -4207,11 +4268,11 @@ module.exports = EventListener;
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.11b",
+        version:"0.5.0b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
-        minimumVersion:"0.4.11b",
+        minimumVersion:"0.5.0b",
         /**
          * jquery entities that are needed for updating
          */
@@ -5037,6 +5098,7 @@ module.exports = EventListener;
             this.downlink.startResearch(researchItem);
             this.downlink.on('researchComplete', ()=>{
                 this.updateComputerBuild();
+                this.save();
             });
             this.$researchModal.modal('hide');
             this.updateCPULoadBalancer();

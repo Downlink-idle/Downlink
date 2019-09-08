@@ -6,7 +6,7 @@
             EncryptionCracker = require('./Computers/Tasks/EncryptionCracker'),
             {PasswordCracker} = require('./Computers/Tasks/PasswordCracker'),
             Decimal = require('break_infinity.js'),
-            TICK_INTERVAL_LENGTH=5,
+            TICK_INTERVAL_LENGTH=100,
             MISSION_LIST_CLASS = 'mission-list-row',
             COMPANY_REP_CLASS = 'company-rep-row',
             COMPANY_SECURITY_CLASS = 'company-security-col',
@@ -36,11 +36,11 @@
         mission:false,
         computer:null,
         downlink:null,
-        version:"0.4.11b",
+        version:"0.5.0b",
         requiresHardReset:true,
         canTakeMissions:true,
         requiresNewMission:true,
-        minimumVersion:"0.4.11b",
+        minimumVersion:"0.5.0b",
         /**
          * jquery entities that are needed for updating
          */
@@ -866,6 +866,7 @@
             this.downlink.startResearch(researchItem);
             this.downlink.on('researchComplete', ()=>{
                 this.updateComputerBuild();
+                this.save();
             });
             this.$researchModal.modal('hide');
             this.updateCPULoadBalancer();
