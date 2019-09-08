@@ -563,7 +563,7 @@
             for(let task of this.downlink.currentCPUTasks)
             {
                 html += `<div class="row ${CPU_MISSION_TASK}" data-task-hash ="${task.hash}">`+
-                    `<div class="col-3 cpu-task-name">${task.name}</div>`+
+                    `<div class="col-5 cpu-task-name">${task.name}</div>`+
                     `<div class="col cpu-task-bar">`+
                         `<div class="reduce-cpu-load cpu-load-changer" data-cpu-load-direction="-1">&lt;</div>`+
                         `<div class="percentage-bar-container">`+
