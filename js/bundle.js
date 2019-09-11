@@ -1896,8 +1896,6 @@ class Company
     {
         this.name = name;
 
-        this.computers = [];
-
         /**
          * @type {number} the reward modifier this company offers the player
          * this is based on the accrued successful missions and the number of times the company has detected you hacking
@@ -8011,7 +8009,7 @@ module.exports = MissionComputer;
 
 },{"../Computers/Computer":11}],33:[function(require,module,exports){
 const   Mission = require('./Mission'),
-        MINIMUM_MISSIONS = 10;
+        MINIMUM_MISSIONS = 20;
 let availableMissions = [];
 
 class MissionGenerator
